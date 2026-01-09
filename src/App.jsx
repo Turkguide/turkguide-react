@@ -499,7 +499,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
           <span style={{ opacity: 0.65 }}>●</span> AMERİKA’NIN EN BÜYÜK TÜRK REHBERİ
         </div>
 
-        <div style={{ marginTop: 26 }}>
+        <div style={{ marginTop: 26, textAlign: "center" }}>
           <div style={{ fontSize: 66, lineHeight: 1.06, fontWeight: 950, color: ui.blue }}>
             Discover
           </div>
@@ -565,6 +565,16 @@ function CategoryGrid({ ui, counts, onPickCategory }) {
     { key: "Restoranlar", icon: "🍽️", title: "Restoranlar" },
     { key: "Emlak Hizmetleri", icon: "🏠", title: "Emlak Hizmetleri" },
     { key: "Araç Hizmetleri", icon: "🔧", title: "Araç Hizmetleri" },
+
+    { key: "Kuaförler", icon: "✂️", title: "Kuaförler" },
+    { key: "Berberler", icon: "💈", title: "Berberler" },
+    { key: "Araç Kiralama", icon: "🔑", title: "Araç Kiralama" },
+    { key: "Araç Bayileri", icon: "🚗", title: "Araç Bayileri" },
+    { key: "Türk Marketleri", icon: "🛒", title: "Türk Marketleri" },
+
+    { key: "Okullar & Eğitim Hizmetleri", icon: "📘", title: "Okullar & Eğitim Hizmetleri" },
+    { key: "Tamir Ustası / Ev Hizmetleri", icon: "🛠️", title: "Tamir Ustası / Ev Hizmetleri" },
+    { key: "Temizlik Hizmetleri", icon: "✨", title: "Temizlik Hizmetleri" },
   ];
 
   return (
@@ -596,7 +606,9 @@ function CategoryGrid({ ui, counts, onPickCategory }) {
             <div style={{ fontSize: 28 }}>{it.icon}</div>
             <div>
               <div style={{ fontWeight: 950, fontSize: 16 }}>{it.title}</div>
-              <div style={{ color: ui.muted, fontSize: 13, marginTop: 6 }}>{counts?.[it.key] ?? 1} listing</div>
+              <div style={{ color: ui.muted, fontSize: 13, marginTop: 6 }}>
+                {(counts?.[it.key] ?? 0)} listing
+              </div>
             </div>
           </div>
         ))}
@@ -1191,11 +1203,11 @@ export default function App() {
         >
           <div />
 
-          <div style={{ transform: "translateY(2px)" }}>
-            <div style={{ fontSize: 44, fontWeight: 950, letterSpacing: -0.8, lineHeight: 1 }}>
-              Turk<span style={{ color: ui.blue }}>G</span>uide
-            </div>
-          </div>
+<div style={{ transform: "translateY(2px)", cursor: "pointer" }}>
+  <div style={{ fontSize: 56, fontWeight: 950, letterSpacing: -1, lineHeight: 1 }}>
+    Turk<span style={{ color: ui.blue }}>G</span>uide
+  </div>
+</div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <Button ui={ui} variant="blue" onClick={() => setShowSettings(true)} title="Ayarlar">
@@ -1250,121 +1262,126 @@ export default function App() {
               onSearch={landingDoSearch}
             />
 
-            {/* Kategori kartları: sadece işletmeler ekranında */}
-            {active === "biz" && (
-              <>
-                <CategoryGrid ui={ui} counts={categoryCounts} onPickCategory={pickCategory} />
-                <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-                  {categoryFilter ? <Chip ui={ui} active>Filtre: {categoryFilter}</Chip> : null}
-                  {(landingSearch || categoryFilter) ? (
-                    <Button ui={ui} onClick={clearFilters}>Filtreleri Temizle</Button>
-                  ) : null}
-                </div>
-              </>
-            )}
+
           </>
         )}
 
-        {/* BUSINESS */}
-        {active === "biz" && (
-          <div id="biz-list" style={{ display: "grid", gap: 14, paddingTop: 26 }}>
-            <Card ui={ui} style={{ background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.04)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div>
-                  <div style={{ fontSize: 18, fontWeight: 950 }}>İşletmeler</div>
-                  <div style={{ color: ui.muted, marginTop: 4 }}>
-                    Onaylı işletmeler burada görünür. İşletmeni eklemek için başvuru gönder.
-                  </div>
-                </div>
-                <Button ui={ui} onClick={openBizApply} variant="solidBlue">+ İşletmenizi Ekleyin</Button>
+ {/* BUSINESS */}
+{active === "biz" && (
+  <>
+    {/* ✅ Kategori seçilmediyse: SADECE KATEGORİLER GÖZÜKSÜN */}
+    {!categoryFilter && !landingSearch ? (
+      <div style={{ paddingTop: 26 }}>
+        <CategoryGrid ui={ui} counts={categoryCounts} onPickCategory={pickCategory} />
+      </div>
+    ) : (
+      /* ✅ Kategori seçildiyse veya arama varsa: SADECE FİLTRELİ İŞLETMELER */
+      <div id="biz-list" style={{ display: "grid", gap: 14, paddingTop: 26 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <Button ui={ui} onClick={clearFilters}>← Tüm Kategoriler</Button>
+          {categoryFilter ? <Chip ui={ui} active>Filtre: {categoryFilter}</Chip> : null}
+          {landingSearch ? <Chip ui={ui} active>Arama: {landingSearch}</Chip> : null}
+        </div>
+
+        <Card ui={ui} style={{ background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.04)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 950 }}>İşletmeler</div>
+              <div style={{ color: ui.muted, marginTop: 4 }}>
+                Seçtiğin kategori/arama filtresine göre listelenir.
               </div>
-            </Card>
+            </div>
+            <Button ui={ui} onClick={openBizApply} variant="solidBlue">+ İşletmenizi Ekleyin</Button>
+          </div>
+        </Card>
 
-            {filteredBiz.length === 0 ? (
-              <div style={{ color: ui.muted, padding: 10 }}>Eşleşen işletme yok.</div>
-            ) : (
-              <div style={{ display: "grid", gap: 12 }}>
-                {filteredBiz.map((b) => {
-                  const badge =
-                    (b.plan || "").toLowerCase() === "verified"
-                      ? "Verified"
-                      : (b.plan || "").toLowerCase() === "premium"
-                      ? "Premium"
-                      : (b.plan || "").toLowerCase() === "premium+"
-                      ? "Premium+"
-                      : (b.plan || "").toLowerCase() === "platinum"
-                      ? "Platinum"
-                      : "Free";
+        {filteredBiz.length === 0 ? (
+          <div style={{ color: ui.muted, padding: 10 }}>Bu filtrede işletme yok.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 12 }}>
+            {filteredBiz.map((b) => {
+              const badge =
+                (b.plan || "").toLowerCase() === "verified"
+                  ? "Verified"
+                  : (b.plan || "").toLowerCase() === "premium"
+                  ? "Premium"
+                  : (b.plan || "").toLowerCase() === "premium+"
+                  ? "Premium+"
+                  : (b.plan || "").toLowerCase() === "platinum"
+                  ? "Platinum"
+                  : "Free";
 
-                  const canEditAvatar = canEditBizAvatar(b);
+              const canEditAvatar = canEditBizAvatar(b);
 
-                  return (
-                    <div
-                      key={b.id}
-                      style={{
-                        border: `1px solid ${ui.border}`,
-                        background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                        borderRadius: 18,
-                        padding: 16,
-                        boxShadow: `0 18px 40px ${ui.glow}`,
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                          <div onClick={() => openProfileBiz(b.id)} style={{ cursor: "pointer" }}>
-                            <Avatar ui={ui} src={b.avatar} size={54} label={b.name} />
+              return (
+                <div
+                  key={b.id}
+                  style={{
+                    border: `1px solid ${ui.border}`,
+                    background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                    borderRadius: 18,
+                    padding: 16,
+                    boxShadow: `0 18px 40px ${ui.glow}`,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                      <div onClick={() => openProfileBiz(b.id)} style={{ cursor: "pointer" }}>
+                        <Avatar ui={ui} src={b.avatar} size={54} label={b.name} />
+                      </div>
+
+                      <div>
+                        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                          <div style={{ fontSize: 18, fontWeight: 950, cursor: "pointer" }} onClick={() => openProfileBiz(b.id)}>
+                            {b.name}
                           </div>
-
-                          <div>
-                            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                              <div style={{ fontSize: 18, fontWeight: 950, cursor: "pointer" }} onClick={() => openProfileBiz(b.id)}>
-                                {b.name}
-                              </div>
-                              <Chip ui={ui}>{badge}</Chip>
-                              {apptsForBiz.get(b.id) ? <Chip ui={ui}>🗓️ {apptsForBiz.get(b.id)} yeni talep</Chip> : null}
-                            </div>
-
-                            <div style={{ marginTop: 6, color: ui.muted }}>
-                              📍 {b.address || b.city || "-"}
-                            </div>
-
-                            <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>
-                              Sahibi:{" "}
-                              <span
-                                style={{ cursor: "pointer", textDecoration: "underline" }}
-                                onClick={() => openProfileByUsername(b.ownerUsername || "-")}
-                              >
-                                @{b.ownerUsername || "-"}
-                              </span>
-                            </div>
-                          </div>
+                          <Chip ui={ui}>{badge}</Chip>
+                          {apptsForBiz.get(b.id) ? <Chip ui={ui}>🗓️ {apptsForBiz.get(b.id)} yeni talep</Chip> : null}
                         </div>
 
-                        {canEditAvatar ? (
-                          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                            <bizAvatarPicker.Input onBase64={(b64) => setBizAvatar(b.id, b64)} />
-                            <Button ui={ui} variant="blue" onClick={() => bizAvatarPicker.pick()}>
-                              🖼️ İşletme Foto
-                            </Button>
-                          </div>
-                        ) : null}
-                      </div>
+                        <div style={{ marginTop: 6, color: ui.muted }}>
+                          📍 {b.address || b.city || "-"}
+                        </div>
 
-                      {b.desc ? <div style={{ marginTop: 12, color: ui.muted }}>{b.desc}</div> : null}
-
-                      <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <Button ui={ui} variant="ok" onClick={() => openAppointment(b.id)}>🗓️ Randevu Al</Button>
-                        <Button ui={ui} onClick={() => openDirections(b.address || b.city || "")}>🧭 Yol Tarifi</Button>
-                        <Button ui={ui} onClick={() => openCall(b.phone)}>📞 Ara</Button>
-                        <Button ui={ui} variant="solidBlue" onClick={() => openDmToBiz(b.id)}>💬 Mesaj Gönder</Button>
+                        <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>
+                          Sahibi:{" "}
+                          <span
+                            style={{ cursor: "pointer", textDecoration: "underline" }}
+                            onClick={() => openProfileByUsername(b.ownerUsername || "-")}
+                          >
+                            @{b.ownerUsername || "-"}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+
+                    {canEditAvatar ? (
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <bizAvatarPicker.Input onBase64={(b64) => setBizAvatar(b.id, b64)} />
+                        <Button ui={ui} variant="blue" onClick={() => bizAvatarPicker.pick()}>
+                          🖼️ İşletme Foto
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {b.desc ? <div style={{ marginTop: 12, color: ui.muted }}>{b.desc}</div> : null}
+
+                  <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <Button ui={ui} variant="ok" onClick={() => openAppointment(b.id)}>🗓️ Randevu Al</Button>
+                    <Button ui={ui} onClick={() => openDirections(b.address || b.city || "")}>🧭 Yol Tarifi</Button>
+                    <Button ui={ui} onClick={() => openCall(b.phone)}>📞 Ara</Button>
+                    <Button ui={ui} variant="solidBlue" onClick={() => openDmToBiz(b.id)}>💬 Mesaj Gönder</Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
+      </div>
+    )}
+  </>
+)}
 
         {/* NEWS */}
         {active === "news" && (
