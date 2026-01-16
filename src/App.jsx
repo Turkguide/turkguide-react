@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "./supabaseClient";
 
 /**
  * TurkGuide MVP — Single-file App.jsx (LocalStorage)
@@ -16,7 +17,9 @@ const KEY = {
   APPTS: "tg_appts_v6",
   ADMIN_LOG: "tg_admin_log_v6",
   ADMIN_CONFIG: "tg_admin_config_v6",
+  ADMIN_SECRET: "tg_admin_secret_v6",
   THEME: "tg_theme_v6", // "system" | "light" | "dark"
+  ADMIN_UNLOCK: "tg_admin_unlock_v6",
   SETTINGS: "tg_settings_v6", // mesaj ayarları vs.
 };
 
@@ -59,12 +62,48 @@ function isAdminUser(username, admins) {
 function ensureSeed() {
   const users = lsGet(KEY.USERS, null);
   if (!users || !Array.isArray(users) || users.length === 0) {
-    lsSet(KEY.USERS, [
-      { id: uid(), username: "secer", tier: "free", xp: 120, createdAt: now(), avatar: "" },
-      { id: uid(), username: "vicdan", tier: "verified", xp: 9000, createdAt: now(), avatar: "" },
-      { id: uid(), username: "sadullah", tier: "verified", xp: 12000, createdAt: now(), avatar: "" },
-      { id: uid(), username: "turkguide", tier: "verified", xp: 15000, createdAt: now(), avatar: "" },
-    ]);
+ lsSet(KEY.USERS, [
+  {
+    id: uid(),
+    username: "secer",
+    email: "secer@example.com",
+    providers: {},
+    tier: "Onaylı İşletme",
+    xp: 120,
+    createdAt: now(),
+    avatar: "",
+  },
+  {
+    id: uid(),
+    username: "vicdan",
+    email: "vicdan@example.com",
+    providers: { google: { sub: "google_seed_vicdan" } },
+    tier: "verified",
+    xp: 9000,
+    createdAt: now(),
+    avatar: "",
+  },
+  {
+    id: uid(),
+    username: "sadullah",
+    email: "sadullah@example.com",
+    providers: { apple: { sub: "apple_seed_sadullah" } },
+    tier: "verified",
+    xp: 12000,
+    createdAt: now(),
+    avatar: "",
+  },
+  {
+    id: uid(),
+    username: "turkguide",
+    email: "admin@turkguide.app",
+    providers: { email: true },
+    tier: "verified",
+    xp: 15000,
+    createdAt: now(),
+    avatar: "",
+  },
+]);
   }
 
   const cfg = lsGet(KEY.ADMIN_CONFIG, null);
@@ -80,7 +119,7 @@ function ensureSeed() {
         name: "Secer Auto",
         ownerUsername: "sadullah",
         category: "Araç Bayileri",
-        plan: "premium",
+        plan: "Onaylı İşletme",
         status: "approved",
         address: "Los Angeles, CA",
         phone: "+1 310 555 0101",
@@ -96,7 +135,7 @@ function ensureSeed() {
         name: "Turkish Market LA",
         ownerUsername: "vicdan",
         category: "Türk Marketleri",
-        plan: "free",
+        plan: "Onaylı İşletme",
         status: "approved",
         address: "Los Angeles, CA",
         phone: "+1 213 555 0199",
@@ -112,7 +151,7 @@ function ensureSeed() {
         name: "AydinStay",
         ownerUsername: "secer",
         category: "Konaklama",
-        plan: "premium+",
+        plan: "Onaylı İşletme+",
         status: "approved",
         address: "West Hollywood, CA",
         phone: "+1 424 555 0133",
@@ -140,6 +179,14 @@ function ensureSeed() {
       msgNotifications: true,
     });
   }
+  // 🔐 Admin secret yoksa oluştur (ilk kurulum için)
+if (!lsGet(KEY.ADMIN_SECRET, null)) {
+  lsSet(KEY.ADMIN_SECRET, uid() + "-" + uid());
+}
+// 🔒 Admin panel kilidi (varsayılan: kapalı)
+if (!lsGet(KEY.ADMIN_UNLOCK, null)) {
+  lsSet(KEY.ADMIN_UNLOCK, false);
+}
 }
 
 function useSystemTheme() {
@@ -312,11 +359,20 @@ function Chip({ ui, children, active, onClick, style, title }) {
   );
 }
 
-function Modal({ ui, open, title, onClose, children, width = 860 }) {
+function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999 }) {
   if (!open) return null;
+
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "grid", placeItems: "center", padding: 16, zIndex: 999 }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.55)",
+        display: "grid",
+        placeItems: "center",
+        padding: 16,
+        zIndex,
+      }}
       onMouseDown={onClose}
     >
       <div
@@ -616,9 +672,13 @@ function CategoryGrid({ ui, counts, onPickCategory }) {
     </div>
   );
 }
-
 /* ========= APP ========= */
 export default function App() {
+  console.log("🔥 App.jsx yüklendi");
+  console.log("🔥 SUPABASE INSTANCE:", supabase);
+  console.log("🧪 ENV URL:", import.meta.env.VITE_SUPABASE_URL);
+  console.log("🧪 ENV KEY:", import.meta.env.VITE_SUPABASE_ANON_KEY);
+
   const [booted, setBooted] = useState(false);
 
   const systemTheme = useSystemTheme();
@@ -639,6 +699,7 @@ export default function App() {
   const [appts, setAppts] = useState([]);
   const [adminLog, setAdminLog] = useState([]);
   const [adminConfig, setAdminConfig] = useState({ admins: DEFAULT_ADMINS });
+  const [adminUnlocked, setAdminUnlocked] = useState(() => lsGet(KEY.ADMIN_UNLOCK, false));
 
   // Settings
   const [showSettings, setShowSettings] = useState(false);
@@ -648,7 +709,12 @@ export default function App() {
 
   // Modals
   const [showAuth, setShowAuth] = useState(false);
-  const [authName, setAuthName] = useState("");
+  const [showRegister, setShowRegister] = useState(false);
+
+  // Auth state'leri
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authUsername, setAuthUsername] = useState("");
 
   const [showBizApply, setShowBizApply] = useState(false);
 
@@ -660,8 +726,9 @@ export default function App() {
   const [deleteCtx, setDeleteCtx] = useState(null);
   const [reasonText, setReasonText] = useState("");
 
-  const [showEditUser, setShowEditUser] = useState(false);
-  const [editUserCtx, setEditUserCtx] = useState(null);
+ const [showEditUser, setShowEditUser] = useState(false);
+const [editUserCtx, setEditUserCtx] = useState(null);
+const [pickedAvatarName, setPickedAvatarName] = useState("");
 
   const [showEditBiz, setShowEditBiz] = useState(false);
   const [editBizCtx, setEditBizCtx] = useState(null);
@@ -688,27 +755,244 @@ export default function App() {
   const [landingSearch, setLandingSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
-  // File upload helpers
+    // File upload helpers
   const userAvatarPicker = useFileToBase64();
   const bizAvatarPicker = useFileToBase64();
+  const UserAvatarInput = userAvatarPicker.Input;
+  const BizAvatarInput = bizAvatarPicker.Input;
 
-  // Boot
+  // ✅ Username değişince eski username'lerden profile açabilmek için alias map
+  const [usernameAliases, setUsernameAliases] = useState({});
+  // örn: { "oldname": "newname" } (hepsi normalize edilmiş tutulacak)
+
+  function resolveUsernameAlias(uname) {
+    const key = normalizeUsername(uname);
+    return usernameAliases[key] || uname;
+  }
+
+  // ✅ Username değiştiğinde tüm kayıtları güncelle (DM / post / comment / biz owner vs.)
+  function updateUsernameEverywhere(oldUsername, newUsername) {
+    const oldN = normalizeUsername(oldUsername);
+    const newU = String(newUsername || "").trim();
+
+    // alias kaydı (eski -> yeni)
+    setUsernameAliases((prev) => ({ ...prev, [oldN]: newU }));
+
+    // DM'ler
+    setDms((prev) =>
+      prev.map((m) => ({
+        ...m,
+        from: normalizeUsername(m.from) === oldN ? newU : m.from,
+        toUsername: normalizeUsername(m.toUsername) === oldN ? newU : m.toUsername,
+      }))
+    );
+
+    // Postlar
+    setPosts((prev) =>
+      prev.map((p) => ({
+        ...p,
+        by: normalizeUsername(p.by) === oldN ? newU : p.by,
+        comments: Array.isArray(p.comments)
+          ? p.comments.map((c) => ({
+              ...c,
+              by: normalizeUsername(c.by) === oldN ? newU : c.by,
+              replies: Array.isArray(c.replies)
+                ? c.replies.map((r) => ({
+                    ...r,
+                    by: normalizeUsername(r.by) === oldN ? newU : r.by,
+                  }))
+                : c.replies,
+            }))
+          : p.comments,
+      }))
+    );
+
+    // İşletmeler (ownerUsername / approvedBy)
+    setBiz((prev) =>
+      prev.map((b) => ({
+        ...b,
+        ownerUsername: normalizeUsername(b.ownerUsername) === oldN ? newU : b.ownerUsername,
+        approvedBy: normalizeUsername(b.approvedBy) === oldN ? newU : b.approvedBy,
+      }))
+    );
+  }
+
+  // ✅ EMAIL DOĞRULAMA + AUTH CALLBACK (TEK KAYNAK) — FIX: #auth%23access_token
   useEffect(() => {
-    ensureSeed();
-    setUsers(lsGet(KEY.USERS, []));
-    setBiz(lsGet(KEY.BIZ, []));
-    setBizApps(lsGet(KEY.BIZ_APPS, []));
-    setPosts(lsGet(KEY.POSTS, []));
-    setDms(lsGet(KEY.DMS, []));
-    setAppts(lsGet(KEY.APPTS, []));
-    setAdminLog(lsGet(KEY.ADMIN_LOG, []));
-    setAdminConfig(lsGet(KEY.ADMIN_CONFIG, { admins: DEFAULT_ADMINS }));
-    setUser(lsGet(KEY.USER, null));
-    setThemePref(lsGet(KEY.THEME, "system"));
-    setSettings(lsGet(KEY.SETTINGS, { chatEnabled: true, readReceipts: true, msgNotifications: true }));
-    setBooted(true);
+    const run = async () => {
+      try {
+        if (!supabase?.auth) return;
+
+        // ✅ Hash normalize: "#auth%23access_token" / "#auth#access_token" -> "#access_token"
+        const rawHash = window.location.hash || "";
+        const normalizedHash = rawHash.replace("#auth%23", "#").replace("#auth#", "#");
+
+        // 1) HASH (#access_token / #error / otp_expired vs)
+        const hash = normalizedHash.startsWith("#") ? normalizedHash.slice(1) : normalizedHash;
+        const hp = new URLSearchParams(hash);
+
+        // Hash error handling
+        const codeErr = hp.get("error_code");
+        const descErr = hp.get("error_description");
+        const hasErr = hp.get("error") || descErr || codeErr;
+
+        if (hasErr) {
+          const msg =
+            descErr ||
+            (codeErr === "otp_expired"
+              ? "Email doğrulama linki süresi dolmuş veya daha önce kullanılmış."
+              : "Email doğrulama sırasında hata oluştu.");
+
+          alert(decodeURIComponent(msg));
+
+          // hash'i temizle ama path'i koru
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+          return;
+        }
+
+        // Hash session handling
+        const access_token = hp.get("access_token");
+        const refresh_token = hp.get("refresh_token");
+
+        if (access_token && refresh_token) {
+          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+
+          if (error) {
+            console.error("❌ setSession error:", error);
+            alert(error.message || "Email doğrulama sırasında hata oluştu.");
+            return;
+          }
+
+          // hash'i temizle
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        }
+
+        // 2) ?code=... (PKCE)
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error("❌ exchangeCodeForSession error:", error);
+            alert(error.message || "Email doğrulama sırasında hata oluştu.");
+            return;
+          }
+
+          url.searchParams.delete("code");
+          // hash'i de temizle (PKCE sonrası)
+          window.history.replaceState({}, document.title, url.pathname + url.search);
+        }
+      } catch (e) {
+        console.error("❌ auth callback error:", e);
+      }
+    };
+
+    run();
   }, []);
 
+  // ✅ Boot + Local State + Supabase Auth Restore + Auth Listener
+useEffect(() => {
+  let alive = true;
+  let subscription = null;
+
+  // 🧹 DEV ortamında eski seed/login kalıntılarını 1 kere temizle
+  if (import.meta.env.DEV && !localStorage.getItem("tg_clean_v1")) {
+    localStorage.removeItem(KEY.USERS);
+    localStorage.removeItem(KEY.USER);
+    localStorage.setItem("tg_clean_v1", "done");
+  }
+
+  // 📦 Local veriler
+  setUsers(lsGet(KEY.USERS, []));
+  setBiz(lsGet(KEY.BIZ, []));
+  setBizApps(lsGet(KEY.BIZ_APPS, []));
+  setPosts(lsGet(KEY.POSTS, []));
+  setDms(lsGet(KEY.DMS, []));
+  setAppts(lsGet(KEY.APPTS, []));
+  setAdminLog(lsGet(KEY.ADMIN_LOG, []));
+  setAdminConfig(lsGet(KEY.ADMIN_CONFIG, { admins: DEFAULT_ADMINS }));
+  setAdminUnlocked(lsGet(KEY.ADMIN_UNLOCK, false));
+
+  setThemePref(lsGet(KEY.THEME, "system"));
+  setSettings(
+    lsGet(KEY.SETTINGS, {
+      chatEnabled: true,
+      readReceipts: true,
+      msgNotifications: true,
+    })
+  );
+
+  const restoreAndListen = async () => {
+    try {
+      // 🔐 Supabase yoksa sadece booted true
+      if (!supabase?.auth) {
+        if (alive) setBooted(true);
+        return;
+      }
+
+      // 1) Session restore
+      const { data, error } = await supabase.auth.getSession();
+      if (!alive) return;
+
+      if (error) console.error("❌ getSession error:", error);
+
+      const session = data?.session;
+      if (session?.user) {
+        const md = session.user.user_metadata || {};
+        setUser((prev) => ({
+          ...(prev || {}),
+          id: session.user.id,
+          email: session.user.email,
+          username: md.username ?? prev?.username ?? null,
+          avatar: md.avatar ?? prev?.avatar ?? "",
+          Tier: md.Tier ?? prev?.Tier ?? "Onaylı İşletme",
+          XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
+          createdAt: md.createdAt ?? prev?.createdAt ?? null,
+        }));
+      } else {
+        setUser(null);
+      }
+
+      // 2) Auth listener (login/logout/refresh değişimlerinde state güncelle)
+      const { data: subData } = supabase.auth.onAuthStateChange((_event, s) => {
+        if (!alive) return;
+
+        if (s?.user) {
+          const md = s.user.user_metadata || {};
+          setUser((prev) => ({
+            ...(prev || {}),
+            id: s.user.id,
+            email: s.user.email,
+            username: md.username ?? prev?.username ?? null,
+            avatar: md.avatar ?? prev?.avatar ?? "",
+            Tier: md.Tier ?? prev?.Tier ?? "Onaylı İşletme",
+            XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
+            createdAt: md.createdAt ?? prev?.createdAt ?? null,
+          }));
+        } else {
+          setUser(null);
+        }
+      });
+
+      subscription = subData?.subscription || null;
+    } catch (e) {
+      console.error("💥 restore/auth crash:", e);
+      setUser(null);
+    } finally {
+      if (alive) setBooted(true);
+    }
+  };
+
+  restoreAndListen();
+
+  return () => {
+    alive = false;
+    try {
+      subscription?.unsubscribe?.();
+    } catch (_) {}
+  };
+}, []);
   // Persist
   useEffect(() => { if (booted) lsSet(KEY.USERS, users); }, [users, booted]);
   useEffect(() => { if (booted) lsSet(KEY.BIZ, biz); }, [biz, booted]);
@@ -727,526 +1011,1016 @@ export default function App() {
     else localStorage.removeItem(KEY.USER);
   }, [user, booted]);
 
-  const adminMode = useMemo(() => isAdminUser(user?.username, adminConfig.admins), [user, adminConfig]);
+  const adminMode = useMemo(
+  () => adminUnlocked && isAdminUser(user?.username, adminConfig.admins),
+  [user, adminConfig, adminUnlocked]
+);
 
   const approvedBiz = useMemo(() => biz.filter((x) => x.status === "approved"), [biz]);
-  const deletedBiz = useMemo(() => biz.filter((x) => x.status === "deleted"), [biz]);
-  const pendingApps = useMemo(() => bizApps.filter((x) => x.status === "pending"), [bizApps]);
+const deletedBiz = useMemo(() => biz.filter((x) => x.status === "deleted"), [biz]);
+const pendingApps = useMemo(() => bizApps.filter((x) => x.status === "pending"), [bizApps]);
 
-  const apptsForBiz = useMemo(() => {
-    const map = new Map();
-    for (const a of appts) {
-      if (!a?.bizId) continue;
-      map.set(a.bizId, (map.get(a.bizId) || 0) + (a.status === "pending" ? 1 : 0));
-    }
-    return map;
-  }, [appts]);
+const apptsForBiz = useMemo(() => {
+  const map = new Map();
+  for (const a of appts) {
+    if (!a?.bizId) continue;
+    map.set(a.bizId, (map.get(a.bizId) || 0) + (a.status === "pending" ? 1 : 0));
+  }
+  return map;
+}, [appts]);
 
-  function addLog(action, payload = {}) {
-    if (!adminMode) return;
-    setAdminLog((prev) => [{ id: uid(), createdAt: now(), admin: user?.username || "-", action, payload }, ...prev]);
+function addLog(action, payload = {}) {
+  if (!adminMode) return;
+  setAdminLog((prev) => [{ id: uid(), createdAt: now(), admin: user?.username || "-", action, payload }, ...prev]);
+}
+
+function requireAuth() {
+  if (!user) {
+    setShowAuth(true);
+    return false;
+  }
+  return true;
+}
+
+function authUserExists() {
+  const email = String(authEmail || "").trim().toLowerCase();
+  const username = String(authUsername || "").trim();
+
+  // Email girildiyse: email'e göre kontrol
+  if (email) {
+    return users.some((x) => String(x.email || "").trim().toLowerCase() === email);
   }
 
-  function requireAuth() {
-    if (!user) {
-      setShowAuth(true);
-      return false;
-    }
-    return true;
+  // Email yok ama username girildiyse: username'e göre kontrol
+  if (username) {
+    const unameLower = normalizeUsername(username);
+    return users.some((x) => normalizeUsername(x.username) === unameLower);
   }
 
-  function loginNow() {
-    const clean = String(authName || "").trim();
-    if (!clean) return;
-    const lower = clean.toLowerCase();
-    let found = users.find((x) => normalizeUsername(x.username) === lower);
-    if (!found) {
-      found = { id: uid(), username: clean, tier: "free", xp: 0, createdAt: now(), avatar: "" };
-      setUsers((prev) => [found, ...prev]);
-    }
-    setUser(found);
-    setShowAuth(false);
-    setAuthName("");
-  }
+  // Hiçbiri yoksa: false
+  return false;
+}
 
-  function logout() {
-    setUser(null);
-    setActive("biz");
-  }
+// ✅ LOGIN / REGISTER (Supabase)
+async function loginNow(provider = "email", mode = "login") {
+  try {
+    const email = String(authEmail || "").trim().toLowerCase();
+    const pass = String(authPassword || "").trim();
+    const username = String(authUsername || "").trim();
 
-  function openProfileByUsername(username) {
-    setProfileTarget({ type: "user", username });
-    setProfileOpen(true);
-  }
-  function openProfileBiz(bizId) {
-    setProfileTarget({ type: "biz", bizId });
-    setProfileOpen(true);
-  }
-
-  function openDmToUser(username) {
-    if (!requireAuth()) return;
-    if (!settings.chatEnabled) return;
-    setDmTarget({ type: "user", username });
-    setDmText("");
-    setShowDm(true);
-  }
-  function openDmToBiz(bizId) {
-    if (!requireAuth()) return;
-    if (!settings.chatEnabled) return;
-    setDmTarget({ type: "biz", bizId });
-    setDmText("");
-    setShowDm(true);
-  }
-
-  function sendDm() {
-    if (!requireAuth()) return;
-    if (!settings.chatEnabled) return;
-
-    const text = String(dmText || "").trim();
-    if (!text) return;
-
-    const msg = {
-      id: uid(),
-      createdAt: now(),
-      from: user.username,
-      toType: dmTarget?.type,
-      toUsername: dmTarget?.type === "user" ? dmTarget.username : null,
-      toBizId: dmTarget?.type === "biz" ? dmTarget.bizId : null,
-      text,
-      readBy: [],
-    };
-
-    setDms((prev) => [msg, ...prev]);
-    setDmText("");
-  }
-
-  function openBizApply() {
-    if (!requireAuth()) return;
-    setShowBizApply(true);
-  }
-
-  function submitBizApplication(data) {
-    if (!requireAuth()) return;
-    const name = String(data?.name || "").trim();
-    const city = String(data?.city || "").trim();
-    const address = String(data?.address || "").trim();
-    const phone = String(data?.phone || "").trim();
-    const category = String(data?.category || "").trim();
-    const plan = String(data?.plan || "free").trim();
-
-    if (!name || !city || !category) {
-      alert("Lütfen işletme adı / şehir / kategori doldur.");
+    // 1) Supabase var mı?
+    if (!supabase || !supabase.auth) {
+      alert("Supabase client hazır değil. supabaseClient import/env kontrol et.");
       return;
     }
 
-    setBizApps((prev) => [
-      {
-        id: uid(),
-        createdAt: now(),
-        status: "pending",
-        applicant: user.username,
-        ownerUsername: user.username,
-        name,
-        city,
-        address,
-        phone,
-        category,
-        plan,
-        desc: String(data?.desc || "").trim(),
-        avatar: "",
+    // (İsteğe bağlı) Ping testi: debug için aç-kapa
+    // const ping = await supabase.auth.getSession();
+    // console.log("🧪 SESSION:", ping);
+
+    // 2) REGISTER
+    if (mode === "register") {
+      if (!email || !pass || !username) {
+        alert("Email, şifre ve kullanıcı adı zorunlu.");
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: pass,
+        options: {
+          data: { username },
+          emailRedirectTo: `${window.location.origin}/#auth`,
+        },
+      });
+
+      if (error) {
+        console.error("❌ signUp error:", error);
+        alert(error.message);
+        return;
+      }
+
+      console.log("✅ signUp ok:", data);
+
+      // Confirm email açıksa: session null gelir, bu normal
+      if (!data?.session) {
+        alert("Kayıt alındı. Email doğrulama linki gönderildi. Linke tıklayıp doğrula.");
+      } else {
+        alert("Kayıt alındı ve giriş yapıldı.");
+        setUser({
+          id: data.user.id,
+          email: data.user.email,
+          username: data.user.user_metadata?.username || null,
+          Tier: "Onaylı İşletme",
+        });
+        setShowAuth(false);
+      }
+
+      setAuthPassword("");
+      setShowRegister(false);
+      setShowAuth(true);
+      return;
+    }
+
+    // 3) LOGIN
+    if (mode === "login") {
+      if (!email || !pass) {
+        alert("Email ve şifre zorunlu.");
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: pass,
+      });
+
+      if (error) {
+        console.error("❌ login error:", error);
+        alert(error.message);
+        return;
+      }
+
+      console.log("✅ login ok:", data);
+
+      setUser({
+  id: data.user.id,
+  email: data.user.email,
+  username:
+    data.user.user_metadata?.username ??
+    (data.user.email ? data.user.email.split("@")[0] : null),
+  Tier:
+    data.user.user_metadata?.tier ??
+    data.user.user_metadata?.Tier ??
+    "Onaylı İşletme",
+  XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
+  avatar: data.user.user_metadata?.avatar ?? "",
+});
+
+      setShowAuth(false);
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthUsername("");
+      return;
+    }
+
+    alert("Geçersiz işlem.");
+  } catch (e) {
+    console.error("💥 loginNow crash:", e);
+    alert(e?.message || "Load failed");
+  }
+}
+
+// ✅ LOGOUT
+async function logout() {
+  try {
+    await supabase.auth.signOut();
+  } catch (e) {
+    console.error("logout error:", e);
+  } finally {
+    setUser(null);
+    lsSet(KEY.USER, null);
+    setShowAuth(true);
+  }
+}
+// ✅ OAUTH LOGIN (Apple / Google vs.)
+async function oauthLogin(provider) {
+  try {
+    if (!supabase?.auth) {
+      alert("Supabase hazır değil.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/#auth`,
       },
-      ...prev,
-    ]);
-    setShowBizApply(false);
-  }
+    });
 
-  function adminApprove(app) {
-    if (!adminMode) return;
-    const b = {
-      id: uid(),
-      createdAt: now(),
-      status: "approved",
-      name: app.name,
-      city: app.city,
-      address: app.address || app.city,
-      phone: app.phone || "",
-      category: app.category,
-      plan: app.plan || "free",
-      desc: app.desc || "",
-      avatar: app.avatar || "",
-      ownerUsername: app.ownerUsername || app.applicant || "",
-      applicant: app.applicant,
-      approvedAt: now(),
-      approvedBy: user.username,
-    };
-    setBiz((prev) => [b, ...prev]);
-    setBizApps((prev) => prev.filter((x) => x.id !== app.id));
-    addLog("BUSINESS_APPROVE", { appId: app.id, name: app.name });
-  }
-
-  function openReject(app) {
-    if (!adminMode) return;
-    setRejectCtx(app);
-    setRejectText("");
-    setShowRejectReason(true);
-  }
-
-  function adminReject() {
-    if (!adminMode) return;
-    const reason = String(rejectText || "").trim();
-    if (!reason) return alert("Sebep yazmalısın.");
-    if (!rejectCtx) return;
-
-    setBizApps((prev) => prev.filter((x) => x.id !== rejectCtx.id));
-    addLog("BUSINESS_REJECT", { appId: rejectCtx.id, name: rejectCtx.name, reason });
-    setShowRejectReason(false);
-    setRejectCtx(null);
-    setRejectText("");
-  }
-
-  function openDelete(type, item) {
-    if (!adminMode) return;
-    setDeleteCtx({ type, item });
-    setReasonText("");
-    setShowDeleteReason(true);
-  }
-
-  function confirmDelete() {
-    if (!adminMode) return;
-    const reason = String(reasonText || "").trim();
-    if (!reason) return alert("Sebep yazmalısın.");
-    if (!deleteCtx) return;
-
-    if (deleteCtx.type === "biz") {
-      const b = deleteCtx.item;
-      setBiz((prev) =>
-        prev.map((x) =>
-          x.id === b.id ? { ...x, status: "deleted", deletedAt: now(), deletedBy: user.username, deleteReason: reason } : x
-        )
-      );
-      addLog("BUSINESS_DELETE", { id: b.id, name: b.name, reason });
+    if (error) {
+      console.error("❌ oauthLogin error:", error);
+      alert(error.message || "OAuth giriş hatası");
     }
+  } catch (e) {
+    console.error("💥 oauthLogin crash:", e);
+    alert(e?.message || "OAuth giriş hatası");
+  }
+}
 
-    if (deleteCtx.type === "user") {
-      const u = deleteCtx.item;
-      setUsers((prev) => prev.filter((x) => x.id !== u.id));
-      addLog("USER_DELETE", { id: u.id, username: u.username, reason });
-    }
+function openProfileByUsername(username) {
+  const uname = resolveUsernameAlias(String(username || "").trim());
 
-    setShowDeleteReason(false);
-    setDeleteCtx(null);
-    setReasonText("");
+  // ✅ 1) Önce current user match (en sağlamı)
+  if (user && normalizeUsername(user.username) === normalizeUsername(uname)) {
+    setProfileTarget({ type: "user", userId: user.id, username: user.username });
+    setProfileOpen(true);
+    return;
   }
 
-  function hubShare() {
-    if (!requireAuth()) return;
-    const text = String(composer || "").trim();
-    if (!text) return;
+  // ✅ 2) users[] içinden id çöz (username değişse bile sağlam kalsın)
+  const found = users.find((x) => normalizeUsername(x.username) === normalizeUsername(uname));
 
-    const post = {
-      id: uid(),
-      createdAt: now(),
-      byType: "user",
-      byUsername: user.username,
-      content: text,
-      likes: 0,
-      comments: [],
-    };
-    setPosts((prev) => [post, ...prev]);
-    setComposer("");
+  if (found?.id) {
+    setProfileTarget({ type: "user", userId: found.id, username: found.username });
+  } else {
+    // id bulamazsak yine username ile aç (fallback)
+    setProfileTarget({ type: "user", userId: null, username: uname });
   }
 
-  function hubLike(postId) {
-    if (!requireAuth()) return;
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p)));
+  setProfileOpen(true);
+}
+
+function openProfileBiz(bizId) {
+  setProfileTarget({ type: "biz", bizId });
+  setProfileOpen(true);
+}
+
+function openDmToUser(username) {
+  if (!requireAuth()) return;
+  if (!settings.chatEnabled) return;
+  setDmTarget({ type: "user", username });
+  setDmText("");
+  setShowDm(true);
+}
+
+function openDmToBiz(bizId) {
+  if (!requireAuth()) return;
+  if (!settings.chatEnabled) return;
+  setDmTarget({ type: "biz", bizId });
+  setDmText("");
+  setShowDm(true);
+}
+
+function sendDm() {
+  if (!requireAuth()) return;
+  if (!settings.chatEnabled) return;
+
+  const text = String(dmText || "").trim();
+  if (!text) return;
+
+  const msg = {
+    id: uid(),
+    createdAt: now(),
+    from: user.username,
+    toType: dmTarget?.type,
+    toUsername: dmTarget?.type === "user" ? dmTarget.username : null,
+    toBizId: dmTarget?.type === "biz" ? dmTarget.bizId : null,
+    text,
+    readBy: [],
+  };
+
+  setDms((prev) => [msg, ...prev]);
+  setDmText("");
+}
+
+function openBizApply() {
+  if (!requireAuth()) return;
+  setShowBizApply(true);
+}
+
+function submitBizApplication(data) {
+  if (!requireAuth()) return;
+  const name = String(data?.name || "").trim();
+  const city = String(data?.city || "").trim();
+  const address = String(data?.address || "").trim();
+  const phone = String(data?.phone || "").trim();
+  const category = String(data?.category || "").trim();
+  const plan = String(data?.plan || "Onaylı İşletme").trim();
+
+  if (!name || !city || !category) {
+    alert("Lütfen işletme adı / şehir / kategori doldur.");
+    return;
   }
 
-  function hubComment(postId) {
-    if (!requireAuth()) return;
-    const text = String(commentDraft[postId] || "").trim();
-    if (!text) return;
-
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              comments: [...(p.comments || []), { id: uid(), createdAt: now(), byUsername: user.username, text }],
-            }
-          : p
-      )
-    );
-    setCommentDraft((d) => ({ ...d, [postId]: "" }));
-  }
-
-  function openAppointment(bizId) {
-    if (!requireAuth()) return;
-    setApptBizId(bizId);
-    setApptMsg("");
-    setShowAppt(true);
-  }
-  function submitAppointment() {
-    if (!requireAuth()) return;
-    const bizId = apptBizId;
-    const msg = String(apptMsg || "").trim();
-    if (!bizId) return;
-    if (!msg) return alert("Randevu notu yaz (örn: tarih/saat isteği).");
-
-    const b = biz.find((x) => x.id === bizId);
-    const a = {
+  setBizApps((prev) => [
+    {
       id: uid(),
       createdAt: now(),
       status: "pending",
-      bizId,
-      bizName: b?.name || "-",
-      fromUsername: user.username,
-      note: msg,
+      applicant: user.username,
+      ownerUsername: user.username,
+      name,
+      city,
+      address,
+      phone,
+      category,
+      plan,
+      desc: String(data?.desc || "").trim(),
+      avatar: "",
+    },
+    ...prev,
+  ]);
+  setShowBizApply(false);
+}
+
+function adminApprove(app) {
+  if (!adminMode) return;
+  const b = {
+    id: uid(),
+    createdAt: now(),
+    status: "approved",
+    name: app.name,
+    city: app.city,
+    address: app.address || app.city,
+    phone: app.phone || "",
+    category: app.category,
+    plan: app.plan || "Onaylı İşletme",
+    desc: app.desc || "",
+    avatar: app.avatar || "",
+    ownerUsername: app.ownerUsername || app.applicant || "",
+    applicant: app.applicant,
+    approvedAt: now(),
+    approvedBy: user.username,
+  };
+  setBiz((prev) => [b, ...prev]);
+  setBizApps((prev) => prev.filter((x) => x.id !== app.id));
+  addLog("BUSINESS_APPROVE", { appId: app.id, name: app.name });
+}
+
+function openReject(app) {
+  if (!adminMode) return;
+  setRejectCtx(app);
+  setRejectText("");
+  setShowRejectReason(true);
+}
+
+function adminReject() {
+  if (!adminMode) return;
+  const reason = String(rejectText || "").trim();
+  if (!reason) return alert("Sebep yazmalısın.");
+  if (!rejectCtx) return;
+
+  setBizApps((prev) => prev.filter((x) => x.id !== rejectCtx.id));
+  addLog("BUSINESS_REJECT", { appId: rejectCtx.id, name: rejectCtx.name, reason });
+  setShowRejectReason(false);
+  setRejectCtx(null);
+  setRejectText("");
+}
+
+function openDelete(type, item) {
+  if (!adminMode) return;
+  setDeleteCtx({ type, item });
+  setReasonText("");
+  setShowDeleteReason(true);
+}
+
+function confirmDelete() {
+  if (!adminMode) return;
+  const reason = String(reasonText || "").trim();
+  if (!reason) return alert("Sebep yazmalısın.");
+  if (!deleteCtx) return;
+
+  if (deleteCtx.type === "biz") {
+    const b = deleteCtx.item;
+    setBiz((prev) =>
+      prev.map((x) =>
+        x.id === b.id
+          ? { ...x, status: "deleted", deletedAt: now(), deletedBy: user.username, deleteReason: reason }
+          : x
+      )
+    );
+    addLog("BUSINESS_DELETE", { id: b.id, name: b.name, reason });
+  }
+
+  if (deleteCtx.type === "user") {
+    const u = deleteCtx.item;
+    setUsers((prev) => prev.filter((x) => x.id !== u.id));
+    addLog("USER_DELETE", { id: u.id, username: u.username, reason });
+  }
+
+  setShowDeleteReason(false);
+  setDeleteCtx(null);
+  setReasonText("");
+}
+
+function hubShare() {
+  if (!requireAuth()) return;
+  const text = String(composer || "").trim();
+  if (!text) return;
+
+  const post = {
+    id: uid(),
+    createdAt: now(),
+    byType: "user",
+    byUsername: user.username,
+    content: text,
+    likes: 0,
+    comments: [],
+  };
+  setPosts((prev) => [post, ...prev]);
+  setComposer("");
+}
+
+function hubLike(postId) {
+  if (!requireAuth()) return;
+  setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p)));
+}
+
+function hubComment(postId) {
+  if (!requireAuth()) return;
+  const text = String(commentDraft[postId] || "").trim();
+  if (!text) return;
+
+  setPosts((prev) =>
+    prev.map((p) =>
+      p.id === postId
+        ? { ...p, comments: [...(p.comments || []), { id: uid(), createdAt: now(), byUsername: user.username, text }] }
+        : p
+    )
+  );
+  setCommentDraft((d) => ({ ...d, [postId]: "" }));
+}
+
+function openAppointment(bizId) {
+  if (!requireAuth()) return;
+  setApptBizId(bizId);
+  setApptMsg("");
+  setShowAppt(true);
+}
+
+function submitAppointment() {
+  if (!requireAuth()) return;
+  const bizId = apptBizId;
+  const msg = String(apptMsg || "").trim();
+  if (!bizId) return;
+  if (!msg) return alert("Randevu notu yaz (örn: tarih/saat isteği).");
+
+  const b = biz.find((x) => x.id === bizId);
+  const a = {
+    id: uid(),
+    createdAt: now(),
+    status: "pending",
+    bizId,
+    bizName: b?.name || "-",
+    fromUsername: user.username,
+    note: msg,
+  };
+  setAppts((prev) => [a, ...prev]);
+  setShowAppt(false);
+  setApptBizId(null);
+  setApptMsg("");
+}
+
+// ✅ KENDİ PROFİLİNİ DE AÇABİLSİN + oldUsername KORUNUR
+function openEditUser(u) {
+  if (!u) return;
+
+  const isAdmin = typeof adminMode !== "undefined" ? adminMode : false;
+  const me = typeof user !== "undefined" ? user : null;
+
+  // ✅ Admin her kullanıcıyı, normal kullanıcı sadece kendini düzenler
+  const can = isAdmin || (me && u.id && me.id && String(u.id) === String(me.id));
+  if (!can) return;
+
+  setEditUserCtx({
+    ...u,
+    _origUsername: String(u.username || "").trim(), // ✅ KRİTİK: eski username sakla
+  });
+
+  setShowEditUser(true);
+}
+
+// ✅ KAYDET (kapanma: SADECE gerçekten kaydettiyse kapanır + profilTarget fix)
+async function saveEditUser() {
+  const u = editUserCtx;
+  if (!u) return;
+
+  const isAdmin = typeof adminMode !== "undefined" ? adminMode : false;
+  const me = typeof user !== "undefined" ? user : null;
+
+  const can = isAdmin || (me && u.id && me.id && u.id === me.id);
+  if (!can) return;
+
+  // ✅ Username değişince profil popup "Profil bulunamadı" olmasın diye eski username’i yakala
+  const oldUsername = String(u._origUsername || u.username || "").trim();
+
+  const username = String(u.username || "").trim();
+  if (!username) {
+    alert("Username boş olamaz.");
+    return;
+  }
+
+  const lower = normalizeUsername(username);
+  const clash = users.find((x) => x.id !== u.id && normalizeUsername(x.username) === lower);
+  if (clash) {
+    alert("Bu kullanıcı adı zaten var.");
+    return;
+  }
+
+  // local users[] update (yoksa ekle)
+  setUsers((prev) => {
+    const idx = prev.findIndex((x) => x.id === u.id);
+    if (idx >= 0) {
+      const copy = [...prev];
+      const old = copy[idx] || {};
+      copy[idx] = {
+        ...old,
+        ...u,
+        username,
+        avatar: u.avatar ?? old.avatar ?? "",
+        tier: u.Tier ?? old.Tier ?? "Onaylı İşletme",
+        XP: Number(u.XP ?? old.XP ?? 0),
+        createdAt: u.createdAt ?? old.createdAt ?? new Date().toISOString(),
+        email: u.email ?? old.email ?? "",
+      };
+      return copy;
+    }
+
+    return [
+      {
+        id: u.id,
+        email: u.email || "",
+        username,
+        tier: u.Tier || "Onaylı İşletme",
+        xp: Number(u.XP || 0),
+        avatar: u.avatar || "",
+        createdAt: u.createdAt || new Date().toISOString(),
+      },
+      ...prev,
+    ];
+  });
+
+  // kendi profiliyse user state’i de güncelle
+  if (me && u.id === me.id) {
+    setUser((p) => ({
+      ...(p || {}),
+      ...(u || {}),
+      id: me.id,
+      email: me.email,
+      username,
+      avatar: u.avatar ?? p?.avatar ?? "",
+      tier: u.tier ?? p?.Tier ?? "Onaylı İşletme",
+      xp: Number(u.XP ?? p?.xp ?? 0),
+    }));
+  }
+
+  // ✅ Supabase user_metadata güncelle (kalıcı) — hata olursa kapatma
+if (supabase?.auth) {
+  try {
+    const { data: sData, error: sErr } = await supabase.auth.getSession();
+    const sessUser = sData?.session?.user;
+
+    if (sErr) {
+      console.error("❌ getSession error:", sErr);
+      alert("Supabase session okunamadı: " + (sErr.message || JSON.stringify(sErr)));
+      return;
+    }
+
+    if (!sessUser) {
+      console.error("❌ No session user. user state:", user);
+      alert("Supabase session yok (login düşmüş olabilir). Lütfen çıkış yapıp tekrar giriş yap.");
+      return;
+    }
+
+    const avatarStr = typeof u.avatar === "string" ? u.avatar : "";
+    const avatarLen = avatarStr.length;
+
+    // ⚠️ Base64 çok büyükse Supabase metadata patlayabilir
+    if (avatarLen > 120000) {
+      alert(
+        "Profil fotoğrafı çok büyük görünüyor (base64 length: " +
+          avatarLen +
+          "). Bu yüzden kaydetme hata veriyor olabilir. Birazdan storage çözümüne geçeceğiz."
+      );
+      // yine de denemeye devam ediyoruz (istersen burada return yapabiliriz)
+    }
+
+    const payload = {
+      username,
+      // boş string ise null gönder
+      avatar: avatarStr ? avatarStr : null,
+      tier: u.Tier || "Onaylı İşletme",
+      xp: Number(u.XP || 0),
     };
-    setAppts((prev) => [a, ...prev]);
-    setShowAppt(false);
-    setApptBizId(null);
-    setApptMsg("");
+
+    console.log("🧪 updateUser payload:", {
+      ...payload,
+      avatar_len: avatarLen,
+      has_session: !!sessUser,
+      session_email: sessUser.email,
+    });
+
+    const { error } = await supabase.auth.updateUser({ data: payload });
+
+    if (error) {
+      console.error("❌ updateUser error FULL:", error);
+      alert(
+        "updateUser error: " +
+          (error.message || "") +
+          "\nstatus: " +
+          (error.status || "") +
+          "\nname: " +
+          (error.name || "") +
+          "\nJSON: " +
+          JSON.stringify(error)
+      );
+      return;
+    }
+
+    console.log("✅ updateUser OK");
+  } catch (e) {
+    console.error("💥 updateUser crash FULL:", e);
+    alert("updateUser crash: " + (e?.message || JSON.stringify(e)));
+    return;
   }
+}
 
-  function openEditUser(u) {
-    if (!adminMode) return;
-    setEditUserCtx({ ...u });
-    setShowEditUser(true);
-  }
-  function saveEditUser() {
-    if (!adminMode) return;
-    const u = editUserCtx;
-    if (!u) return;
+  // ✅ Profil popup açıksa, target username'i güncelle (Profil bulunamadı fix)
+  setProfileTarget((pt) => {
+    if (!pt || pt.type !== "user") return pt;
 
-    const username = String(u.username || "").trim();
-    if (!username) return alert("Username boş olamaz.");
+    const cur = normalizeUsername(pt.username || "");
+    const oldN = normalizeUsername(oldUsername || "");
+    if (cur !== oldN) return pt;
 
-    const lower = normalizeUsername(username);
-    const clash = users.find((x) => x.id !== u.id && normalizeUsername(x.username) === lower);
-    if (clash) return alert("Bu kullanıcı adı zaten var.");
+    return { ...pt, username };
+  });
 
-    setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...u, username } : x)));
-    addLog("USER_EDIT", { id: u.id, username });
-    setShowEditUser(false);
-    setEditUserCtx(null);
-  }
+  // ✅ Username değiştiyse: tüm referansları eski->yeni sync et + alias kaydı (kullanıcı bulunamadı fix)
+  const newUsername = String(username || "").trim();
+  const oldU = String(oldUsername || "").trim();
 
-  function openEditBiz(b) {
-    if (!adminMode) return;
-    setEditBizCtx({ ...b });
-    setShowEditBiz(true);
-  }
-  function saveEditBiz() {
-    if (!adminMode) return;
-    const b = editBizCtx;
-    if (!b) return;
+  if (oldU && newUsername && normalizeUsername(oldU) !== normalizeUsername(newUsername)) {
+    // ✅ eski username ile de profile açabilmek için alias map'e ekle
+    setUsernameAliases((prev) => ({
+      ...(prev || {}),
+      [normalizeUsername(oldU)]: newUsername,
+    }));
 
-    const name = String(b.name || "").trim();
-    const category = String(b.category || "").trim();
-    if (!name || !category) return alert("İşletme adı ve kategori boş olamaz.");
+    // 1) İşletmelerde ownerUsername güncelle
+    setBiz((prev) =>
+      prev.map((b) =>
+        normalizeUsername(b.ownerUsername) === normalizeUsername(oldU)
+          ? { ...b, ownerUsername: newUsername }
+          : b
+      )
+    );
 
-    setBiz((prev) => prev.map((x) => (x.id === b.id ? { ...x, ...b, name, category } : x)));
-    addLog("BUSINESS_EDIT", { id: b.id, name });
-    setShowEditBiz(false);
-    setEditBizCtx(null);
-  }
+    // 2) HUB post + yorumlarda byUsername güncelle
+    setPosts((prev) =>
+      prev.map((p) => ({
+        ...p,
+        byUsername:
+          normalizeUsername(p.byUsername) === normalizeUsername(oldU) ? newUsername : p.byUsername,
+        comments: (p.comments || []).map((c) => ({
+          ...c,
+          byUsername:
+            normalizeUsername(c.byUsername) === normalizeUsername(oldU) ? newUsername : c.byUsername,
+        })),
+      }))
+    );
 
-  function canEditBizAvatar(b) {
-    if (!user) return false;
-    if (adminMode) return true;
-    return normalizeUsername(b.ownerUsername) === normalizeUsername(user.username);
-  }
-
-  function setMyAvatar(base64) {
-    if (!user) return;
-    const updated = { ...user, avatar: base64 };
-    setUser(updated);
-    setUsers((prev) => prev.map((x) => (x.id === user.id ? { ...x, avatar: base64 } : x)));
-  }
-
-  function setBizAvatar(bizId, base64) {
-    setBiz((prev) => prev.map((x) => (x.id === bizId ? { ...x, avatar: base64 } : x)));
-    addLog("BIZ_AVATAR_SET", { bizId });
-  }
-
-  function openDirections(address) {
-    const q = encodeURIComponent(address || "");
-    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
-  }
-
-  function openCall(phone) {
-    const p = String(phone || "").trim();
-    if (!p) return alert("Telefon numarası yok.");
-    window.location.href = `tel:${p}`;
-  }
-
-  const unreadForMe = useMemo(() => {
-    if (!user) return 0;
-    const u = normalizeUsername(user.username);
-    return dms.filter((m) => {
-      const isToUser = m.toType === "user" && normalizeUsername(m.toUsername) === u;
-      const isToBiz =
-        m.toType === "biz" &&
-        biz.some((b) => b.id === m.toBizId && normalizeUsername(b.ownerUsername) === u);
-      const read = (m.readBy || []).map(normalizeUsername).includes(u);
-      return (isToUser || isToBiz) && !read;
-    }).length;
-  }, [dms, user, biz]);
-
-  function markThreadRead(target) {
-    if (!user || !target) return;
-    const me = normalizeUsername(user.username);
+    // 3) DM'lerde from/toUsername güncelle
     setDms((prev) =>
-      prev.map((m) => {
-        const isToUser =
-          target.type === "user" &&
-          m.toType === "user" &&
-          normalizeUsername(m.toUsername) === normalizeUsername(target.username);
-        const isToBiz = target.type === "biz" && m.toType === "biz" && m.toBizId === target.bizId;
-        if (!(isToUser || isToBiz)) return m;
-        const readBy = new Set((m.readBy || []).map(normalizeUsername));
-        readBy.add(me);
-        return { ...m, readBy: Array.from(readBy) };
-      })
+      prev.map((m) => ({
+        ...m,
+        from: normalizeUsername(m.from) === normalizeUsername(oldU) ? newUsername : m.from,
+        toUsername:
+          m.toType === "user" && normalizeUsername(m.toUsername) === normalizeUsername(oldU)
+            ? newUsername
+            : m.toUsername,
+        readBy: (m.readBy || []).map((rb) =>
+          normalizeUsername(rb) === normalizeUsername(oldU) ? newUsername : rb
+        ),
+      }))
+    );
+
+    // 4) Randevularda fromUsername güncelle
+    setAppts((prev) =>
+      prev.map((a) =>
+        normalizeUsername(a.fromUsername) === normalizeUsername(oldU)
+          ? { ...a, fromUsername: newUsername }
+          : a
+      )
+    );
+
+    // 5) Biz başvurularında applicant/ownerUsername güncelle (varsa)
+    setBizApps((prev) =>
+      prev.map((a) => ({
+        ...a,
+        applicant:
+          normalizeUsername(a.applicant) === normalizeUsername(oldU) ? newUsername : a.applicant,
+        ownerUsername:
+          normalizeUsername(a.ownerUsername) === normalizeUsername(oldU)
+            ? newUsername
+            : a.ownerUsername,
+      }))
     );
   }
 
-  const profileData = useMemo(() => {
-    if (!profileTarget) return null;
-    if (profileTarget.type === "user") {
-      const u = users.find((x) => normalizeUsername(x.username) === normalizeUsername(profileTarget.username));
-      if (!u) return null;
-      const owned = biz.filter((b) => normalizeUsername(b.ownerUsername) === normalizeUsername(u.username) && b.status === "approved");
-      return { type: "user", user: u, owned };
-    }
-    if (profileTarget.type === "biz") {
-      const b = biz.find((x) => x.id === profileTarget.bizId);
-      if (!b) return null;
-      const owner = users.find((x) => normalizeUsername(x.username) === normalizeUsername(b.ownerUsername));
-      return { type: "biz", biz: b, owner };
-    }
-    return null;
-  }, [profileTarget, users, biz]);
+  // ✅ başarıyla buraya geldiyse kapat
+  addLog("USER_EDIT", { id: u.id, username });
+  setShowEditUser(false);
+  setEditUserCtx(null);
+}
 
-  const filteredBiz = useMemo(() => {
-    const q = normalizeUsername(landingSearch);
-    const cat = String(categoryFilter || "").trim();
-    return approvedBiz.filter((b) => {
-      const inCat = cat ? String(b.category || "").toLowerCase().includes(cat.toLowerCase()) : true;
-      const inQ = q
-        ? normalizeUsername(b.name).includes(q) ||
-          normalizeUsername(b.category).includes(q) ||
-          normalizeUsername(b.city).includes(q) ||
-          normalizeUsername(b.address).includes(q)
-        : true;
-      return inCat && inQ;
+function openEditBiz(b) {
+  if (!adminMode) return;
+  setEditBizCtx({ ...b });
+  setShowEditBiz(true);
+}
+
+function saveEditBiz() {
+  if (!adminMode) return;
+  const b = editBizCtx;
+  if (!b) return;
+
+  const name = String(b.name || "").trim();
+  const category = String(b.category || "").trim();
+  if (!name || !category) return alert("İşletme adı ve kategori boş olamaz.");
+
+  setBiz((prev) => prev.map((x) => (x.id === b.id ? { ...x, ...b, name, category } : x)));
+  addLog("BUSINESS_EDIT", { id: b.id, name });
+  setShowEditBiz(false);
+  setEditBizCtx(null);
+}
+
+function canEditBizAvatar(b) {
+  if (!user) return false;
+  if (adminMode) return true;
+  return normalizeUsername(b.ownerUsername) === normalizeUsername(user.username);
+}
+
+// ✅ AVATAR KAYDI (local + Supabase metadata)
+async function setMyAvatar(base64) {
+  if (!user) return;
+
+  const updated = { ...user, avatar: base64 };
+  setUser(updated);
+
+  setUsers((prev) => {
+    const idx = prev.findIndex((x) => x.id === user.id);
+    if (idx >= 0) {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], avatar: base64, username: updated.username };
+      return copy;
+    }
+    return [
+      {
+        id: user.id,
+        username: updated.username,
+        email: user.email,
+        tier: user.Tier || "Onaylı İşletme",
+        xp: user.xp || 0,
+        avatar: base64,
+        createdAt: user.createdAt || new Date().toISOString(),
+      },
+      ...prev,
+    ];
+  });
+
+  try {
+    await supabase.auth.updateUser({
+      data: {
+        username: updated.username || null,
+        avatar: base64 || null,
+        tier: updated.Tier || "Onaylı İşletme",
+        xp: Number(updated.XP || 0),
+      },
     });
-  }, [approvedBiz, landingSearch, categoryFilter]);
+  } catch (e) {
+    console.error("setMyAvatar updateUser error:", e);
+  }
+}
 
-  const categoryCounts = useMemo(() => {
-    const map = {};
-    for (const b of approvedBiz) {
-      const k = b.category || "Diğer";
-      map[k] = (map[k] || 0) + 1;
+function setBizAvatar(bizId, base64) {
+  setBiz((prev) => prev.map((x) => (x.id === bizId ? { ...x, avatar: base64 } : x)));
+  addLog("BIZ_AVATAR_SET", { bizId });
+}
+
+function openDirections(address) {
+  const q = encodeURIComponent(address || "");
+  window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
+}
+
+function openCall(phone) {
+  const p = String(phone || "").trim();
+  if (!p) return alert("Telefon numarası yok.");
+  window.location.href = `tel:${p}`;
+}
+
+const unreadForMe = useMemo(() => {
+  if (!user) return 0;
+  const u = normalizeUsername(user.username);
+  return dms.filter((m) => {
+    const isToUser = m.toType === "user" && normalizeUsername(m.toUsername) === u;
+    const isToBiz = m.toType === "biz" && biz.some((b) => b.id === m.toBizId && normalizeUsername(b.ownerUsername) === u);
+    const read = (m.readBy || []).map(normalizeUsername).includes(u);
+    return (isToUser || isToBiz) && !read;
+  }).length;
+}, [dms, user, biz]);
+
+function markThreadRead(target) {
+  if (!user || !target) return;
+  const me = normalizeUsername(user.username);
+  setDms((prev) =>
+    prev.map((m) => {
+      const isToUser =
+        target.type === "user" &&
+        m.toType === "user" &&
+        normalizeUsername(m.toUsername) === normalizeUsername(target.username);
+      const isToBiz = target.type === "biz" && m.toType === "biz" && m.toBizId === target.bizId;
+      if (!(isToUser || isToBiz)) return m;
+      const readBy = new Set((m.readBy || []).map(normalizeUsername));
+      readBy.add(me);
+      return { ...m, readBy: Array.from(readBy) };
+    })
+  );
+}
+
+const profileData = useMemo(() => {
+  if (!profileTarget) return null;
+
+  // 👤 USER PROFİLİ
+  if (profileTarget.type === "user") {
+    // ✅ Kendi profilim: local users[] yerine auth user state'ini kullan
+    if (user && normalizeUsername(user.username) === normalizeUsername(profileTarget.username)) {
+      const owned = biz.filter(
+        (b) => normalizeUsername(b.ownerUsername) === normalizeUsername(user.username) && b.status === "approved"
+      );
+
+      return {
+        type: "user",
+        user: {
+          ...user,
+          xp: user.xp || 0,
+          createdAt: user.createdAt || new Date().toISOString(),
+        },
+        owned,
+      };
     }
-    // Landing kartları için örnek key’ler:
-    map["Avukatlar"] = map["Avukatlar"] ?? 1;
-    map["Doktorlar & Sağlık Hizmetleri"] = map["Doktorlar & Sağlık Hizmetleri"] ?? 1;
-    map["Restoranlar"] = map["Restoranlar"] ?? 1;
-    map["Emlak Hizmetleri"] = map["Emlak Hizmetleri"] ?? 1;
-    map["Araç Hizmetleri"] = map["Araç Hizmetleri"] ?? 1;
-    return map;
-  }, [approvedBiz]);
 
-  function landingDoSearch() {
-    // şu an sadece filtre input'u kullanıyoruz; buton UX için
+    // 👥 Başka kullanıcı (local users[]'tan)
+const targetUname = resolveUsernameAlias(profileTarget.username);
+
+// 1) Eğer userId geldiyse önce id ile bul (en sağlamı)
+let u = profileTarget.userId ? users.find((x) => String(x.id) === String(profileTarget.userId)) : null;
+
+// 2) Bulunamazsa username (alias çözülmüş) ile dene
+if (!u) {
+  u = users.find((x) => normalizeUsername(x.username) === normalizeUsername(targetUname));
+}
+
+if (!u) return null;
+
+    const owned = biz.filter(
+      (b) => normalizeUsername(b.ownerUsername) === normalizeUsername(u.username) && b.status === "approved"
+    );
+
+    return { type: "user", user: u, owned };
   }
 
-  function pickCategory(key) {
-    setCategoryFilter(key);
-    // kategori seçince otomatik aşağıdaki işletmeler listesine odaklanma hissi için küçük scroll:
-    setTimeout(() => {
-      const el = document.getElementById("biz-list");
-      el?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-    }, 50);
+  // 🏢 BİZ PROFİLİ
+if (profileTarget.type === "biz") {
+  const b = biz.find((x) => x.id === profileTarget.bizId);
+  if (!b) return null;
+
+  const resolvedOwner = resolveUsernameAlias(b.ownerUsername);
+
+  const ownerFromAuth =
+    user && normalizeUsername(user.username) === normalizeUsername(resolvedOwner)
+      ? user
+      : null;
+
+  const ownerFromLocal = users.find(
+    (x) => normalizeUsername(x.username) === normalizeUsername(resolvedOwner)
+  );
+
+  return {
+    type: "biz",
+    biz: {
+      ...b,
+      ownerUsername: resolvedOwner,
+    },
+    owner: ownerFromAuth || ownerFromLocal || null,
+  };
+}
+
+return null;
+}, [profileTarget, users, biz, user]);
+
+const filteredBiz = useMemo(() => {
+  const q = normalizeUsername(landingSearch);
+  const cat = String(categoryFilter || "").trim();
+  return approvedBiz.filter((b) => {
+    const inCat = cat ? String(b.category || "").toLowerCase().includes(cat.toLowerCase()) : true;
+    const inQ = q
+      ? normalizeUsername(b.name).includes(q) ||
+        normalizeUsername(b.category).includes(q) ||
+        normalizeUsername(b.city).includes(q) ||
+        normalizeUsername(b.address).includes(q)
+      : true;
+    return inCat && inQ;
+  });
+}, [approvedBiz, landingSearch, categoryFilter]);
+
+const categoryCounts = useMemo(() => {
+  const map = {};
+  for (const b of approvedBiz) {
+    const k = b.category || "Diğer";
+    map[k] = (map[k] || 0) + 1;
   }
+  map["Avukatlar"] = map["Avukatlar"] ?? 1;
+  map["Doktorlar & Sağlık Hizmetleri"] = map["Doktorlar & Sağlık Hizmetleri"] ?? 1;
+  map["Restoranlar"] = map["Restoranlar"] ?? 1;
+  map["Emlak Hizmetleri"] = map["Emlak Hizmetleri"] ?? 1;
+  map["Araç Hizmetleri"] = map["Araç Hizmetleri"] ?? 1;
+  return map;
+}, [approvedBiz]);
 
-  function clearFilters() {
-    setLandingSearch("");
-    setCategoryFilter("");
-  }
+function landingDoSearch() {
+  // şu an sadece filtre input'u kullanıyoruz; buton UX için
+}
 
-  if (!booted) return null;
+function pickCategory(key) {
+  setCategoryFilter(key);
+  setTimeout(() => {
+    const el = document.getElementById("biz-list");
+    el?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, 50);
+}
 
-  return (
-    <div style={{ minHeight: "100vh", width: "100%", background: ui.bg, color: ui.text }}>
-      {/* TOP BAR (2. görsel hissi) */}
+function clearFilters() {
+  setLandingSearch("");
+  setCategoryFilter("");
+}
+
+if (!booted) return null;
+
+return (
+  <div style={{ minHeight: "100vh", width: "100%", background: ui.bg, color: ui.text }}>
+    {/* TOP BAR */}
+    <div
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        backdropFilter: "blur(14px)",
+        background: ui.top,
+        borderBottom: `1px solid ${ui.border}`,
+      }}
+    >
       <div
         style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          backdropFilter: "blur(14px)",
-          background: ui.top,
-          borderBottom: `1px solid ${ui.border}`,
+          maxWidth: 1240,
+          margin: "0 auto",
+          padding: "16px 16px",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
+          alignItems: "center",
         }}
       >
-        <div
-          style={{
-            maxWidth: 1240,
-            margin: "0 auto",
-            padding: "16px 16px",
-            display: "grid",
-            gridTemplateColumns: "1fr auto 1fr",
-            alignItems: "center",
-          }}
-        >
-          <div />
+        <div />
 
-<div style={{ transform: "translateY(2px)", cursor: "pointer" }}>
-  <div style={{ fontSize: 56, fontWeight: 950, letterSpacing: -1, lineHeight: 1 }}>
-    Turk<span style={{ color: ui.blue }}>G</span>uide
-  </div>
-</div>
-
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <Button ui={ui} variant="blue" onClick={() => setShowSettings(true)} title="Ayarlar">
-              ⚙️ Ayarlar
-            </Button>
-
-            {user ? (
-              <>
-                {adminMode && <Button ui={ui} onClick={() => setActive("admin")} variant="blue">🛡️ Admin</Button>}
-
-                <Chip
-                  ui={ui}
-                  onClick={() => {
-                    setProfileTarget({ type: "user", username: user.username });
-                    setProfileOpen(true);
-                  }}
-                >
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-                    <Avatar ui={ui} src={user.avatar} size={28} label={user.username} />
-                    @{user.username}
-                  </span>
-                </Chip>
-
-                <Chip ui={ui} title="Okunmamış mesaj" style={{ opacity: unreadForMe ? 1 : 0.65 }}>
-                  💬 {unreadForMe}
-                </Chip>
-
-                <Button ui={ui} onClick={logout} variant="danger">Çıkış</Button>
-              </>
-            ) : (
-              <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue">
-                ⤴︎ Giriş
-              </Button>
-            )}
+        <div style={{ transform: "translateY(2px)", cursor: "pointer" }}>
+          <div style={{ fontSize: 56, fontWeight: 950, letterSpacing: -1, lineHeight: 1 }}>
+            Turk<span style={{ color: ui.blue }}>G</span>uide
           </div>
         </div>
 
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <Button ui={ui} variant="blue" onClick={() => setShowSettings(true)} title="Ayarlar">
+            ⚙️ Ayarlar
+          </Button>
 
+          {user ? (
+            <>
+              {adminMode && adminUnlocked && (
+                <Button ui={ui} onClick={() => setActive("admin")} variant="blue">
+                  🛡️ Admin
+                </Button>
+              )}
+
+              <Chip
+                ui={ui}
+                onClick={() => {
+                  setProfileTarget({ type: "user", userId: user.id, username: user.username });
+                  setProfileOpen(true);
+                }}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                  <Avatar ui={ui} src={user.avatar} size={28} label={user.username} />
+                  @{user.username}
+                </span>
+              </Chip>
+
+              <Chip ui={ui} title="Okunmamış mesaj" style={{ opacity: unreadForMe ? 1 : 0.65 }}>
+                💬 {unreadForMe}
+              </Chip>
+
+              <Button ui={ui} onClick={logout} variant="danger">
+                Çıkış
+              </Button>
+            </>
+          ) : (
+            <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue">
+              ⤴︎ Giriş
+            </Button>
+          )}
+        </div>
       </div>
+    </div>
+
 
       {/* CONTENT */}
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 16px 16px" }}>
@@ -1296,22 +2070,16 @@ export default function App() {
         </Card>
 
         {filteredBiz.length === 0 ? (
-          <div style={{ color: ui.muted, padding: 10 }}>Bu filtrede işletme yok.</div>
-        ) : (
-          <div style={{ display: "grid", gap: 12 }}>
-            {filteredBiz.map((b) => {
-              const badge =
-                (b.plan || "").toLowerCase() === "verified"
-                  ? "Verified"
-                  : (b.plan || "").toLowerCase() === "premium"
-                  ? "Premium"
-                  : (b.plan || "").toLowerCase() === "premium+"
-                  ? "Premium+"
-                  : (b.plan || "").toLowerCase() === "platinum"
-                  ? "Platinum"
-                  : "Free";
+  <div style={{ color: ui.muted, padding: 10 }}>Bu filtrede işletme yok.</div>
+) : (
+  <div style={{ display: "grid", gap: 12 }}>
+    {filteredBiz.map((b) => {
+      const badge =
+        (b.plan || "").toLowerCase() === "verified"
+          ? "Onaylı İşletme"
+          : "İşletme";
 
-              const canEditAvatar = canEditBizAvatar(b);
+      const canEditAvatar = canEditBizAvatar(b);
 
               return (
                 <div
@@ -1332,7 +2100,10 @@ export default function App() {
 
                       <div>
                         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                          <div style={{ fontSize: 18, fontWeight: 950, cursor: "pointer" }} onClick={() => openProfileBiz(b.id)}>
+                          <div
+                            style={{ fontSize: 18, fontWeight: 950, cursor: "pointer" }}
+                            onClick={() => openProfileBiz(b.id)}
+                          >
                             {b.name}
                           </div>
                           <Chip ui={ui}>{badge}</Chip>
@@ -1357,7 +2128,7 @@ export default function App() {
 
                     {canEditAvatar ? (
                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                        <bizAvatarPicker.Input onBase64={(b64) => setBizAvatar(b.id, b64)} />
+                        <BizAvatarInput onBase64={(b64) => setBizAvatar(b.id, b64)} />
                         <Button ui={ui} variant="blue" onClick={() => bizAvatarPicker.pick()}>
                           🖼️ İşletme Foto
                         </Button>
@@ -1491,7 +2262,7 @@ export default function App() {
                     <div>
                       <div style={{ fontSize: 18, fontWeight: 950 }}>@{user.username}</div>
                       <div style={{ color: ui.muted, marginTop: 4 }}>
-                        Üyelik: {user.tier || "free"} • XP: {user.xp || 0}
+                        Üyelik: {user.Tier || "Onaylı işletme"} • XP: {user.XP || 0}
                       </div>
                       <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
                         Kayıt: {fmt(user.createdAt)}
@@ -1499,14 +2270,24 @@ export default function App() {
                     </div>
                   </div>
 
-                  <userAvatarPicker.Input onBase64={(b64) => setMyAvatar(b64)} />
+                  <UserAvatarInput onBase64={(b64) => setMyAvatar(b64)} />
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <Button ui={ui} variant="solidBlue" onClick={() => userAvatarPicker.pick()}>
                       🖼️ Profil Foto Değiştir
                     </Button>
-                    <Button ui={ui} onClick={() => { setProfileTarget({ type: "user", username: user.username }); setProfileOpen(true); }}>
-                      👤 Profil Görünümü
-                    </Button>
+                    <Button
+  ui={ui}
+  onClick={() => {
+    setProfileTarget({
+      type: "user",
+      userId: user.id,       // ✅ KRİTİK
+      username: user.username
+    });
+    setProfileOpen(true);
+  }}
+>
+  👤 Profil Görünümü
+</Button>
                   </div>
                 </div>
               )}
@@ -1534,7 +2315,7 @@ export default function App() {
                         <div>
                           <div style={{ fontSize: 16, fontWeight: 950 }}>{a.name}</div>
                           <div style={{ color: ui.muted, marginTop: 4 }}>
-                            {a.city} • {a.category} • Plan: {a.plan || "free"} • Başvuran: @{a.applicant}
+                            {a.city} • {a.category} • Plan: {a.plan || "Onaylı İşletme"} • Başvuran: @{a.applicant}
                           </div>
                           <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>{fmt(a.createdAt)}</div>
                         </div>
@@ -1616,8 +2397,8 @@ export default function App() {
                       <div>
                         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                           <Chip ui={ui} onClick={() => openProfileByUsername(u.username)}>@{u.username}</Chip>
-                          <span style={{ color: ui.muted }}>tier: {u.tier || "free"}</span>
-                          <span style={{ color: ui.muted }}>xp: {u.xp || 0}</span>
+                          <span style={{ color: ui.muted }}>Tier: {u.Tier || "Onaylı İşletme"}</span>
+                          <span style={{ color: ui.muted }}>XP: {u.xp || 0}</span>
                         </div>
                         <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(u.createdAt)}</div>
                       </div>
@@ -1709,20 +2490,153 @@ export default function App() {
         </div>
       </Modal>
 
-      {/* LOGIN MODAL */}
-      <Modal ui={ui} open={showAuth} title="Giriş" onClose={() => setShowAuth(false)}>
-        <div style={{ color: ui.muted, marginBottom: 10 }}>Paylaşım, yorum, mesaj ve randevu için giriş zorunlu.</div>
-        <input
-          placeholder="Kullanıcı adı (örn: sadullah)"
-          value={authName}
-          onChange={(e) => setAuthName(e.target.value)}
-          style={inputStyle(ui)}
-        />
-        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Button ui={ui} onClick={loginNow} variant="solidBlue">Giriş Yap</Button>
-          <Button ui={ui} onClick={() => setShowAuth(false)}>Vazgeç</Button>
-        </div>
-      </Modal>
+     {/* LOGIN MODAL */}
+<Modal ui={ui} open={showAuth} title="Giriş / Kayıt" onClose={() => setShowAuth(false)}>
+  <div style={{ color: ui.muted, marginBottom: 10 }}>
+    Paylaşım, yorum, mesaj ve randevu için giriş zorunlu.
+  </div>
+
+  <input
+    placeholder="Email veya Kullanıcı Adı"
+    value={authEmail}
+    onChange={(e) => setAuthEmail(e.target.value)}
+    style={inputStyle(ui)}
+  />
+
+  <input
+    placeholder="Şifre"
+    type="password"
+    value={authPassword}
+    onChange={(e) => setAuthPassword(e.target.value)}
+    style={{ ...inputStyle(ui), marginTop: 10 }}
+  />
+
+  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+    <Button
+      ui={ui}
+      variant="solidBlue"
+      onClick={() => loginNow("email", "login")}
+      disabled={!authEmail.trim() || !authPassword.trim()}
+      style={{ width: "100%" }}
+    >
+      Giriş Yap
+    </Button>
+
+    <Button
+      ui={ui}
+      variant="blue"
+      onClick={() => {
+        setShowAuth(false);
+        setShowRegister(true);
+
+        // Register alanlarını temizle
+        setAuthUsername("");
+        setAuthEmail("");
+        setAuthPassword("");
+      }}
+      style={{ width: "100%" }}
+    >
+      Kayıt Ol
+    </Button>
+
+    <Button ui={ui} onClick={() => setShowAuth(false)} style={{ width: "100%" }}>
+      Vazgeç
+    </Button>
+  </div>
+
+  <div style={{ marginTop: 10, color: ui.muted, fontSize: 12 }}>
+    Not: Gerçek email doğrulama (kod/OTP) için Supabase/Firebase bağlayacağız.
+  </div>
+
+  {/* AYRAÇ */}
+  <div style={{ textAlign: "center", color: ui.muted, fontSize: 12, margin: "12px 0" }}>
+    veya
+  </div>
+
+  {/* OAUTH GİRİŞ BUTONLARI */}
+<div style={{ display: "grid", gap: 10 }}>
+  <Button
+    ui={ui}
+    onClick={() => oauthLogin("apple")}
+    style={{
+      width: "100%",
+      background: "#000",
+      color: "#fff",
+      fontWeight: 900,
+      borderRadius: 999,
+    }}
+  >
+     Apple ile Giriş
+  </Button>
+</div>
+
+</Modal>
+
+{/* REGISTER MODAL */}
+<Modal ui={ui} open={showRegister} title="Kayıt Ol" onClose={() => setShowRegister(false)}>
+  <div style={{ color: ui.muted, marginBottom: 10 }}>
+    Email, kullanıcı adı ve şifre ile hesap oluştur.
+  </div>
+
+  <input
+    placeholder="Kullanıcı Adı"
+    value={authUsername}
+    onChange={(e) => setAuthUsername(e.target.value)}
+    style={inputStyle(ui)}
+  />
+
+  <input
+    placeholder="Email"
+    value={authEmail}
+    onChange={(e) => setAuthEmail(e.target.value)}
+    style={{ ...inputStyle(ui), marginTop: 10 }}
+  />
+
+  <input
+    placeholder="Şifre"
+    type="password"
+    value={authPassword}
+    onChange={(e) => setAuthPassword(e.target.value)}
+    style={{ ...inputStyle(ui), marginTop: 10 }}
+  />
+
+  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+    <Button
+      ui={ui}
+      variant="solidBlue"
+      onClick={() => loginNow("email", "register")}
+      disabled={!authUsername.trim() || !authEmail.trim() || !authPassword.trim()}
+      style={{ width: "100%" }}
+    >
+      Kaydı Tamamla
+    </Button>
+
+    <Button
+      ui={ui}
+      variant="blue"
+      onClick={() => {
+        setShowRegister(false);
+        setShowAuth(true);
+      }}
+      style={{ width: "100%" }}
+    >
+      ← Girişe Dön
+    </Button>
+
+    <Button
+      ui={ui}
+      onClick={() => setShowRegister(false)}
+      style={{ width: "100%" }}
+    >
+      Vazgeç
+    </Button>
+  </div>
+
+  <div style={{ marginTop: 10, color: ui.muted, fontSize: 12 }}>
+    Not: Eğer Supabase bağlı değilse “Kaydı Tamamla” tıklayınca hata verebilir.
+  </div>
+</Modal>
+
 
       {/* BIZ APPLY MODAL */}
       <Modal ui={ui} open={showBizApply} title="İşletme Başvurusu" onClose={() => setShowBizApply(false)}>
@@ -1749,241 +2663,564 @@ export default function App() {
         </div>
       </Modal>
 
-      {/* EDIT USER MODAL */}
-      <Modal ui={ui} open={showEditUser} title="Kullanıcı Yönet / Düzenle" onClose={() => setShowEditUser(false)}>
-        {!editUserCtx ? null : (
-          <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <Avatar ui={ui} src={editUserCtx.avatar} size={62} label={editUserCtx.username} />
-              <div style={{ color: ui.muted }}>
-                Kayıt: {fmt(editUserCtx.createdAt)}
-              </div>
-            </div>
+ {/* EDIT USER MODAL */}
+<Modal
+  ui={ui}
+  open={showEditUser}
+  title="Kullanıcı Yönet / Düzenle"
+  onClose={() => setShowEditUser(false)}
+  zIndex={1200}
+>
+  {!editUserCtx ? null : (
+    <div style={{ display: "grid", gap: 16 }}>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div>
-                <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Username</div>
-                <input value={editUserCtx.username || ""} onChange={(e) => setEditUserCtx((p) => ({ ...p, username: e.target.value }))} style={inputStyle(ui)} />
-              </div>
-              <div>
-                <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Tier</div>
-                <select value={editUserCtx.tier || "free"} onChange={(e) => setEditUserCtx((p) => ({ ...p, tier: e.target.value }))} style={inputStyle(ui)}>
-                  <option value="free">free</option>
-                  <option value="elit">elit</option>
-                  <option value="verified">verified</option>
-                </select>
-              </div>
-            </div>
+      {/* ÜST BİLGİ */}
+      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+        <Avatar ui={ui} src={editUserCtx.avatar} size={72} label={editUserCtx.username} />
 
-            <div>
-              <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>XP</div>
-              <input
-                value={String(editUserCtx.xp ?? 0)}
-                onChange={(e) => setEditUserCtx((p) => ({ ...p, xp: Number(e.target.value || 0) }))}
-                style={inputStyle(ui)}
-                type="number"
-                min="0"
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Button ui={ui} variant="solidBlue" onClick={saveEditUser}>Kaydet</Button>
-              <Button ui={ui} onClick={() => { setShowEditUser(false); setEditUserCtx(null); }}>Kapat</Button>
-            </div>
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ fontSize: 18, fontWeight: 950 }}>
+            @{editUserCtx.username}
           </div>
-        )}
-      </Modal>
+
+          <div style={{ color: ui.muted, fontSize: 13 }}>
+            Kayıt: {new Date(editUserCtx.createdAt).toLocaleDateString()}
+          </div>
+
+          <div style={{ fontSize: 13, fontWeight: 900, color: ui.blue }}>
+            XP: {editUserCtx.xp ?? 0}
+          </div>
+
+          <div style={{ fontSize: 13, color: ui.muted }}>
+            Profil Durumu:{" "}
+            <b style={{ color: ui.text }}>
+              {(editUserCtx.tier || "Verified").toUpperCase()}
+            </b>
+          </div>
+        </div>
+      </div>
+
+      {/* PROFİL FOTO */}
+      <div style={{ display: "grid", gap: 6 }}>
+        <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>
+          Profil Fotoğrafı
+        </div>
+
+        {/* ✅ 1) input'u gizle */}
+        <input
+          id="avatarPickInput"
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            // ✅ dosya adını sakla
+            setPickedAvatarName(file.name || "");
+
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+
+            img.onload = () => {
+              try {
+                const MAX = 320;
+                const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, Math.round(img.width * scale));
+                canvas.height = Math.max(1, Math.round(img.height * scale));
+
+                const ctx = canvas.getContext("2d");
+                if (!ctx) throw new Error("Canvas context yok");
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                const compressed = canvas.toDataURL("image/jpeg", 0.75);
+                setEditUserCtx((p) => ({ ...p, avatar: compressed }));
+              } catch (err) {
+                console.error("avatar compress error:", err);
+                alert("Foto işlenirken hata oluştu.");
+              } finally {
+                URL.revokeObjectURL(url);
+                e.target.value = ""; // aynı dosyayı tekrar seçebilsin
+              }
+            };
+
+            img.onerror = () => {
+              URL.revokeObjectURL(url);
+              e.target.value = "";
+              alert("Foto okunamadı.");
+            };
+
+            img.src = url;
+          }}
+        />
+
+        {/* ✅ 2) tarayıcının “seçili dosya yok” satırı yerine kendi satırımız */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: `1px solid ${ui.border}`,
+            background: ui.panel,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => document.getElementById("avatarPickInput")?.click()}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 10,
+              border: `1px solid ${ui.border}`,
+              background: ui.bg,
+              color: ui.text,
+              fontWeight: 800,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Dosyayı Seçin
+          </button>
+
+          <div style={{ color: ui.muted2, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis" }}>
+            {pickedAvatarName ? pickedAvatarName : "seçili dosya yok"}
+          </div>
+        </div>
+
+        <div style={{ color: ui.muted2, fontSize: 12 }}>
+          Foto seçince önizleme değişir. Kaydet deyince kalıcı olur.
+        </div>
+      </div>
+
+      {/* USERNAME */}
+      <div>
+        <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>
+          Username
+        </div>
+        <input
+          value={editUserCtx.username || ""}
+          onChange={(e) =>
+            setEditUserCtx((p) => ({ ...p, username: e.target.value }))
+          }
+          style={inputStyle(ui)}
+        />
+      </div>
+
+      {/* ✅ HESAP DURUMU */}
+<div>
+  <div style={{ fontWeight: 950, fontSize: 14, marginBottom: 6 }}>
+    Hesap Durumu
+  </div>
+
+  {/* 🔒 Kullanıcıya satın alma / değiştirme hissi vermesin diye select KALDIRILDI */}
+  <div style={{ fontSize: 13, color: ui.muted }}>
+    {((editUserCtx.tier || "Onaylı İşletme").toLowerCase() === "verified") ? (
+      <>
+        Doğrulanmış Profil
+      </>
+    ) : (
+      <>
+        Verified
+      </>
+    )}
+  </div>
+</div>
+
+      {/* AKSİYONLAR */}
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+        <Button ui={ui} variant="solidBlue" onClick={saveEditUser}>
+          Kaydet
+        </Button>
+        <Button
+          ui={ui}
+          onClick={() => {
+            setShowEditUser(false);
+            setEditUserCtx(null);
+          }}
+        >
+          Kapat
+        </Button>
+      </div>
+    </div>
+  )}
+</Modal>
 
       {/* EDIT BIZ MODAL */}
-      <Modal ui={ui} open={showEditBiz} title="İşletme Yönet / Düzenle" onClose={() => setShowEditBiz(false)}>
-        {!editBizCtx ? null : (
-          <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <Avatar ui={ui} src={editBizCtx.avatar} size={62} label={editBizCtx.name} />
-              <div style={{ color: ui.muted }}>
-                Oluşturma: {fmt(editBizCtx.createdAt)} • Owner: @{editBizCtx.ownerUsername || "-"}
-              </div>
-            </div>
+<Modal ui={ui} open={showEditBiz} title="İşletme Yönet / Düzenle" onClose={() => setShowEditBiz(false)}>
+  {!editBizCtx ? null : (
+    <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <Avatar ui={ui} src={editBizCtx.avatar} size={62} label={editBizCtx.name} />
+        <div style={{ color: ui.muted }}>
+          Oluşturma: {fmt(editBizCtx.createdAt)} • Owner: @{editBizCtx.ownerUsername || "-"}
+        </div>
+      </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div>
-                <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>İşletme Adı</div>
-                <input value={editBizCtx.name || ""} onChange={(e) => setEditBizCtx((p) => ({ ...p, name: e.target.value }))} style={inputStyle(ui)} />
-              </div>
-              <div>
-                <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Kategori</div>
-                <input value={editBizCtx.category || ""} onChange={(e) => setEditBizCtx((p) => ({ ...p, category: e.target.value }))} style={inputStyle(ui)} />
-              </div>
-            </div>
+      {/* ✅ FOTO / LOGO YÜKLE */}
+      <div style={{ display: "grid", gap: 6 }}>
+        <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12 }}>İşletme Fotoğrafı / Logo</div>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div>
-                <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Plan</div>
-                <select value={editBizCtx.plan || "free"} onChange={(e) => setEditBizCtx((p) => ({ ...p, plan: e.target.value }))} style={inputStyle(ui)}>
-                  <option value="free">free</option>
-                  <option value="premium">premium</option>
-                  <option value="premium+">premium+</option>
-                  <option value="verified">verified</option>
-                  <option value="platinum">platinum</option>
-                </select>
-              </div>
-              <div>
-                <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Owner Username</div>
-                <input value={editBizCtx.ownerUsername || ""} onChange={(e) => setEditBizCtx((p) => ({ ...p, ownerUsername: e.target.value }))} style={inputStyle(ui)} />
-              </div>
-            </div>
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64 = String(reader.result || "");
+              setEditBizCtx((p) => ({ ...p, avatar: base64 }));
+            };
+            reader.readAsDataURL(file);
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div>
-                <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Telefon</div>
-                <input value={editBizCtx.phone || ""} onChange={(e) => setEditBizCtx((p) => ({ ...p, phone: e.target.value }))} style={inputStyle(ui)} />
-              </div>
-              <div>
-                <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Adres</div>
-                <input value={editBizCtx.address || ""} onChange={(e) => setEditBizCtx((p) => ({ ...p, address: e.target.value }))} style={inputStyle(ui)} />
-              </div>
-            </div>
+            // aynı dosyayı tekrar seçebilmek için:
+            e.target.value = "";
+          }}
+          style={inputStyle(ui)}
+        />
+        <div style={{ color: ui.muted2, fontSize: 12 }}>
+          JPG/PNG seç. Seçince anında önizleme olur; Kaydet deyince kalıcı olur.
+        </div>
+      </div>
 
-            <div>
-              <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Açıklama</div>
-              <textarea value={editBizCtx.desc || ""} onChange={(e) => setEditBizCtx((p) => ({ ...p, desc: e.target.value }))} style={inputStyle(ui, { minHeight: 90, resize: "vertical" })} />
-            </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div>
+          <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>İşletme Adı</div>
+          <input
+            value={editBizCtx.name || ""}
+            onChange={(e) => setEditBizCtx((p) => ({ ...p, name: e.target.value }))}
+            style={inputStyle(ui)}
+          />
+        </div>
+        <div>
+          <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Kategori</div>
+          <input
+            value={editBizCtx.category || ""}
+            onChange={(e) => setEditBizCtx((p) => ({ ...p, category: e.target.value }))}
+            style={inputStyle(ui)}
+          />
+        </div>
+      </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Button ui={ui} variant="solidBlue" onClick={saveEditBiz}>Kaydet</Button>
-              <Button ui={ui} onClick={() => { setShowEditBiz(false); setEditBizCtx(null); }}>Kapat</Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      {/* satış/upgrade çağrışımı yok) */}
+<div>
+  <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>
+    Plan
+  </div>
+
+  <select
+    value={editBizCtx.plan || "Onaylı İşletme"}
+    onChange={(e) => setEditBizCtx((p) => ({ ...p, plan: e.target.value }))}
+    style={inputStyle(ui)}
+  >
+    <option value="Onaylı İşletme">Onaylı İşletme</option>
+  </select>
+
+  <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>
+    Şimdilik tek plan aktif.
+  </div>
+</div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div>
+          <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Telefon</div>
+          <input
+            value={editBizCtx.phone || ""}
+            onChange={(e) => setEditBizCtx((p) => ({ ...p, phone: e.target.value }))}
+            style={inputStyle(ui)}
+          />
+        </div>
+        <div>
+          <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Adres</div>
+          <input
+            value={editBizCtx.address || ""}
+            onChange={(e) => setEditBizCtx((p) => ({ ...p, address: e.target.value }))}
+            style={inputStyle(ui)}
+          />
+        </div>
+      </div>
+
+      <div>
+        <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Açıklama</div>
+        <textarea
+          value={editBizCtx.desc || ""}
+          onChange={(e) => setEditBizCtx((p) => ({ ...p, desc: e.target.value }))}
+          style={inputStyle(ui, { minHeight: 90, resize: "vertical" })}
+        />
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Button ui={ui} variant="solidBlue" onClick={saveEditBiz}>Kaydet</Button>
+        <Button ui={ui} onClick={() => { setShowEditBiz(false); setEditBizCtx(null); }}>Kapat</Button>
+      </div>
+    </div>
+  )}
+</Modal>
 
       {/* DM MODAL */}
-      <Modal ui={ui} open={showDm} title="Mesaj" onClose={() => setShowDm(false)}>
-        {!dmTarget ? null : (
-          <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ color: ui.muted }}>
-              Hedef:{" "}
-              {dmTarget.type === "user" ? <b>@{dmTarget.username}</b> : <b>İşletme</b>}
-            </div>
+<Modal ui={ui} open={showDm} title="Mesaj" onClose={() => setShowDm(false)}>
+  {!dmTarget ? null : (
+    <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ color: ui.muted }}>
+        Hedef:{" "}
+        {dmTarget.type === "user" ? <b>@{dmTarget.username}</b> : <b>İşletme</b>}
+      </div>
 
-            <div style={{ border: `1px solid ${ui.border}`, borderRadius: 16, padding: 12, background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)", maxHeight: 260, overflow: "auto" }}>
-              {dms
-                .filter((m) => {
-                  if (dmTarget.type === "user") return m.toType === "user" && normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username);
-                  return m.toType === "biz" && m.toBizId === dmTarget.bizId;
-                })
-                .slice()
-                .reverse()
-                .map((m) => (
-                  <div key={m.id} style={{ padding: "10px 0", borderBottom: `1px solid ${ui.mode === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}` }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 950, cursor: "pointer", textDecoration: "underline" }} onClick={() => openProfileByUsername(m.from)}>@{m.from}</span>
-                      <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(m.createdAt)}</span>
-                    </div>
-                    <div style={{ marginTop: 6 }}>{m.text}</div>
-                  </div>
-                ))}
-              {dms.filter((m) => (dmTarget.type === "user"
-                ? (m.toType === "user" && normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username))
-                : (m.toType === "biz" && m.toBizId === dmTarget.bizId)
-              )).length === 0 ? (
-                <div style={{ color: ui.muted }}>Henüz mesaj yok.</div>
-              ) : null}
-            </div>
+      <div
+        style={{
+          border: `1px solid ${ui.border}`,
+          borderRadius: 16,
+          padding: 12,
+          background:
+            ui.mode === "light"
+              ? "rgba(0,0,0,0.03)"
+              : "rgba(255,255,255,0.03)",
+          maxHeight: 260,
+          overflow: "auto",
+        }}
+      >
+        {dms
+          .filter((m) => {
+            if (dmTarget.type === "user") {
+              return (
+                m.toType === "user" &&
+                normalizeUsername(m.toUsername) ===
+                  normalizeUsername(dmTarget.username)
+              );
+            }
+            return m.toType === "biz" && m.toBizId === dmTarget.bizId;
+          })
+          .slice()
+          .reverse()
+          .map((m) => (
+            <div
+              key={m.id}
+              style={{
+                padding: "10px 0",
+                borderBottom: `1px solid ${
+                  ui.mode === "light"
+                    ? "rgba(0,0,0,0.08)"
+                    : "rgba(255,255,255,0.08)"
+                }`,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    fontWeight: 950,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                  onClick={() =>
+                    openProfileByUsername(resolveUsernameAlias(m.from))
+                  }
+                >
+                  @{resolveUsernameAlias(m.from)}
+                </span>
 
-            <textarea value={dmText} onChange={(e) => setDmText(e.target.value)} placeholder="Mesaj yaz..." style={inputStyle(ui, { minHeight: 90, resize: "vertical" })} />
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Button ui={ui} variant="solidBlue" onClick={() => { sendDm(); if (settings.readReceipts) markThreadRead(dmTarget); }}>Gönder</Button>
-              <Button ui={ui} onClick={() => { setShowDm(false); setDmTarget(null); }}>Kapat</Button>
+                <span style={{ color: ui.muted2, fontSize: 12 }}>
+                  {fmt(m.createdAt)}
+                </span>
+              </div>
+
+              <div style={{ marginTop: 6 }}>{m.text}</div>
             </div>
-          </div>
+          ))}
+
+        {dms.filter((m) =>
+          dmTarget.type === "user"
+            ? m.toType === "user" &&
+              normalizeUsername(m.toUsername) ===
+                normalizeUsername(dmTarget.username)
+            : m.toType === "biz" && m.toBizId === dmTarget.bizId
+        ).length === 0 && (
+          <div style={{ color: ui.muted }}>Henüz mesaj yok.</div>
         )}
-      </Modal>
+      </div>
 
-      {/* APPOINTMENT MODAL */}
+      <textarea
+        value={dmText}
+        onChange={(e) => setDmText(e.target.value)}
+        placeholder="Mesaj yaz..."
+        style={inputStyle(ui, { minHeight: 90, resize: "vertical" })}
+      />
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Button
+          ui={ui}
+          variant="solidBlue"
+          onClick={() => {
+            sendDm();
+            if (settings.readReceipts) markThreadRead(dmTarget);
+          }}
+        >
+          Gönder
+        </Button>
+        <Button
+          ui={ui}
+          onClick={() => {
+            setShowDm(false);
+            setDmTarget(null);
+          }}
+        >
+          Kapat
+        </Button>
+      </div>
+    </div>
+  )}
+</Modal>
+            {/* APPOINTMENT MODAL */}
       <Modal ui={ui} open={showAppt} title="Randevu Talebi" onClose={() => setShowAppt(false)}>
         <div style={{ color: ui.muted, marginBottom: 10 }}>
           Tarih/saat isteğini ve kısa notunu yaz (MVP: talep işletmeye iletilmiş sayılır).
         </div>
-        <textarea value={apptMsg} onChange={(e) => setApptMsg(e.target.value)} placeholder="Örn: Yarın 2pm uygunsa görüşmek istiyorum..." style={inputStyle(ui, { minHeight: 110, resize: "vertical" })} />
+
+        <textarea
+          value={apptMsg}
+          onChange={(e) => setApptMsg(e.target.value)}
+          placeholder="Örn: Yarın 2pm uygunsa görüşmek istiyorum..."
+          style={inputStyle(ui, { minHeight: 110, resize: "vertical" })}
+        />
+
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Button ui={ui} variant="solidBlue" onClick={submitAppointment}>Talep Gönder</Button>
-          <Button ui={ui} onClick={() => setShowAppt(false)}>Vazgeç</Button>
+          <Button ui={ui} variant="solidBlue" onClick={submitAppointment}>
+            Talep Gönder
+          </Button>
+          <Button ui={ui} onClick={() => setShowAppt(false)}>
+            Vazgeç
+          </Button>
         </div>
       </Modal>
 
       {/* PROFILE MODAL */}
-      <Modal ui={ui} open={profileOpen} title="Profil" onClose={() => { setProfileOpen(false); setProfileTarget(null); }}>
-        {!profileData ? (
-          <div style={{ color: ui.muted }}>Profil bulunamadı.</div>
-        ) : profileData.type === "user" ? (
-          <div style={{ display: "grid", gap: 12 }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <Avatar ui={ui} src={profileData.user.avatar} size={72} label={profileData.user.username} />
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 950 }}>@{profileData.user.username}</div>
-                <div style={{ color: ui.muted, marginTop: 4 }}>
-                  Üyelik: {profileData.user.tier || "free"} • XP: {profileData.user.xp || 0}
-                </div>
-                <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
-                  Kayıt: {fmt(profileData.user.createdAt)}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Button ui={ui} variant="solidBlue" onClick={() => openDmToUser(profileData.user.username)}>💬 Mesaj Gönder</Button>
-            </div>
-
-            <Divider ui={ui} />
-
-            <div style={{ fontWeight: 950 }}>Sahip olduğu işletmeler</div>
-            {profileData.owned.length === 0 ? (
-              <div style={{ color: ui.muted }}>İşletme yok.</div>
-            ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                {profileData.owned.map((b) => (
-                  <div key={b.id} style={{ border: `1px solid ${ui.border}`, borderRadius: 16, padding: 12, background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)", cursor: "pointer" }} onClick={() => openProfileBiz(b.id)}>
-                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                      <Avatar ui={ui} src={b.avatar} size={44} label={b.name} />
-                      <div>
-                        <div style={{ fontWeight: 950 }}>{b.name}</div>
-                        <div style={{ color: ui.muted, fontSize: 13 }}>{b.category} • {b.plan}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+<Modal
+  ui={ui}
+  open={profileOpen}
+  title="Profil"
+  onClose={() => {
+    setProfileOpen(false);
+    setProfileTarget(null);
+  }}
+>
+  {!profileData ? (
+    <div style={{ color: ui.muted }}>Profil bulunamadı.</div>
+  ) : profileData.type === "user" ? (
+    <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <Avatar ui={ui} src={profileData.user.avatar} size={72} label={profileData.user.username} />
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 950 }}>@{profileData.user.username}</div>
+          <div style={{ color: ui.muted, marginTop: 4 }}>
+  Profil Durumu:{" "}
+  <b style={{ color: ui.text }}>
+    VERIFIED
+  </b>
+  {" • "}XP: {profileData.user.xp || 0}
+</div>
+          <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
+            Kayıt: {fmt(profileData.user.createdAt)}
           </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {normalizeUsername(user?.username) === normalizeUsername(profileData.user.username) ? (
+          <Button
+            ui={ui}
+            variant="solidBlue"
+            onClick={() => {
+              setShowEditUser(true);
+              setEditUserCtx(profileData.user);
+            }}
+          >
+            ✏️ Profili Düzenle
+          </Button>
         ) : (
-          <div style={{ display: "grid", gap: 12 }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <Avatar ui={ui} src={profileData.biz.avatar} size={72} label={profileData.biz.name} />
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 950 }}>{profileData.biz.name}</div>
-                <div style={{ color: ui.muted, marginTop: 4 }}>
-                  {profileData.biz.category} • {profileData.biz.plan}
-                </div>
-                <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
-                  Onay: {fmt(profileData.biz.approvedAt)} • by @{profileData.biz.approvedBy}
+          <Button ui={ui} variant="solidBlue" onClick={() => openDmToUser(profileData.user.username)}>
+            💬 Mesaj Gönder
+          </Button>
+        )}
+      </div>
+
+      <Divider ui={ui} />
+
+      <div style={{ fontWeight: 950 }}>Sahip olduğu işletmeler</div>
+      {profileData.owned?.length === 0 ? (
+        <div style={{ color: ui.muted }}>İşletme yok.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {(profileData.owned || []).map((b) => (
+            <div
+              key={b.id}
+              style={{
+                border: `1px solid ${ui.border}`,
+                borderRadius: 16,
+                padding: 12,
+                background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
+                cursor: "pointer",
+              }}
+              onClick={() => openProfileBiz(b.id)}
+            >
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <Avatar ui={ui} src={b.avatar} size={44} label={b.name} />
+                <div>
+                  <div style={{ fontWeight: 950 }}>{b.name}</div>
+                  <div style={{ color: ui.muted, fontSize: 13 }}>
+                    {b.category} • {b.plan}
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div style={{ color: ui.muted }}>📍 {profileData.biz.address || profileData.biz.city}</div>
-            <div style={{ color: ui.muted }}>📞 {profileData.biz.phone || "-"}</div>
-            <div style={{ color: ui.muted2 }}>Owner: @{profileData.biz.ownerUsername || "-"}</div>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Button ui={ui} variant="ok" onClick={() => openAppointment(profileData.biz.id)}>🗓️ Randevu Al</Button>
-              <Button ui={ui} onClick={() => openDirections(profileData.biz.address || profileData.biz.city || "")}>🧭 Yol Tarifi</Button>
-              <Button ui={ui} onClick={() => openCall(profileData.biz.phone)}>📞 Ara</Button>
-              <Button ui={ui} variant="solidBlue" onClick={() => openDmToBiz(profileData.biz.id)}>💬 Mesaj</Button>
-            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  ) : (
+    <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <Avatar ui={ui} src={profileData.biz.avatar} size={72} label={profileData.biz.name} />
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 950 }}>{profileData.biz.name}</div>
+          <div style={{ color: ui.muted, marginTop: 4 }}>
+            {profileData.biz.category} • {profileData.biz.plan}
           </div>
-        )}
-      </Modal>
+          <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
+            Onay: {fmt(profileData.biz.approvedAt)} • by @{profileData.biz.approvedBy}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ color: ui.muted }}>📍 {profileData.biz.address || profileData.biz.city}</div>
+      <div style={{ color: ui.muted }}>📞 {profileData.biz.phone || "-"}</div>
+      <div style={{ color: ui.muted2 }}>Owner: @{profileData.biz.ownerUsername || "-"}</div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Button ui={ui} variant="ok" onClick={() => openAppointment(profileData.biz.id)}>
+          🗓️ Randevu Al
+        </Button>
+        <Button ui={ui} onClick={() => openDirections(profileData.biz.address || profileData.biz.city || "")}>
+          🧭 Yol Tarifi
+        </Button>
+        <Button ui={ui} onClick={() => openCall(profileData.biz.phone)}>
+          📞 Ara
+        </Button>
+        <Button ui={ui} variant="solidBlue" onClick={() => openDmToBiz(profileData.biz.id)}>
+          💬 Mesaj
+        </Button>
+      </div>
+    </div>
+  )}
+</Modal>
     </div>
   );
 }
@@ -1998,41 +3235,68 @@ function BizApplyForm({ ui, onSubmit, onCancel }) {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("+1 ");
   const [category, setCategory] = useState("Emlak");
-  const [plan, setPlan] = useState("free");
   const [desc, setDesc] = useState("");
+
+  const safeSubmit = () => {
+    if (typeof onSubmit !== "function") {
+      console.error("BizApplyForm: onSubmit function değil:", onSubmit);
+      alert("Başvuru gönderme fonksiyonu bağlı değil (onSubmit).");
+      return;
+    }
+    onSubmit({ name, city, address, phone, category, plan: "Onaylı İşletme", desc });
+  };
+
+  const safeCancel = () => {
+    if (typeof onCancel !== "function") {
+      console.error("BizApplyForm: onCancel function değil:", onCancel);
+      return;
+    }
+    onCancel();
+  };
 
   return (
     <div style={{ display: "grid", gap: 10 }}>
-      <input placeholder="İşletme adı" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle(ui)} />
-      <input placeholder="Şehir (örn: Los Angeles, California)" value={city} onChange={(e) => setCity(e.target.value)} style={inputStyle(ui)} />
-      <input placeholder="Adres (yol tarifi için)" value={address} onChange={(e) => setAddress(e.target.value)} style={inputStyle(ui)} />
-      <input placeholder="Telefon (+1 ...)" value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle(ui)} />
+      <input
+        placeholder="İşletme adı"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        style={inputStyle(ui)}
+      />
+      <input
+        placeholder="Şehir (örn: Los Angeles, California)"
+        value={city}
+        onChange={(e) => setCity(e.target.value)}
+        style={inputStyle(ui)}
+      />
+      <input
+        placeholder="Adres (yol tarifi için)"
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+        style={inputStyle(ui)}
+      />
+      <input
+        placeholder="Telefon (+1 ...)"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        style={inputStyle(ui)}
+      />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle(ui)}>
-          <option>Emlak</option>
-          <option>Konaklama</option>
-          <option>Araç Bayileri</option>
-          <option>Türk Marketleri</option>
-          <option>Restoran</option>
-          <option>Kafe</option>
-          <option>Diğer</option>
-        </select>
+      <div style={{ ...inputStyle(ui), display: "flex", alignItems: "center" }}>
+  Onaylanmış İşletme
+</div>
 
-        <select value={plan} onChange={(e) => setPlan(e.target.value)} style={inputStyle(ui)}>
-          <option value="free">Free</option>
-          <option value="premium">Premium</option>
-          <option value="premium+">Premium+</option>
-          <option value="verified">Verified</option>
-          <option value="platinum">Platinum</option>
-        </select>
-      </div>
 
-      <textarea placeholder="Kısa açıklama" value={desc} onChange={(e) => setDesc(e.target.value)} style={inputStyle(ui, { minHeight: 90, resize: "vertical" })} />
+      <textarea
+        placeholder="Kısa açıklama"
+        value={desc}
+        onChange={(e) => setDesc(e.target.value)}
+        style={inputStyle(ui, { minHeight: 90, resize: "vertical" })}
+      />
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button
-          onClick={() => onSubmit({ name, city, address, phone, category, plan, desc })}
+          type="button"
+          onClick={safeSubmit}
           style={{
             padding: "10px 16px",
             borderRadius: 999,
@@ -2045,8 +3309,10 @@ function BizApplyForm({ ui, onSubmit, onCancel }) {
         >
           Başvuru Gönder
         </button>
+
         <button
-          onClick={onCancel}
+          type="button"
+          onClick={safeCancel}
           style={{
             padding: "10px 16px",
             borderRadius: 999,
@@ -2057,13 +3323,14 @@ function BizApplyForm({ ui, onSubmit, onCancel }) {
             fontWeight: 900,
           }}
         >
-          İptal
+                İptal
         </button>
       </div>
 
       <div style={{ color: ui.muted2, fontSize: 12 }}>
-        Başvurunuz admin onayından sonra “Onaylı işletmeler” listesinde görünür.
+        Başvurunuz admin onayından sonra “işletmeler” listesinde görünür.
       </div>
     </div>
   );
+
 }
