@@ -1182,6 +1182,28 @@ async function logout() {
     setShowAuth(true);
   }
 }
+
+// ❌ HESAP SİL
+async function deleteAccount() {
+  const ok = confirm("Hesabın kalıcı olarak silinecek. Emin misin?");
+  if (!ok) return;
+
+  try {
+    const { error } = await supabase.rpc("delete_my_account");
+    if (error) throw error;
+
+    alert("Hesabın silindi.");
+    await supabase.auth.signOut();
+
+    setUser(null);
+    lsSet(KEY.USER, null);
+    setShowAuth(true);
+  } catch (e) {
+    console.error("delete account error:", e);
+    alert("Hesap silinirken hata oluştu.");
+  }
+}
+
 // ✅ OAUTH LOGIN (Apple / Google vs.)
 async function oauthLogin(provider) {
   try {
@@ -2009,8 +2031,12 @@ return (
               </Chip>
 
               <Button ui={ui} onClick={logout} variant="danger">
-                Çıkış
-              </Button>
+  Çıkış
+</Button>
+
+<Button ui={ui} onClick={deleteAccount} variant="danger">
+  🗑️ Hesabımı Sil
+</Button>
             </>
           ) : (
             <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue">
