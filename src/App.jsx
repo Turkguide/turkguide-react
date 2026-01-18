@@ -1086,13 +1086,13 @@ async function loginNow(provider = "email", mode = "login") {
       }
 
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password: pass,
-        options: {
-          data: { username },
-          emailRedirectTo: `${window.location.origin}/#auth`,
-        },
-      });
+  email,
+  password: pass,
+  options: {
+    data: { username },
+    emailRedirectTo: `${window.location.origin}/#auth`,
+  },
+});
 
       if (error) {
         console.error("❌ signUp error:", error);
