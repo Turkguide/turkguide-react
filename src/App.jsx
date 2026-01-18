@@ -499,19 +499,20 @@ function ToggleRow({ ui, label, desc, value, onToggle }) {
 /* ====== Landing (2. görsel) ====== */
 function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearch }) {
   const segWrap = {
-    marginTop: 40,
-    background: ui.whitePanel,
-    borderRadius: 18,
-    padding: 6,
-    display: "flex",
-    gap: 6,
-    border: ui.mode === "light" ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(0,0,0,0.08)",
-    boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
-    width: "100%",
-    maxWidth: "100%",
-    boxSizing: "border-box",
-    overflowX: "hidden",
-  };
+  marginTop: 40,
+  width: "100%",
+  maxWidth: "min(1100px, calc(100vw - 32px))",
+  boxSizing: "border-box",
+  background: ui.whitePanel,
+  borderRadius: 18,
+  padding: 6,
+  display: "flex",
+  gap: 6,
+  border: ui.mode === "light"
+    ? "1px solid rgba(0,0,0,0.06)"
+    : "1px solid rgba(0,0,0,0.08)",
+  boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
+};
 
   const Seg = ({ id, icon, label }) => {
     const isActive = active === id;
@@ -520,8 +521,8 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
         onClick={() => setActive(id)}
         style={{
           flex: 1,
-          padding: "14px 18px",
-          borderRadius: 14,
+          minWidth: 0,
+          padding: "12px 10px",
           background: isActive ? "#fff" : "transparent",
           color: isActive ? "#000" : "rgba(0,0,0,0.50)",
           display: "flex",
