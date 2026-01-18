@@ -507,6 +507,10 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
     gap: 6,
     border: ui.mode === "light" ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(0,0,0,0.08)",
     boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+    overflowX: "hidden",
   };
 
   const Seg = ({ id, icon, label }) => {
@@ -535,7 +539,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
   };
 
   return (
-    <div style={{ padding: "70px 0 28px" }}>
+    <div style={{ padding: "70px 0 28px", width: "100%", maxWidth: "100vw", overflowX: "hidden" }}>
       <div style={{ display: "grid", placeItems: "center" }}>
         <div
           style={{
@@ -555,14 +559,25 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
           <span style={{ opacity: 0.65 }}>●</span> AMERİKA’NIN EN BÜYÜK TÜRK REHBERİ
         </div>
 
-        <div style={{ marginTop: 26, textAlign: "center" }}>
-          <div style={{ fontSize: 66, lineHeight: 1.06, fontWeight: 950, color: ui.blue }}>
-            Discover
-          </div>
-          <div style={{ fontSize: 66, lineHeight: 1.06, fontWeight: 950, color: ui.blue }}>
-            Turkish Businesses
-          </div>
-        </div>
+        <h1
+  style={{
+    marginTop: 26,
+    textAlign: "center",
+    fontWeight: 950,
+    color: ui.blue,
+    lineHeight: 1.05,
+    fontSize: "clamp(32px, 8.5vw, 64px)",
+    padding: "0 12px",
+    margin: "26px auto 0",
+    maxWidth: "100%",
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
+  }}
+>
+  Discover
+  <br />
+  Turkish Businesses
+</h1>
 
         <div style={{ marginTop: 14, color: ui.muted, fontSize: 18 }}>
           Amerika'nın her köşesinden Türk işletmeleri ve profesyonelleri keşfedin
@@ -571,12 +586,15 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
         <div
           style={{
             marginTop: 34,
-            width: "min(760px, 100%)",
+            width: "100%",
+            maxWidth: 760,
             background: ui.mode === "light" ? "rgba(255,255,255,0.88)" : ui.field2,
             border: `1px solid ${ui.border}`,
             borderRadius: 999,
             padding: 12,
             display: "flex",
+            flexWrap: "wrap",
+            boxSizing: "border-box",
             gap: 10,
             alignItems: "center",
             boxShadow: "0 28px 80px rgba(0,0,0,0.50)",
@@ -595,14 +613,21 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
               color: ui.text,
               fontSize: 16,
               padding: 10,
+              minWidth: 0,
+              width: "100%",
             }}
           />
-          <Button ui={ui} variant="solidBlue" onClick={onSearch} style={{ padding: "12px 18px" }}>
+          <Button
+            ui={ui}
+            variant="solidBlue"
+            onClick={onSearch}
+            style={{ padding: "12px 18px", flex: "0 0 auto", maxWidth: "100%" }}
+          >
             Ara
           </Button>
         </div>
 
-        <div style={{ width: "min(1100px, 100%)" }}>
+        <div style={{ width: "100%", maxWidth: 1100, boxSizing: "border-box", overflowX: "hidden" }}>
           <div style={segWrap}>
             <Seg id="biz" icon="🏢" label="İşletmeler" />
             <Seg id="news" icon="📰" label="Haberler" />
@@ -1996,82 +2021,133 @@ function clearFilters() {
 if (!booted) return null;
 
 return (
-  <div style={{ minHeight: "100vh", width: "100%", background: ui.bg, color: ui.text }}>
+  <div
+    style={{
+      minHeight: "100vh",
+      width: "100%",
+      maxWidth: "100vw",
+      overflowX: "hidden",
+      background: ui.bg,
+      color: ui.text,
+    }}
+  >
     {/* TOP BAR */}
-    <div
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        backdropFilter: "blur(14px)",
-        background: ui.top,
-        borderBottom: `1px solid ${ui.border}`,
-      }}
-    >
+<div
+  style={{
+    position: "sticky",
+    top: 0,
+    zIndex: 50,
+    backdropFilter: "blur(14px)",
+    background: ui.top,
+    borderBottom: `1px solid ${ui.border}`,
+    width: "100%",
+    maxWidth: "100vw",
+    overflowX: "hidden",
+  }}
+>
+  <div
+  style={{
+    maxWidth: 1240,
+    margin: "0 auto",
+    padding: "16px",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    width: "100%",
+    minWidth: 0,
+    flexWrap: "wrap",
+    overflowX: "hidden",
+  }}
+>
+  {/* SOL SPACER (logo tam ortalansın) */}
+  <div style={{ flex: 1, minWidth: 0 }} />
+
+  {/* LOGO (ORTA) */}
+  <div style={{ flex: "0 0 auto", maxWidth: "100%" }}>
+    <div style={{ transform: "translateY(2px)", cursor: "pointer", maxWidth: "100%" }}>
       <div
         style={{
-          maxWidth: 1240,
-          margin: "0 auto",
-          padding: "16px 16px",
-          display: "grid",
-          gridTemplateColumns: "1fr auto 1fr",
-          alignItems: "center",
+          fontSize: "clamp(28px, 8vw, 56px)",
+          fontWeight: 950,
+          letterSpacing: -1,
+          lineHeight: 1,
+          textAlign: "center",
+          maxWidth: "100%",
+          overflow: "hidden",
+          whiteSpace: "nowrap",
         }}
       >
-        <div />
-
-        <div style={{ transform: "translateY(2px)", cursor: "pointer" }}>
-          <div style={{ fontSize: 56, fontWeight: 950, letterSpacing: -1, lineHeight: 1 }}>
-            Turk<span style={{ color: ui.blue }}>G</span>uide
-          </div>
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <Button ui={ui} variant="blue" onClick={() => setShowSettings(true)} title="Ayarlar">
-            ⚙️ Ayarlar
-          </Button>
-
-          {user ? (
-            <>
-              {adminMode && adminUnlocked && (
-                <Button ui={ui} onClick={() => setActive("admin")} variant="blue">
-                  🛡️ Admin
-                </Button>
-              )}
-
-              <Chip
-                ui={ui}
-                onClick={() => {
-                  setProfileTarget({ type: "user", userId: user.id, username: user.username });
-                  setProfileOpen(true);
-                }}
-              >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-                  <Avatar ui={ui} src={user.avatar} size={28} label={user.username} />
-                  @{user.username}
-                </span>
-              </Chip>
-
-              <Chip ui={ui} title="Okunmamış mesaj" style={{ opacity: unreadForMe ? 1 : 0.65 }}>
-                💬 {unreadForMe}
-              </Chip>
-
-              <Button ui={ui} onClick={logout} variant="danger">
-                Çıkış
-              </Button>
-            </>
-          ) : (
-            <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue">
-              ⤴︎ Giriş
-            </Button>
-          )}
-        </div>
+        Turk<span style={{ color: ui.blue }}>G</span>uide
       </div>
     </div>
+  </div>
+
+  {/* SAĞ BUTONLAR */}
+  <div
+    style={{
+      flex: 1,
+      minWidth: 0,
+      display: "flex",
+      justifyContent: "flex-end",
+      gap: 10,
+      alignItems: "center",
+      flexWrap: "wrap",
+    }}
+  >
+    <Button ui={ui} variant="blue" onClick={() => setShowSettings(true)} title="Ayarlar">
+      ⚙️ Ayarlar
+    </Button>
+
+    {user ? (
+      <>
+        {adminMode && adminUnlocked && (
+          <Button ui={ui} onClick={() => setActive("admin")} variant="blue">
+            🛡️ Admin
+          </Button>
+        )}
+
+        <Chip
+          ui={ui}
+          onClick={() => {
+            setProfileTarget({ type: "user", userId: user.id, username: user.username });
+            setProfileOpen(true);
+          }}
+        >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+            <Avatar ui={ui} src={user.avatar} size={28} label={user.username} />
+            @{user.username}
+          </span>
+        </Chip>
+
+        <Chip ui={ui} title="Okunmamış mesaj" style={{ opacity: unreadForMe ? 1 : 0.65 }}>
+          💬 {unreadForMe}
+        </Chip>
+
+        <Button ui={ui} onClick={logout} variant="danger">
+          Çıkış
+        </Button>
+      </>
+    ) : (
+      <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue">
+        ⤴︎ Giriş
+      </Button>
+    )}
+  </div>
+  </div>
+</div>
 
 
       {/* CONTENT */}
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 16px 16px" }}>
+<div
+  style={{
+    maxWidth: 1240,
+    margin: "0 auto",
+    padding: "0 16px 16px",
+    width: "100%",
+    maxWidth: "100vw",
+    overflowX: "hidden",
+  }}
+>
         {/* LANDING — sadece biz/news/hub ekranlarında üstte görünür (2. görsel) */}
         {(active === "biz" || active === "news" || active === "hub") && (
           <>
