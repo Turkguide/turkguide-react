@@ -1214,11 +1214,11 @@ async function oauthLogin(provider) {
     }
 
     const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/#auth`,
-      },
-    });
+  provider,
+  options: {
+    redirectTo: 'https://turkguide.net',
+  },
+});
 
     if (error) {
       console.error("❌ oauthLogin error:", error);
