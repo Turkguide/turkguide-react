@@ -1085,12 +1085,12 @@ async function loginNow(provider = "email", mode = "login") {
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({
+     const { data, error } = await supabase.auth.signUp({
   email,
   password: pass,
   options: {
     data: { username },
-    emailRedirectTo: `${window.location.origin}/#auth`,
+    emailRedirectTo: "https://www.turkguide.net",
   },
 });
 
@@ -1214,11 +1214,11 @@ async function oauthLogin(provider) {
     }
 
     const { error } = await supabase.auth.signInWithOAuth({
-  provider,
-  options: {
-    redirectTo: 'https://turkguide.net',
-  },
-});
+      provider,
+      options: {
+        redirectTo: "https://www.turkguide.net",
+      },
+    });
 
     if (error) {
       console.error("❌ oauthLogin error:", error);
