@@ -867,22 +867,47 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
           window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
         }
 
-        // 2) ?code=... (PKCE)
-        const url = new URL(window.location.href);
-        const code = url.searchParams.get("code");
+       // 2) ?code=... (PKCE / OAuth)
+const url = new URL(window.location.href);
+const code = url.searchParams.get("code");
 
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            console.error("❌ exchangeCodeForSession error:", error);
-            alert(error.message || "Email doğrulama sırasında hata oluştu.");
-            return;
-          }
+if (code) {
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) {
+    console.error("❌ exchangeCodeForSession error:", error);
+    alert(error.message || "Giriş tamamlanamadı. Lütfen tekrar deneyin.");
+    return;
+  }
 
-          url.searchParams.delete("code");
-          // hash'i de temizle (PKCE sonrası)
-          window.history.replaceState({}, document.title, url.pathname + url.search);
-        }
+  // ✅ URL temizle: code/state kalksın ama PATH kalsın
+  url.searchParams.delete("code");
+  url.searchParams.delete("state");
+
+  window.history.replaceState(
+    {},
+    document.title,
+    url.pathname + (url.search ? `?${url.searchParams.toString()}` : "") + url.hash
+  );
+
+  // ✅ UI state: login modal kapansın (beyaz ekranda kalma hissini keser)
+  setShowAuth(false);
+
+  // ✅ Session'ı okuyup user state’i tetikle (listener bazen geç kalıyor)
+  const session = data?.session || (await supabase.auth.getSession()).data.session;
+  if (session?.user) {
+    const md = session.user.user_metadata || {};
+    setUser((prev) => ({
+      ...(prev || {}),
+      id: session.user.id,
+      email: session.user.email,
+      username: md.username ?? prev?.username ?? null,
+      avatar: md.avatar ?? prev?.avatar ?? "",
+      Tier: md.Tier ?? prev?.Tier ?? "Verified",
+      XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
+      createdAt: md.createdAt ?? prev?.createdAt ?? null,
+    }));
+  }
+}
       } catch (e) {
         console.error("❌ auth callback error:", e);
       }
@@ -1090,7 +1115,7 @@ async function loginNow(provider = "email", mode = "login") {
   password: pass,
   options: {
     data: { username },
-    emailRedirectTo: "https://www.turkguide.net",
+    emailRedirectTo: "https://www.turkguide.net/auth/callback",
   },
 });
 
@@ -1214,11 +1239,11 @@ async function oauthLogin(provider) {
     }
 
     const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: "https://www.turkguide.net",
-      },
-    });
+  provider,
+  options: {
+    redirectTo: "https://www.turkguide.net",
+  },
+});
 
     if (error) {
       console.error("❌ oauthLogin error:", error);
