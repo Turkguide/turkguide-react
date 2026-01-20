@@ -671,8 +671,8 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
 
           <div style={{ width: "100%", maxWidth: 1100, boxSizing: "border-box" }}>
             <div style={segWrap}>
-              <Seg id="biz" icon="🏢" label="İşletmeler" />
-              <Seg id="news" icon="📰" label="Haberler" />
+              <Seg id="biz" icon="🏢" label="İŞLETMELER" />
+              <Seg id="news" icon="📰" label="HABERLER" />
               <Seg id="hub" icon="👥" label="HUB" />
             </div>
           </div>
