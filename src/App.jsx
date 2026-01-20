@@ -2095,8 +2095,9 @@ return (
             display: "flex",
             justifyContent: "center",
             pointerEvents: "none",
-            paddingRight: 132, // right icons space (prevents overlap on small phones)
-            paddingLeft: 12,
+            // ✅ Logo tam ortaya gelsin: sağ ikonlar için ayrılan alan kadar SOLDA da boşluk bırak
+            paddingRight: "clamp(96px, 22vw, 140px)",
+            paddingLeft: "clamp(96px, 22vw, 140px)",
             boxSizing: "border-box",
           }}
         >
@@ -2128,7 +2129,7 @@ return (
         <div
           style={{
             position: "absolute",
-            right: 12,
+            right: 8,
             top: "50%",
             transform: "translateY(-50%)",
             display: "flex",
@@ -2139,17 +2140,18 @@ return (
         >
           {(() => {
             const iconBtnStyle = {
-              width: 32,
-              height: 32,
-              borderRadius: 10,
+              width: 28,
+              height: 28,
+              borderRadius: 9,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               border: "none",
               background: "transparent",
               color: ui.text,
-              fontSize: 16,
+              fontSize: 15,
               padding: 0,
+              lineHeight: 1,
               cursor: "pointer",
               boxShadow: "none",
               WebkitTapHighlightColor: "transparent",
@@ -2160,11 +2162,9 @@ return (
                 <button title="Bildirimler" onClick={() => setActive("notifications")} style={iconBtnStyle}>
                   🔔
                 </button>
-
                 <button title="Ayarlar" onClick={() => setShowSettings(true)} style={iconBtnStyle}>
                   ⚙️
                 </button>
-
                 {user ? (
                   <button title="Mesajlar" onClick={() => setActive("messages")} style={iconBtnStyle}>
                     💬
@@ -2174,7 +2174,6 @@ return (
                     ⤴️
                   </button>
                 )}
-
                 {user && adminMode && adminUnlocked && (
                   <button title="Admin" onClick={() => setActive("admin")} style={iconBtnStyle}>
                     🛡️
