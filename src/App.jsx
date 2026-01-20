@@ -2083,9 +2083,10 @@ return (
           margin: "0 auto",
           padding: "10px 12px", // ✅ mobilde daha ince
           display: "grid",
-          gridTemplateColumns: "1fr auto 1fr",
+          gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
           alignItems: "center",
           gap: 10,
+          minWidth: 0,
         }}
       >
         <div />
