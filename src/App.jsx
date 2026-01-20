@@ -2085,6 +2085,7 @@ return (
           display: "grid",
           gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
+          gap: 10,
         }}
       >
         <div />
@@ -2095,58 +2096,151 @@ return (
           </div>
         </div>
 
+        {/* RIGHT ACTIONS — icon only */}
         <div
-  style={{
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-    maxWidth: "100%",
-    overflow: "hidden",
-  }}
->
-  <Button
-    ui={ui}
-    variant="blue"
-    onClick={() => setShowSettings(true)}
-    title="Ayarlar"
-    style={{ whiteSpace: "nowrap" }}
-  >
-    ⚙️ Ayarlar
-  </Button>
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "nowrap",
+            maxWidth: "100%",
+            overflow: "hidden",
+          }}
+        >
+          {/* Notifications */}
+          <button
+            type="button"
+            title="Bildirimler"
+            onClick={() => setActive("notifications")}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: `1px solid ${ui.border}`,
+              background: ui.mode === "light" ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.06)",
+              color: ui.text,
+              cursor: "pointer",
+              fontSize: 18,
+              padding: 0,
+              lineHeight: 1,
+              flex: "0 0 auto",
+            }}
+          >
+            🔔
+          </button>
 
-  {user ? (
-    <>
-      {adminMode && adminUnlocked && (
-        <Button ui={ui} onClick={() => setActive("admin")} variant="blue" style={{ whiteSpace: "nowrap" }}>
-          🛡️ Admin
-        </Button>
-      )}
+          {/* Messages (only when logged in) */}
+          {user ? (
+            <button
+              type="button"
+              title="Mesajlar"
+              onClick={() => setActive("messages")}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: `1px solid ${ui.border}`,
+                background: ui.mode === "light" ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.06)",
+                color: ui.text,
+                cursor: "pointer",
+                fontSize: 18,
+                padding: 0,
+                lineHeight: 1,
+                flex: "0 0 auto",
+              }}
+            >
+              💬
+            </button>
+          ) : (
+            /* Login (only when logged out) */
+            <button
+              type="button"
+              title="Giriş"
+              onClick={() => setShowAuth(true)}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: `1px solid ${ui.border}`,
+                background: ui.mode === "light" ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.06)",
+                color: ui.text,
+                cursor: "pointer",
+                fontSize: 18,
+                padding: 0,
+                lineHeight: 1,
+                flex: "0 0 auto",
+              }}
+            >
+              ⤴️
+            </button>
+          )}
 
-      <Chip
-        ui={ui}
-        onClick={() => {
-          setProfileTarget({ type: "user", userId: user.id, username: user.username });
-          setProfileOpen(true);
-        }}
-        style={{ whiteSpace: "nowrap" }}
-      >
-        @{user.username}
-      </Chip>
+          {/* Settings */}
+          <button
+            type="button"
+            title="Ayarlar"
+            onClick={() => setShowSettings(true)}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: `1px solid ${ui.border}`,
+              background: ui.mode === "light" ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.06)",
+              color: ui.text,
+              cursor: "pointer",
+              fontSize: 18,
+              padding: 0,
+              lineHeight: 1,
+              flex: "0 0 auto",
+            }}
+          >
+            ⚙️
+          </button>
 
-      <Button ui={ui} onClick={logout} variant="danger" style={{ whiteSpace: "nowrap" }}>
-        Çıkış
-      </Button>
-    </>
-  ) : (
-    <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue" style={{ whiteSpace: "nowrap" }}>
-      ⤴︎ Giriş
-    </Button>
-  )}
-</div>
+          {/* Optional Admin (only if unlocked) */}
+          {user && adminMode && adminUnlocked && (
+            <button
+              type="button"
+              title="Admin"
+              onClick={() => setActive("admin")}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: `1px solid ${ui.border}`,
+                background: ui.mode === "light" ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.06)",
+                color: ui.text,
+                cursor: "pointer",
+                fontSize: 18,
+                padding: 0,
+                lineHeight: 1,
+                flex: "0 0 auto",
+              }}
+            >
+              🛡️
+            </button>
+          )}
+        </div>
       </div>
     </div>
+
+    {/* ...devamı sende... */}
 
 
       {/* CONTENT */}
