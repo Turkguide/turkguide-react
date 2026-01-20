@@ -2762,7 +2762,7 @@ return (
       }}
       title="Fotoğraf veya video ekle"
     >
-      + Foto/Video Ekle
+      + Media Ekle
     </Button>
 
     {hubMedia ? (
