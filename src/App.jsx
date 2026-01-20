@@ -993,6 +993,7 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
   // HUB edit/delete
 const [editingPostId, setEditingPostId] = useState(null);
 const [editPostDraft, setEditPostDraft] = useState("");
+const [postMenuOpenId, setPostMenuOpenId] = useState(null);
 
 // HUB post author resolver (backward compatible)
 function hubPostAuthor(p) {
@@ -1080,6 +1081,7 @@ function deletePost(postId) {
 
   // HUB media picker ref (hidden input)
   const hubMediaPickRef = useRef(null);
+  const hubMediaPickBusyRef = useRef(false);
 
   
 
@@ -1089,8 +1091,13 @@ function pickHubMedia() {
 
 async function onPickHubMediaFile(e) {
   const file = e.target.files?.[0];
+  // allow picking the same file again
   e.target.value = "";
   if (!file) return;
+
+  // ✅ guard: prevents double-processing if the handler fires twice
+  if (hubMediaPickBusyRef.current) return;
+  hubMediaPickBusyRef.current = true;
 
   try {
     const isVideo = (file.type || "").startsWith("video/");
@@ -1110,6 +1117,8 @@ async function onPickHubMediaFile(e) {
     console.error("HUB media error:", err);
     alert(err?.message || "Medya yüklenemedi");
     setHubMedia(null);
+  } finally {
+    hubMediaPickBusyRef.current = false;
   }
 }
 
@@ -1831,32 +1840,54 @@ function confirmDelete() {
 
 function hubShare() {
   if (!requireAuth()) return;
+
   const text = String(composer || "").trim();
-if (!text && !hubMedia) return;
+  if (!text && !hubMedia) return;
+
+  const stamp = now();
 
   const post = {
-  id: uid(),
-  createdAt: now(),
-  byType: "user",
-  byUsername: user.username,
-  content: text,
-  media: hubMedia
-    ? {
-        kind: hubMedia.kind,
-        src: hubMedia.src,
-        width: hubMedia.width,
-        height: hubMedia.height,
-        duration: hubMedia.duration,
-        mime: hubMedia.mime,
-        originalName: hubMedia.originalName,
-      }
-    : null,
-  likes: 0,
-  comments: [],
-};
-  setPosts((prev) => [post, ...prev]);
+    id: uid(),
+    createdAt: stamp,
+    byType: "user",
+    byUsername: user.username,
+    content: text,
+    media: hubMedia
+      ? {
+          kind: hubMedia.kind,
+          src: hubMedia.src,
+          width: hubMedia.width,
+          height: hubMedia.height,
+          duration: hubMedia.duration,
+          mime: hubMedia.mime,
+          originalName: hubMedia.originalName,
+        }
+      : null,
+    likes: 0,
+    comments: [],
+  };
+
+  setPosts((prev) => {
+    const top = prev?.[0];
+
+    const sameAuthor = normalizeUsername(top?.byUsername) === normalizeUsername(post.byUsername);
+
+    const sameText = String(top?.content || "").trim() === post.content;
+
+    const sameMedia =
+      (top?.media?.src || "") && (post.media?.src || "") && top.media.src === post.media.src;
+
+    const closeInTime = typeof top?.createdAt === "number" && Math.abs(stamp - top.createdAt) < 1500;
+
+    // ✅ Eğer click/handler iki kere tetiklendiyse aynı post'u iki kere ekleme
+    if (sameAuthor && sameText && sameMedia && closeInTime) return prev;
+
+    return [post, ...(prev || [])];
+  });
+
   setComposer("");
   setHubMedia(null);
+  setPostMenuOpenId(null);
 }
 
 function hubLike(postId) {
@@ -2428,6 +2459,15 @@ if (!booted) return null;
 
 return (
   <div style={{ minHeight: "100vh", width: "100%", background: ui.bg, color: ui.text }}>
+    {/* HUB Media hidden input (single occurrence) */}
+    <input
+      ref={hubMediaPickRef}
+      type="file"
+      accept="image/*,video/*"
+      style={{ display: "none" }}
+      onChange={onPickHubMediaFile}
+    />
+
     {/* TOP BAR */}
     <div
       style={{
@@ -2647,9 +2687,6 @@ return (
         </div>
       </div>
     </div>
-
-
-
 
       {/* CONTENT */}
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 16px 16px" }}>
@@ -2928,12 +2965,160 @@ return (
               <div style={{ display: "grid", gap: 12 }}>
                 {posts.map((p) => (
                   <Card ui={ui} key={p.id} style={{ background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                     <Chip ui={ui} onClick={() => openProfileByUsername(hubPostAuthor(p))}>
-  @{hubPostAuthor(p)}
-</Chip>
-                      <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(p.createdAt)}</span>
-                    </div>
+                    <div onMouseDown={() => setPostMenuOpenId(null)}>
+<div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    flexWrap: "wrap",
+    alignItems: "center",
+  }}
+>
+  <Chip ui={ui} onClick={() => openProfileByUsername(hubPostAuthor(p))}>
+    @{hubPostAuthor(p)}
+  </Chip>
+
+  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(p.createdAt)}</span>
+
+    {canEditPost(p) ? (
+      <div style={{ position: "relative" }}>
+        <button
+          type="button"
+          aria-label="Post menüsü"
+          title="Seçenekler"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            setPostMenuOpenId((cur) => (cur === p.id ? null : p.id));
+          }}
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 10,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: `1px solid ${ui.border}`,
+            background: ui.mode === "light" ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.25)",
+            color: ui.text,
+            cursor: "pointer",
+            fontWeight: 950,
+            lineHeight: 1,
+          }}
+        >
+          ⋯
+        </button>
+
+        {postMenuOpenId === p.id ? (
+          <div
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 40,
+              minWidth: 160,
+              borderRadius: 14,
+              border: `1px solid ${ui.border}`,
+              background: ui.panel,
+              boxShadow: `0 18px 40px ${ui.glow}`,
+              overflow: "hidden",
+              zIndex: 20,
+            }}
+          >
+            {editingPostId === p.id ? (
+              <>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    saveEditPost(p.id);
+                    setPostMenuOpenId(null);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    textAlign: "left",
+                    border: "none",
+                    background: "transparent",
+                    color: ui.text,
+                    cursor: "pointer",
+                    fontWeight: 900,
+                  }}
+                >
+                  Kaydet
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    cancelEditPost();
+                    setPostMenuOpenId(null);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    textAlign: "left",
+                    border: "none",
+                    background: "transparent",
+                    color: ui.text,
+                    cursor: "pointer",
+                    fontWeight: 900,
+                  }}
+                >
+                  İptal
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    startEditPost(p);
+                    setPostMenuOpenId(null);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    textAlign: "left",
+                    border: "none",
+                    background: "transparent",
+                    color: ui.text,
+                    cursor: "pointer",
+                    fontWeight: 900,
+                  }}
+                >
+                  ✏️ Düzenle
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    deletePost(p.id);
+                    setPostMenuOpenId(null);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    textAlign: "left",
+                    border: "none",
+                    background: "transparent",
+                    color: ui.text,
+                    cursor: "pointer",
+                    fontWeight: 900,
+                  }}
+                >
+                  🗑️ Sil
+                </button>
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
+    ) : null}
+  </div>
+</div>
 
                     {editingPostId === p.id ? (
   <textarea
@@ -2998,71 +3183,6 @@ return (
     </div>
   </div>
 ) : null}
-
-                    {p.media ? (
-                      <div style={{ marginTop: 12 }}>
-                        <div
-                          style={{
-                            width: "min(520px, 100%)",
-                            aspectRatio: "4 / 5",
-                            borderRadius: 16,
-                            overflow: "hidden",
-                            border: `1px solid ${ui.border}`,
-                            background:
-                              ui.mode === "light"
-                                ? "rgba(0,0,0,0.03)"
-                                : "rgba(255,255,255,0.04)",
-                          }}
-                        >
-                          {p.media.kind === "image" ? (
-                            <img
-                              src={p.media.src}
-                              alt=""
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                display: "block",
-                              }}
-                            />
-                          ) : (
-                            <video
-                              src={p.media.src}
-                              controls
-                              playsInline
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                display: "block",
-                              }}
-                            />
-                          )}
-                        </div>
-
-                        <div style={{ color: ui.muted, fontSize: 12, marginTop: 8 }}>
-                          {p.media.kind === "video" && p.media.duration
-                            ? `Video: ${Math.round(p.media.duration)}s • `
-                            : ""}
-                          Fotograf oranı: 4:5 • Video max 60s / 2K
-                        </div>
-                      </div>
-                    ) : null}
-{canEditPost(p) ? (
-  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-    {editingPostId === p.id ? (
-      <>
-        <Button ui={ui} variant="ok" onClick={() => saveEditPost(p.id)}>Kaydet</Button>
-        <Button ui={ui} onClick={cancelEditPost}>İptal</Button>
-      </>
-    ) : (
-      <>
-        <Button ui={ui} variant="blue" onClick={() => startEditPost(p)}>✏️ Düzenle</Button>
-        <Button ui={ui} variant="danger" onClick={() => deletePost(p.id)}>🗑️ Sil</Button>
-      </>
-    )}
-  </div>
-) : null}
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
                       <Button ui={ui} onClick={() => hubLike(p.id)}>Like ({p.likes || 0})</Button>
                       <Button ui={ui} variant="solidBlue" onClick={() => openDmToUser(hubPostAuthor(p))}>💬 Mesaj</Button>
@@ -3096,6 +3216,7 @@ return (
                           <div style={{ marginTop: 8 }}>{c.text}</div>
                         </div>
                       ))}
+                    </div>
                     </div>
                   </Card>
                 ))}
