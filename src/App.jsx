@@ -2082,61 +2082,73 @@ return (
           maxWidth: 1240,
           margin: "0 auto",
           padding: "10px 12px",
+          position: "relative",
+          minHeight: 48,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          position: "relative",
         }}
       >
-        {/* LEFT spacer */}
-        <div style={{ width: 44 }} />
-
-        {/* LOGO (true center, never pushes buttons) */}
+        {/* LOGO (centered; never pushes buttons) */}
         <div
           style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%) translateY(1px)",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-            pointerEvents: "auto",
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            pointerEvents: "none",
+            paddingRight: 132, // right icons space (prevents overlap on small phones)
+            paddingLeft: 12,
+            boxSizing: "border-box",
           }}
         >
           <div
             style={{
-              fontSize: "clamp(32px, 8.5vw, 52px)",
-              fontWeight: 950,
-              letterSpacing: -1,
-              lineHeight: 1,
+              transform: "translateY(1px)",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: "100%",
+              pointerEvents: "auto",
             }}
           >
-            Turk<span style={{ color: ui.blue }}>G</span>uide
+            <div
+              style={{
+                fontSize: "clamp(28px, 7.2vw, 48px)",
+                fontWeight: 950,
+                letterSpacing: -1,
+                lineHeight: 1,
+              }}
+            >
+              Turk<span style={{ color: ui.blue }}>G</span>uide
+            </div>
           </div>
         </div>
 
-        {/* RIGHT ACTIONS */}
+        {/* RIGHT ACTIONS (always visible) */}
         <div
           style={{
+            position: "absolute",
+            right: 12,
+            top: "50%",
+            transform: "translateY(-50%)",
             display: "flex",
             alignItems: "center",
-            gap: 6,
+            gap: 8,
+            flexWrap: "nowrap",
           }}
         >
           {(() => {
             const iconBtnStyle = {
-              width: 34,
-              height: 34,
+              width: 32,
+              height: 32,
               borderRadius: 10,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              border: `1px solid ${ui.border}`,
-              background:
-                ui.mode === "light"
-                  ? "rgba(255,255,255,0.55)"
-                  : "rgba(255,255,255,0.05)",
+              border: "none",
+              background: "transparent",
               color: ui.text,
-              fontSize: 15,
+              fontSize: 16,
               padding: 0,
               cursor: "pointer",
               boxShadow: "none",
@@ -2149,6 +2161,10 @@ return (
                   🔔
                 </button>
 
+                <button title="Ayarlar" onClick={() => setShowSettings(true)} style={iconBtnStyle}>
+                  ⚙️
+                </button>
+
                 {user ? (
                   <button title="Mesajlar" onClick={() => setActive("messages")} style={iconBtnStyle}>
                     💬
@@ -2158,10 +2174,6 @@ return (
                     ⤴️
                   </button>
                 )}
-
-                <button title="Ayarlar" onClick={() => setShowSettings(true)} style={iconBtnStyle}>
-                  ⚙️
-                </button>
 
                 {user && adminMode && adminUnlocked && (
                   <button title="Admin" onClick={() => setActive("admin")} style={iconBtnStyle}>
