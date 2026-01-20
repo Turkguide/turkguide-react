@@ -820,7 +820,7 @@ export default function App() {
   const [booted, setBooted] = useState(false);
 
   const systemTheme = useSystemTheme();
-  const [themePref, setThemePref] = useState(() => lsGet(KEY.THEME, "system"));
+  const [themePref, setThemePref] = useState("system");
   const resolvedTheme = themePref === "system" ? systemTheme : themePref;
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
 
@@ -1077,7 +1077,7 @@ useEffect(() => {
   setAdminConfig(lsGet(KEY.ADMIN_CONFIG, { admins: DEFAULT_ADMINS }));
   setAdminUnlocked(lsGet(KEY.ADMIN_UNLOCK, false));
 
-  setThemePref(lsGet(KEY.THEME, "system"));
+  setThemePref("system");
   setSettings(
     lsGet(KEY.SETTINGS, {
       chatEnabled: true,
@@ -2237,15 +2237,17 @@ return (
                   <BellIcon size={22} />
                 </button>
 
-                <button
-                  type="button"
-                  aria-label="Ayarlar"
-                  title="Ayarlar"
-                  onClick={() => setShowSettings(true)}
-                  style={iconBtnStyle}
-                >
-                  <SettingsIcon size={22} />
-                </button>
+                {user ? (
+                  <button
+                    type="button"
+                    aria-label="Ayarlar"
+                    title="Ayarlar"
+                    onClick={() => setShowSettings(true)}
+                    style={iconBtnStyle}
+                  >
+                    <SettingsIcon size={22} />
+                  </button>
+                ) : null}
 
                 {user ? (
                   <>
@@ -2269,7 +2271,10 @@ return (
                       <LogoutIcon size={22} />
                     </button>
                   </>
-                ) : (
+                ) : null}
+
+                {/* Login button should be last when logged out */}
+                {!user ? (
                   <button
                     type="button"
                     aria-label="Giriş"
@@ -2279,7 +2284,7 @@ return (
                   >
                     <LoginIcon size={22} />
                   </button>
-                )}
+                ) : null}
 
                 {user && adminMode && adminUnlocked && (
                   <button
