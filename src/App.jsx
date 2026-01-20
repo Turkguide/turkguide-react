@@ -1985,15 +1985,46 @@ function openCall(phone) {
   window.location.href = `tel:${p}`;
 }
 
+// ✅ Unread counters
+// - unreadForMe: unread message count (legacy)
+// - unreadThreadsForMe: unread "thread" count = farklı gönderen sayısı (badge bunu gösterecek)
 const unreadForMe = useMemo(() => {
   if (!user) return 0;
-  const u = normalizeUsername(user.username);
+  const me = normalizeUsername(user.username);
+
   return dms.filter((m) => {
-    const isToUser = m.toType === "user" && normalizeUsername(m.toUsername) === u;
-    const isToBiz = m.toType === "biz" && biz.some((b) => b.id === m.toBizId && normalizeUsername(b.ownerUsername) === u);
-    const read = (m.readBy || []).map(normalizeUsername).includes(u);
+    const isToUser = m.toType === "user" && normalizeUsername(m.toUsername) === me;
+    const isToBiz =
+      m.toType === "biz" &&
+      biz.some((b) => b.id === m.toBizId && normalizeUsername(b.ownerUsername) === me);
+
+    const read = (m.readBy || []).map(normalizeUsername).includes(me);
     return (isToUser || isToBiz) && !read;
   }).length;
+}, [dms, user, biz]);
+
+const unreadThreadsForMe = useMemo(() => {
+  if (!user) return 0;
+  const me = normalizeUsername(user.username);
+
+  const senders = new Set();
+
+  for (const m of dms) {
+    const isToUser = m.toType === "user" && normalizeUsername(m.toUsername) === me;
+    const isToBiz =
+      m.toType === "biz" &&
+      biz.some((b) => b.id === m.toBizId && normalizeUsername(b.ownerUsername) === me);
+
+    if (!(isToUser || isToBiz)) continue;
+
+    // kendi attığın mesajlar badge'i artırmasın
+    if (normalizeUsername(m.from) === me) continue;
+
+    const read = (m.readBy || []).map(normalizeUsername).includes(me);
+    if (!read) senders.add(normalizeUsername(m.from));
+  }
+
+  return senders.size;
 }, [dms, user, biz]);
 
 function markThreadRead(target) {
@@ -2258,9 +2289,37 @@ return (
                       aria-label="Mesajlar"
                       title="Mesajlar"
                       onClick={() => setActive("messages")}
-                      style={iconBtnStyle}
+                      style={{ ...iconBtnStyle, position: "relative" }}
                     >
                       <ChatIcon size={22} />
+
+                      {settings?.msgNotifications && unreadThreadsForMe > 0 ? (
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: -4,
+                            right: -4,
+                            minWidth: 18,
+                            height: 18,
+                            padding: "0 6px",
+                            borderRadius: 999,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 11,
+                            fontWeight: 950,
+                            lineHeight: 1,
+                            background: ui.blue,
+                            color: "#fff",
+                            border: `2px solid ${ui.top}`,
+                            boxSizing: "border-box",
+                            pointerEvents: "none",
+                            userSelect: "none",
+                          }}
+                        >
+                          {unreadThreadsForMe > 99 ? "99+" : unreadThreadsForMe}
+                        </span>
+                      ) : null}
                     </button>
 
                     <button
