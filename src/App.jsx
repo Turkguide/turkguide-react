@@ -2191,18 +2191,17 @@ return (
         }}
       >
         {/* LOGO (centered; never pushes buttons) */}
-        <div
-          style={{
-            width: "100%",
-            display: "flex",
-            justifyContent: "center",
-            pointerEvents: "none",
-            // ✅ Logo tam ortaya gelsin: sağ ikonlar için ayrılan alan kadar SOLDA da boşluk bırak
-            paddingRight: "clamp(120px, 26vw, 160px)",
-            paddingLeft: "clamp(120px, 26vw, 160px)",
-            boxSizing: "border-box",
-          }}
-        >
+<div
+  style={{
+    width: "100%",
+    display: "flex",
+    justifyContent: "center",
+    pointerEvents: "auto",   // ✅ TIKLANABİLİR
+    paddingRight: "clamp(120px, 26vw, 160px)",
+    paddingLeft: "clamp(120px, 26vw, 160px)",
+    boxSizing: "border-box",
+  }}
+>
           <div
             onClick={() => {
               setActive("biz");
