@@ -642,7 +642,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
               borderRadius: 999,
               padding: 12,
               display: "flex",
-              flexWrap: "wrap",
+              flexWrap: "nowrap",
               boxSizing: "border-box",
               gap: 10,
               alignItems: "center",
