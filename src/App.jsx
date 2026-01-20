@@ -499,20 +499,20 @@ function ToggleRow({ ui, label, desc, value, onToggle }) {
 /* ====== Landing (2. görsel) ====== */
 function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearch }) {
   const segWrap = {
-  marginTop: 40,
-  width: "100%",
-  maxWidth: "min(1100px, calc(100vw - 32px))",
-  boxSizing: "border-box",
-  background: ui.whitePanel,
-  borderRadius: 18,
-  padding: 6,
-  display: "flex",
-  gap: 6,
-  border: ui.mode === "light"
-    ? "1px solid rgba(0,0,0,0.06)"
-    : "1px solid rgba(0,0,0,0.08)",
-  boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
-};
+    marginTop: 40,
+    background: ui.whitePanel,
+    borderRadius: 18,
+    padding: 6,
+    border: ui.mode === "light" ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(0,0,0,0.08)",
+    boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
+    width: "100%",
+    boxSizing: "border-box",
+
+    // ✅ HUB kaybolmasın: flex yerine grid (mobilde 3’ü de sığdırır)
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 6,
+  };
 
   const Seg = ({ id, icon, label }) => {
     const isActive = active === id;
@@ -520,9 +520,9 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
       <div
         onClick={() => setActive(id)}
         style={{
-          flex: 1,
-          minWidth: 0,
-          padding: "12px 10px",
+          minWidth: 0, // ✅ grid içinde taşma yapmasın
+          padding: "14px 12px",
+          borderRadius: 14,
           background: isActive ? "#fff" : "transparent",
           color: isActive ? "#000" : "rgba(0,0,0,0.50)",
           display: "flex",
@@ -532,6 +532,10 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
           fontWeight: 950,
           cursor: "pointer",
           userSelect: "none",
+          textAlign: "center",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
         }}
       >
         <span style={{ opacity: isActive ? 1 : 0.75 }}>{icon}</span> {label}
@@ -540,119 +544,115 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
   };
 
   return (
-  <div
-    style={{
-      width: "100%",
-      maxWidth: "100vw",
-      overflowX: "hidden",
-      padding: "70px 0 28px",
-      // ✅ ambians full-width (kenarlara tam oturur)
-      background:
-        ui.mode === "light"
-          ? "linear-gradient(180deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 70%)"
-          : "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%)",
-    }}
-  >
-    {/* ✅ içerik max-width burada kalsın */}
-    <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 16px" }}>
-      <div style={{ display: "grid", placeItems: "center" }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "10px 16px",
-            borderRadius: 999,
-            background: "#fff",
-            color: "#0b0c10",
-            fontWeight: 950,
-            fontSize: 12,
-            letterSpacing: 0.2,
-            boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
-          }}
-        >
-          <span style={{ opacity: 0.65 }}>●</span> AMERİKA’NIN EN BÜYÜK TÜRK REHBERİ
-        </div>
+    <div
+      style={{
+        width: "100%",
+        maxWidth: "100vw",
+        overflowX: "hidden",
+        padding: "70px 0 28px",
 
-        <h1
-          style={{
-            marginTop: 26,
-            textAlign: "center",
-            fontWeight: 950,
-            color: ui.blue,
-            lineHeight: 1.05,
-            fontSize: "clamp(32px, 8.5vw, 64px)",
-            padding: "0 12px",
-            margin: "26px auto 0",
-            maxWidth: "100%",
-            overflowWrap: "anywhere",
-            wordBreak: "break-word",
-          }}
-        >
-          Discover
-          <br />
-          Turkish Businesses
-        </h1>
-
-        <div style={{ marginTop: 14, color: ui.muted, fontSize: 18, textAlign: "center" }}>
-          Amerika'nın her köşesinden Türk işletmeleri ve profesyonelleri keşfedin
-        </div>
-
-        <div
-          style={{
-            marginTop: 34,
-            width: "100%",
-            maxWidth: 760,
-            background: ui.mode === "light" ? "rgba(255,255,255,0.88)" : ui.field2,
-            border: `1px solid ${ui.border}`,
-            borderRadius: 999,
-            padding: 12,
-            display: "flex",
-            flexWrap: "wrap",
-            boxSizing: "border-box",
-            gap: 10,
-            alignItems: "center",
-            boxShadow: "0 28px 80px rgba(0,0,0,0.50)",
-          }}
-        >
-          <span style={{ opacity: 0.65, fontSize: 18, paddingLeft: 6 }}>🔍</span>
-          <input
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Tüm kategorilerde ara..."
+        // ✅ ambians full-width (kenarlara tam oturur)
+        background:
+          ui.mode === "light"
+            ? "linear-gradient(180deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 70%)"
+            : "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%)",
+      }}
+    >
+      {/* ✅ içerik max-width burada kalsın */}
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 16px", boxSizing: "border-box" }}>
+        <div style={{ display: "grid", placeItems: "center" }}>
+          <div
             style={{
-              flex: 1,
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: ui.text,
-              fontSize: 16,
-              padding: 10,
-              minWidth: 0,
-              width: "100%",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "10px 16px",
+              borderRadius: 999,
+              background: "#fff",
+              color: "#0b0c10",
+              fontWeight: 950,
+              fontSize: 12,
+              letterSpacing: 0.2,
+              boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
             }}
-          />
-          <Button
-            ui={ui}
-            variant="solidBlue"
-            onClick={onSearch}
-            style={{ padding: "12px 18px", flex: "0 0 auto", maxWidth: "100%" }}
           >
-            Ara
-          </Button>
-        </div>
+            <span style={{ opacity: 0.65 }}>●</span> AMERİKA’NIN EN BÜYÜK TÜRK REHBERİ
+          </div>
 
-        <div style={{ width: "100%", maxWidth: 1100 }}>
-          <div style={segWrap}>
-            <Seg id="biz" icon="🏢" label="İşletmeler" />
-            <Seg id="news" icon="📰" label="Haberler" />
-            <Seg id="hub" icon="👥" label="HUB" />
+          <h1
+            style={{
+              marginTop: 26,
+              textAlign: "center",
+              fontWeight: 950,
+              color: ui.blue,
+              lineHeight: 1.05,
+              fontSize: "clamp(32px, 8.5vw, 64px)",
+              padding: "0 12px",
+              margin: "26px auto 0",
+              maxWidth: "100%",
+              overflowWrap: "anywhere",
+              wordBreak: "break-word",
+            }}
+          >
+            Discover
+            <br />
+            Turkish Businesses
+          </h1>
+
+          <div style={{ marginTop: 14, color: ui.muted, fontSize: 18, textAlign: "center" }}>
+            Amerika'nın her köşesinden Türk işletmeleri ve profesyonelleri keşfedin
+          </div>
+
+          <div
+            style={{
+              marginTop: 34,
+              width: "100%",
+              maxWidth: 760,
+              background: ui.mode === "light" ? "rgba(255,255,255,0.88)" : ui.field2,
+              border: `1px solid ${ui.border}`,
+              borderRadius: 999,
+              padding: 12,
+              display: "flex",
+              flexWrap: "wrap",
+              boxSizing: "border-box",
+              gap: 10,
+              alignItems: "center",
+              boxShadow: "0 28px 80px rgba(0,0,0,0.50)",
+            }}
+          >
+            <span style={{ opacity: 0.65, fontSize: 18, paddingLeft: 6 }}>🔍</span>
+            <input
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Tüm kategorilerde ara..."
+              style={{
+                flex: 1,
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                color: ui.text,
+                fontSize: 16,
+                padding: 10,
+                minWidth: 0,
+              }}
+            />
+            <Button ui={ui} variant="solidBlue" onClick={onSearch} style={{ padding: "12px 18px", flex: "0 0 auto" }}>
+              Ara
+            </Button>
+          </div>
+
+          <div style={{ width: "100%", maxWidth: 1100, boxSizing: "border-box" }}>
+            <div style={segWrap}>
+              <Seg id="biz" icon="🏢" label="İşletmeler" />
+              <Seg id="news" icon="📰" label="Haberler" />
+              <Seg id="hub" icon="👥" label="HUB" />
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+}
 
 function CategoryGrid({ ui, counts, onPickCategory }) {
   const items = [
