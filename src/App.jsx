@@ -2224,20 +2224,22 @@ return (
               boxShadow: "none",
               WebkitTapHighlightColor: "transparent",
             };
-
+            const isAuthed = !!user?.id;
             return (
               <>
-                <button
-                  type="button"
-                  aria-label="Bildirimler"
-                  title="Bildirimler"
-                  onClick={() => setActive("notifications")}
-                  style={iconBtnStyle}
-                >
-                  <BellIcon size={22} />
-                </button>
+                {isAuthed && (
+                  <button
+                    type="button"
+                    aria-label="Bildirimler"
+                    title="Bildirimler"
+                    onClick={() => setActive("notifications")}
+                    style={iconBtnStyle}
+                  >
+                    <BellIcon size={22} />
+                  </button>
+                )}
 
-                {user ? (
+                {isAuthed ? (
                   <button
                     type="button"
                     aria-label="Ayarlar"
@@ -2249,7 +2251,7 @@ return (
                   </button>
                 ) : null}
 
-                {user ? (
+                {isAuthed ? (
                   <>
                     <button
                       type="button"
@@ -2274,7 +2276,7 @@ return (
                 ) : null}
 
                 {/* Login button should be last when logged out */}
-                {!user ? (
+                {!isAuthed ? (
                   <button
                     type="button"
                     aria-label="Giriş"
@@ -2519,9 +2521,11 @@ return (
                           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                             <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>@{c.byUsername}</Chip>
                             <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
-                            <Button ui={ui} variant="blue" onClick={() => openDmToUser(c.byUsername)} style={{ padding: "6px 12px", borderRadius: 999, fontWeight: 900 }}>
-                              Mesaj
-                            </Button>
+                            {user ? (
+                              <Button ui={ui} variant="blue" onClick={() => openDmToUser(c.byUsername)} style={{ padding: "6px 12px", borderRadius: 999, fontWeight: 900 }}>
+                                Mesaj
+                              </Button>
+                            ) : null}
                           </div>
                           <div style={{ marginTop: 8 }}>{c.text}</div>
                         </div>
