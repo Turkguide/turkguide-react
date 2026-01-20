@@ -452,7 +452,7 @@ function IconBase({ children, size = 22, strokeWidth = 2, style }) {
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ display: "block", ...style }}
+      style={{ display: "block", overflow: "visible", ...style }}
       aria-hidden="true"
       focusable="false"
     >
@@ -1376,10 +1376,12 @@ async function oauthLogin(provider) {
       return;
     }
 
-    const { error } = await supabase.auth.signInWithOAuth({
+    const redirectTo = `${window.location.origin}/auth/callback`;
+
+const { error } = await supabase.auth.signInWithOAuth({
   provider,
   options: {
-    redirectTo: "https://www.turkguide.net",
+    redirectTo,
   },
 });
 
@@ -2260,6 +2262,7 @@ return (
               cursor: "pointer",
               boxShadow: "none",
               WebkitTapHighlightColor: "transparent",
+              overflow: "visible",
             };
             const isAuthed = !!user?.id;
             return (
@@ -2319,7 +2322,7 @@ return (
                             color: "#fff",
                             border: `2px solid ${ui.top}`,
                             boxSizing: "border-box",
-                            pointerEvents: "none",
+                            pointerEvents: "auto",
                             userSelect: "none",
                           }}
                         >
