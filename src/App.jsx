@@ -2204,9 +2204,21 @@ return (
 >
           <div
             onClick={() => {
+              // Always reset UI state
               setActive("biz");
               setCategoryFilter("");
               setLandingSearch("");
+
+              // Ensure we are at the root URL (production expects this as “home”)
+              try {
+                if (window.location.pathname !== "/") {
+                  window.location.assign("/");
+                  return;
+                }
+                // If already on /, force a light "home" effect without a full reload
+                window.history.replaceState({}, document.title, "/");
+              } catch (_) {}
+
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
             style={{
