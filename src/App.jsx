@@ -509,7 +509,7 @@ function LogoutIcon(props) {
   );
 }
 
-// ====== HUB MEDIA HELPERS (Instagram-style) ======
+// ====== HUB MEDIA HELPERS (Fotograf-style) ======
 const IG_W = 1080;
 const IG_H = 1350; // 4:5
 const MAX_VIDEO_SECONDS = 60;
@@ -526,7 +526,7 @@ function fileToDataURL(file) {
   });
 }
 
-async function normalizeImageToInstagram(file) {
+async function normalizeImageToFotograf(file) {
   if (!file) throw new Error("Dosya seçilmedi");
   if (file.size > MAX_IMAGE_BYTES) throw new Error("Fotoğraf çok büyük. (max ~8MB)");
 
@@ -543,7 +543,7 @@ async function normalizeImageToInstagram(file) {
   const srcH = img.naturalHeight || img.height;
   if (!srcW || !srcH) throw new Error("Fotoğraf boyutu okunamadı");
 
-  // Cover-crop to 4:5 (Instagram feed)
+  // Cover-crop to 4:5 (Fotograf feed)
   const targetRatio = IG_W / IG_H;
   const srcRatio = srcW / srcH;
 
@@ -1032,7 +1032,7 @@ async function onPickHubMediaFile(e) {
     }
 
     const media = isImage
-      ? await normalizeImageToInstagram(file)
+      ? await normalizeImageToFotograf(file)
       : await validateAndLoadVideo(file);
 
     setHubMedia(media);
@@ -2834,7 +2834,7 @@ return (
       <div style={{ padding: 10, color: ui.muted2, fontSize: 12 }}>
         {hubMedia.kind === "video"
           ? `Video: ${Math.round((hubMedia.duration || 0) * 10) / 10}s • Max 60s • 2K`
-          : "Fotoğraf: 4:5 (Instagram)"}
+          : "Fotoğraf: 4:5"}
       </div>
     </div>
   ) : null}
@@ -2913,7 +2913,7 @@ return (
       {p.media.kind === "video" && p.media.duration
         ? `Video: ${Math.round(p.media.duration)}s • `
         : ""}
-      Instagram oranı: 4:5 • Video max 60s / 2K
+      Fotograf oranı: 4:5 • Video max 60s / 2K
     </div>
   </div>
 ) : null}
@@ -2963,7 +2963,7 @@ return (
                           {p.media.kind === "video" && p.media.duration
                             ? `Video: ${Math.round(p.media.duration)}s • `
                             : ""}
-                          Instagram oranı: 4:5 • Video max 60s / 2K
+                          Fotograf oranı: 4:5 • Video max 60s / 2K
                         </div>
                       </div>
                     ) : null}
