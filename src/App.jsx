@@ -961,6 +961,34 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
       try {
         if (!supabase?.auth) return;
 
+        // 0) OAuth errors can arrive via querystring (e.g. /auth/callback?error=...)
+        const qs = new URLSearchParams(window.location.search || "");
+        const qErr = qs.get("error");
+        const qCode = qs.get("error_code");
+        const qDesc = qs.get("error_description");
+
+        if (qErr || qCode || qDesc) {
+          const msg = decodeURIComponent(
+            qDesc ||
+              (qCode === "unexpected_failure"
+                ? "OAuth girişinde beklenmeyen bir hata oluştu. (Unable to exchange external code)"
+                : "OAuth girişinde hata oluştu.")
+          );
+
+          alert(msg);
+
+          // Clean URL (remove query + hash) to avoid stuck half-state
+          window.history.replaceState({}, document.title, window.location.pathname);
+
+          // Reset UI to home
+          setShowAuth(true);
+          setActive("biz");
+          setLandingSearch("");
+          setCategoryFilter("");
+          window.scrollTo({ top: 0, behavior: "auto" });
+          return;
+        }
+
         // ✅ Hash normalize: "#auth%23access_token" / "#auth#access_token" -> "#access_token"
         const rawHash = window.location.hash || "";
         const normalizedHash = rawHash.replace("#auth%23", "#").replace("#auth#", "#");
@@ -2197,8 +2225,8 @@ return (
     display: "flex",
     justifyContent: "center",
     pointerEvents: "auto",   // ✅ TIKLANABİLİR
-    paddingRight: "clamp(120px, 26vw, 160px)",
-    paddingLeft: "clamp(120px, 26vw, 160px)",
+    paddingRight: "clamp(64px, 18vw, 140px)",
+    paddingLeft: "clamp(64px, 18vw, 140px)",
     boxSizing: "border-box",
   }}
 >
@@ -2225,18 +2253,18 @@ return (
               transform: "translateY(1px)",
               cursor: "pointer",
               whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
               maxWidth: "100%",
               pointerEvents: "auto",
             }}
           >
             <div
               style={{
-                fontSize: "clamp(28px, 7.2vw, 48px)",
+                fontSize: "clamp(24px, 6.5vw, 44px)",
                 fontWeight: 950,
-                letterSpacing: -1,
-                lineHeight: 1,
+                letterSpacing: -0.8,
+                lineHeight: 1.05,
+                whiteSpace: "nowrap",
+                maxWidth: "100%",
               }}
             >
               Turk<span style={{ color: ui.blue }}>G</span>uide
