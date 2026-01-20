@@ -1011,35 +1011,7 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
   // HUB media picker ref (hidden input)
   const hubMediaPickRef = useRef(null);
 
-function pickHubMedia() {
-  hubMediaPickRef.current?.click();
-}
-
-async function onPickHubMediaFile(e) {
-  const file = e.target.files?.[0];
-  e.target.value = "";
-  if (!file) return;
-
-  try {
-    const isVideo = (file.type || "").startsWith("video/");
-    const isImage = (file.type || "").startsWith("image/");
-
-    if (!isVideo && !isImage) {
-      alert("Sadece fotoğraf veya video yükleyebilirsin.");
-      return;
-    }
-
-    const media = isImage
-      ? await normalizeImageToInstagram(file)
-      : await validateAndLoadVideo(file);
-
-    setHubMedia(media);
-  } catch (err) {
-    console.error("HUB media error:", err);
-    alert(err?.message || "Medya yüklenemedi");
-    setHubMedia(null);
-  }
-}
+  
 
 function pickHubMedia() {
   hubMediaPickRef.current?.click();
@@ -1790,7 +1762,7 @@ function confirmDelete() {
 function hubShare() {
   if (!requireAuth()) return;
   const text = String(composer || "").trim();
-  if (!text) return;
+if (!text && !hubMedia) return;
 
   const post = {
   id: uid(),
@@ -2763,18 +2735,121 @@ return (
               </div>
 
               <div style={{ marginTop: 12 }}>
-                <textarea
-                  placeholder={user ? "Bir şey yaz ve paylaş..." : "Paylaşmak için giriş yap"}
-                  value={composer}
-                  onChange={(e) => setComposer(e.target.value)}
-                  onFocus={() => { if (!user) setShowAuth(true); }}
-                  style={inputStyle(ui, { minHeight: 90, borderRadius: 14, resize: "vertical" })}
-                />
-                <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <Button ui={ui} variant="solidBlue" onClick={hubShare}>Paylaş</Button>
-                  <Button ui={ui} onClick={() => setComposer("")} disabled={!composer}>Temizle</Button>
-                </div>
-              </div>
+  {/* Hidden media input */}
+  <input
+    ref={hubMediaPickRef}
+    type="file"
+    accept="image/*,video/*"
+    style={{ display: "none" }}
+    onChange={onPickHubMediaFile}
+  />
+
+  <textarea
+    placeholder={user ? "Bir şey yaz ve paylaş..." : "Paylaşmak için giriş yap"}
+    value={composer}
+    onChange={(e) => setComposer(e.target.value)}
+    onFocus={() => { if (!user) setShowAuth(true); }}
+    style={inputStyle(ui, { minHeight: 90, borderRadius: 14, resize: "vertical" })}
+  />
+
+  {/* Media picker row */}
+  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+    <Button
+      ui={ui}
+      onClick={() => {
+        if (!user) { setShowAuth(true); return; }
+        pickHubMedia();
+      }}
+      title="Fotoğraf veya video ekle"
+    >
+      + Foto/Video Ekle
+    </Button>
+
+    {hubMedia ? (
+      <Chip ui={ui} title={hubMedia.originalName || ""}>
+        {hubMedia.kind === "video"
+          ? `Video • ${Math.round((hubMedia.duration || 0) * 10) / 10}s`
+          : "Fotoğraf • 4:5"}
+      </Chip>
+    ) : (
+      <span style={{ color: ui.muted2, fontSize: 12 }}>
+        Instagram oranı: 4:5 • Video max 60s • 2K’ye kadar
+      </span>
+    )}
+  </div>
+
+  {/* Preview */}
+  {hubMedia ? (
+    <div
+      style={{
+        marginTop: 10,
+        border: `1px solid ${ui.border}`,
+        borderRadius: 18,
+        overflow: "hidden",
+        background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+        maxWidth: 420,
+      }}
+    >
+      <div style={{ position: "relative" }}>
+        <div style={{ width: "100%", aspectRatio: "4 / 5" }}>
+          {hubMedia.kind === "image" ? (
+            <img
+              src={hubMedia.src}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+          ) : (
+            <video
+              src={hubMedia.src}
+              controls
+              playsInline
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setHubMedia(null)}
+          aria-label="Medya kaldır"
+          title="Kaldır"
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            width: 34,
+            height: 34,
+            borderRadius: 999,
+            border: `1px solid ${ui.border}`,
+            background: ui.mode === "light" ? "rgba(255,255,255,0.92)" : "rgba(10,12,18,0.82)",
+            color: ui.text,
+            cursor: "pointer",
+            fontWeight: 950,
+          }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div style={{ padding: 10, color: ui.muted2, fontSize: 12 }}>
+        {hubMedia.kind === "video"
+          ? `Video: ${Math.round((hubMedia.duration || 0) * 10) / 10}s • Max 60s • 2K`
+          : "Fotoğraf: 4:5 (Instagram)"}
+      </div>
+    </div>
+  ) : null}
+
+  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+    <Button ui={ui} variant="solidBlue" onClick={hubShare}>Paylaş</Button>
+    <Button
+      ui={ui}
+      onClick={() => { setComposer(""); setHubMedia(null); }}
+      disabled={!composer && !hubMedia}
+    >
+      Temizle
+    </Button>
+  </div>
+</div>
             </Card>
 
             {posts.length === 0 ? (
