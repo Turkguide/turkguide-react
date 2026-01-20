@@ -994,6 +994,72 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
 const [editingPostId, setEditingPostId] = useState(null);
 const [editPostDraft, setEditPostDraft] = useState("");
 
+// HUB post author resolver (backward compatible)
+function hubPostAuthor(p) {
+  return String((p && (p.byUsername || p.by || p.username || p.ownerUsername || p.author)) || "").trim();
+}
+
+function canEditPost(p) {
+  if (!user) return false;
+  if (adminMode) return true;
+  const author = hubPostAuthor(p);
+  if (!author) return false;
+  return normalizeUsername(author) === normalizeUsername(user.username);
+}
+
+function startEditPost(p) {
+  if (!requireAuth()) return;
+  if (!canEditPost(p)) return;
+  setEditingPostId(p.id);
+  setEditPostDraft(String(p.content || ""));
+}
+
+function cancelEditPost() {
+  setEditingPostId(null);
+  setEditPostDraft("");
+}
+
+function saveEditPost(postId) {
+  if (!requireAuth()) return;
+  const text = String(editPostDraft || "").trim();
+
+  const target = posts.find((x) => x.id === postId);
+  if (!target) return;
+
+  if (!text && !target.media) {
+    alert("İçerik boş olamaz.");
+    return;
+  }
+
+  setPosts((prev) =>
+    prev.map((p) => {
+      if (p.id !== postId) return p;
+      if (!canEditPost(p)) return p;
+      return { ...p, content: text, editedAt: now() };
+    })
+  );
+
+  setEditingPostId(null);
+  setEditPostDraft("");
+}
+
+function deletePost(postId) {
+  if (!requireAuth()) return;
+
+  const p = posts.find((x) => x.id === postId);
+  if (!p || !canEditPost(p)) return;
+
+  const ok = confirm("Bu paylaşımı silmek istiyor musun?");
+  if (!ok) return;
+
+  setPosts((prev) => prev.filter((x) => x.id !== postId));
+
+  if (editingPostId === postId) {
+    setEditingPostId(null);
+    setEditPostDraft("");
+  }
+}
+
   // Profile view
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileTarget, setProfileTarget] = useState(null);
@@ -2863,15 +2929,26 @@ return (
                 {posts.map((p) => (
                   <Card ui={ui} key={p.id} style={{ background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                      <Chip ui={ui} onClick={() => openProfileByUsername(p.byUsername)}>
-                        @{p.byUsername}
-                      </Chip>
+                     <Chip ui={ui} onClick={() => openProfileByUsername(hubPostAuthor(p))}>
+  @{hubPostAuthor(p)}
+</Chip>
                       <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(p.createdAt)}</span>
                     </div>
 
-                    <div style={{ marginTop: 10, fontSize: 18, fontWeight: 900 }}>
-                      {p.content}
-                    </div>
+                    {editingPostId === p.id ? (
+  <textarea
+    value={editPostDraft}
+    onChange={(e) => setEditPostDraft(e.target.value)}
+    style={inputStyle(ui, { minHeight: 90, borderRadius: 14, resize: "vertical", marginTop: 10 })}
+  />
+) : (
+  <div style={{ marginTop: 10, fontSize: 18, fontWeight: 900 }}>
+    {p.content}
+  </div>
+)}
+{p.editedAt ? (
+  <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>Düzenlendi</div>
+) : null}
                     {p.media ? (
   <div style={{ marginTop: 12 }}>
     <div
@@ -2971,10 +3048,24 @@ return (
                         </div>
                       </div>
                     ) : null}
-
+{canEditPost(p) ? (
+  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+    {editingPostId === p.id ? (
+      <>
+        <Button ui={ui} variant="ok" onClick={() => saveEditPost(p.id)}>Kaydet</Button>
+        <Button ui={ui} onClick={cancelEditPost}>İptal</Button>
+      </>
+    ) : (
+      <>
+        <Button ui={ui} variant="blue" onClick={() => startEditPost(p)}>✏️ Düzenle</Button>
+        <Button ui={ui} variant="danger" onClick={() => deletePost(p.id)}>🗑️ Sil</Button>
+      </>
+    )}
+  </div>
+) : null}
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
                       <Button ui={ui} onClick={() => hubLike(p.id)}>Like ({p.likes || 0})</Button>
-                      <Button ui={ui} variant="solidBlue" onClick={() => openDmToUser(p.byUsername)}>💬 Mesaj</Button>
+                      <Button ui={ui} variant="solidBlue" onClick={() => openDmToUser(hubPostAuthor(p))}>💬 Mesaj</Button>
                     </div>
 
                     <Divider ui={ui} />
