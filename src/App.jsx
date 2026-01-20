@@ -440,6 +440,75 @@ function Divider({ ui }) {
   return <div style={{ height: 1, background: ui.mode === "light" ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.10)", margin: "16px 0" }} />;
 }
 
+// ====== ICONS (SVG) — kurumsal / aynı çizgi kalınlığı ======
+function IconBase({ children, size = 22, strokeWidth = 2, style }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ display: "block", ...style }}
+      aria-hidden="true"
+      focusable="false"
+    >
+      {children}
+    </svg>
+  );
+}
+
+function BellIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V4a2 2 0 1 0-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" />
+      <path d="M9 17a3 3 0 0 0 6 0" />
+    </IconBase>
+  );
+}
+
+function ChatIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+    </IconBase>
+  );
+}
+
+function SettingsIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-1.41 3.41h-.2a1.65 1.65 0 0 0-1.58 1.12 2 2 0 0 1-3.8 0A1.65 1.65 0 0 0 11.2 21H11a2 2 0 0 1-1.41-3.41l.06-.06A1.65 1.65 0 0 0 10 15.4a1.65 1.65 0 0 0-1.82-.33l-.06.06A2 2 0 0 1 4.7 13.7v-.2A1.65 1.65 0 0 0 3.58 11.9a2 2 0 0 1 0-3.8A1.65 1.65 0 0 0 4.7 6.6v-.2A2 2 0 0 1 8.1 5l.06.06A1.65 1.65 0 0 0 10 4.6a1.65 1.65 0 0 0 .33-1.82l-.06-.06A2 2 0 0 1 11.7.3h.2a1.65 1.65 0 0 0 1.6-1.12 2 2 0 0 1 3.8 0A1.65 1.65 0 0 0 19 1h.2a2 2 0 0 1 1.41 3.41l-.06.06A1.65 1.65 0 0 0 20 6.4c0 .65.39 1.24 1 1.5a2 2 0 0 1 0 3.8c-.61.26-1 .85-1 1.5z" />
+    </IconBase>
+  );
+}
+
+function LoginIcon(props) {
+  // arrow into bracket
+  return (
+    <IconBase {...props}>
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <path d="M10 17l5-5-5-5" />
+      <path d="M15 12H3" />
+    </IconBase>
+  );
+}
+
+function LogoutIcon(props) {
+  // arrow out of bracket
+  return (
+    <IconBase {...props}>
+      <path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4" />
+      <path d="M14 17l5-5-5-5" />
+      <path d="M19 12H7" />
+    </IconBase>
+  );
+}
+
 /** Read file as base64 for avatar uploads */
 function useFileToBase64() {
   const pickRef = useRef(null);
@@ -2096,8 +2165,8 @@ return (
             justifyContent: "center",
             pointerEvents: "none",
             // ✅ Logo tam ortaya gelsin: sağ ikonlar için ayrılan alan kadar SOLDA da boşluk bırak
-            paddingRight: "clamp(96px, 22vw, 140px)",
-            paddingLeft: "clamp(96px, 22vw, 140px)",
+            paddingRight: "clamp(120px, 26vw, 160px)",
+            paddingLeft: "clamp(120px, 26vw, 160px)",
             boxSizing: "border-box",
           }}
         >
@@ -2129,27 +2198,26 @@ return (
         <div
           style={{
             position: "absolute",
-            right: 8,
+            right: 10,
             top: "50%",
             transform: "translateY(-50%)",
             display: "flex",
             alignItems: "center",
-            gap: 8,
+            gap: 10,
             flexWrap: "nowrap",
           }}
         >
           {(() => {
             const iconBtnStyle = {
-              width: 28,
-              height: 28,
-              borderRadius: 9,
+              width: 34,
+              height: 34,
+              borderRadius: 10,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               border: "none",
-              background: "transparent",
+              background: "transparent", // ✅ kare yok
               color: ui.text,
-              fontSize: 15,
               padding: 0,
               lineHeight: 1,
               cursor: "pointer",
@@ -2159,24 +2227,72 @@ return (
 
             return (
               <>
-                <button title="Bildirimler" onClick={() => setActive("notifications")} style={iconBtnStyle}>
-                  🔔
+                <button
+                  type="button"
+                  aria-label="Bildirimler"
+                  title="Bildirimler"
+                  onClick={() => setActive("notifications")}
+                  style={iconBtnStyle}
+                >
+                  <BellIcon size={22} />
                 </button>
-                <button title="Ayarlar" onClick={() => setShowSettings(true)} style={iconBtnStyle}>
-                  ⚙️
+
+                <button
+                  type="button"
+                  aria-label="Ayarlar"
+                  title="Ayarlar"
+                  onClick={() => setShowSettings(true)}
+                  style={iconBtnStyle}
+                >
+                  <SettingsIcon size={22} />
                 </button>
+
                 {user ? (
-                  <button title="Mesajlar" onClick={() => setActive("messages")} style={iconBtnStyle}>
-                    💬
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Mesajlar"
+                      title="Mesajlar"
+                      onClick={() => setActive("messages")}
+                      style={iconBtnStyle}
+                    >
+                      <ChatIcon size={22} />
+                    </button>
+
+                    <button
+                      type="button"
+                      aria-label="Çıkış Yap"
+                      title="Çıkış Yap"
+                      onClick={logout}
+                      style={iconBtnStyle}
+                    >
+                      <LogoutIcon size={22} />
+                    </button>
+                  </>
                 ) : (
-                  <button title="Giriş" onClick={() => setShowAuth(true)} style={iconBtnStyle}>
-                    ⤴️
+                  <button
+                    type="button"
+                    aria-label="Giriş"
+                    title="Giriş"
+                    onClick={() => setShowAuth(true)}
+                    style={iconBtnStyle}
+                  >
+                    <LoginIcon size={22} />
                   </button>
                 )}
+
                 {user && adminMode && adminUnlocked && (
-                  <button title="Admin" onClick={() => setActive("admin")} style={iconBtnStyle}>
-                    🛡️
+                  <button
+                    type="button"
+                    aria-label="Admin"
+                    title="Admin"
+                    onClick={() => setActive("admin")}
+                    style={iconBtnStyle}
+                  >
+                    {/* Basit kalkan svg */}
+                    <IconBase size={22}>
+                      <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
+                    </IconBase>
                   </button>
                 )}
               </>
