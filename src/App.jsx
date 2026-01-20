@@ -2081,7 +2081,7 @@ return (
         style={{
           maxWidth: 1240,
           margin: "0 auto",
-          padding: "10px 12px", // ✅ mobilde daha dengeli
+          padding: "10px 12px", // ✅ mobilde daha ince
           display: "grid",
           gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
@@ -2090,10 +2090,10 @@ return (
       >
         <div />
 
-        <div style={{ transform: "translateY(2px)", cursor: "pointer", minWidth: 0 }}>
+        <div style={{ transform: "translateY(1px)", cursor: "pointer", minWidth: 0 }}>
           <div
             style={{
-              fontSize: "clamp(34px, 9vw, 56px)", // ✅ mobilde küçülür
+              fontSize: "clamp(34px, 9vw, 56px)", // ✅ mobilde otomatik küçülür
               fontWeight: 950,
               letterSpacing: -1,
               lineHeight: 1,
@@ -2113,138 +2113,62 @@ return (
             gap: 8,
             flexWrap: "nowrap",
             maxWidth: "100%",
-            overflow: "hidden",
+            overflow: "visible", // ✅ hidden yüzünden buton kaybolmasın
             minWidth: 0,
           }}
         >
-          {/* Notifications */}
-          <button
-            type="button"
-            title="Bildirimler"
-            onClick={() => setActive("notifications")}
-            style={{
-              width: 40,
-              height: 40,
+          {(() => {
+            const iconBtnStyle = {
+              width: 36,
+              height: 36,
               borderRadius: 12,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              border: `1px solid ${ui.border}`,
-              background: ui.mode === "light" ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.06)",
+              border: `1px solid ${ui.border}`, // ✅ kareler kalsın
+              background: ui.mode === "light" ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.04)", // ✅ daha minimal
               color: ui.text,
               cursor: "pointer",
-              fontSize: 18,
+              fontSize: 16,
               padding: 0,
               lineHeight: 1,
               flex: "0 0 auto",
-            }}
-          >
-            🔔
-          </button>
+              boxShadow: "none", // ✅ belirginlik azalır
+              WebkitTapHighlightColor: "transparent",
+            };
 
-          {/* Messages (only when logged in) */}
-          {user ? (
-            <button
-              type="button"
-              title="Mesajlar"
-              onClick={() => setActive("messages")}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: `1px solid ${ui.border}`,
-                background: ui.mode === "light" ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.06)",
-                color: ui.text,
-                cursor: "pointer",
-                fontSize: 18,
-                padding: 0,
-                lineHeight: 1,
-                flex: "0 0 auto",
-              }}
-            >
-              💬
-            </button>
-          ) : (
-            /* Login (only when logged out) */
-            <button
-              type="button"
-              title="Giriş"
-              onClick={() => setShowAuth(true)}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: `1px solid ${ui.border}`,
-                background: ui.mode === "light" ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.06)",
-                color: ui.text,
-                cursor: "pointer",
-                fontSize: 18,
-                padding: 0,
-                lineHeight: 1,
-                flex: "0 0 auto",
-              }}
-            >
-              ⤴️
-            </button>
-          )}
+            return (
+              <>
+                {/* Notifications */}
+                <button type="button" title="Bildirimler" onClick={() => setActive("notifications")} style={iconBtnStyle}>
+                  🔔
+                </button>
 
-          {/* Settings */}
-          <button
-            type="button"
-            title="Ayarlar"
-            onClick={() => setShowSettings(true)}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: `1px solid ${ui.border}`,
-              background: ui.mode === "light" ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.06)",
-              color: ui.text,
-              cursor: "pointer",
-              fontSize: 18,
-              padding: 0,
-              lineHeight: 1,
-              flex: "0 0 auto",
-            }}
-          >
-            ⚙️
-          </button>
+                {/* Messages (only when logged in) OR Login (when logged out) */}
+                {user ? (
+                  <button type="button" title="Mesajlar" onClick={() => setActive("messages")} style={iconBtnStyle}>
+                    💬
+                  </button>
+                ) : (
+                  <button type="button" title="Giriş" onClick={() => setShowAuth(true)} style={iconBtnStyle}>
+                    ⤴️
+                  </button>
+                )}
 
-          {/* Optional Admin (only if unlocked) */}
-          {user && adminMode && adminUnlocked && (
-            <button
-              type="button"
-              title="Admin"
-              onClick={() => setActive("admin")}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: `1px solid ${ui.border}`,
-                background: ui.mode === "light" ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.06)",
-                color: ui.text,
-                cursor: "pointer",
-                fontSize: 18,
-                padding: 0,
-                lineHeight: 1,
-                flex: "0 0 auto",
-              }}
-            >
-              🛡️
-            </button>
-          )}
+                {/* Settings */}
+                <button type="button" title="Ayarlar" onClick={() => setShowSettings(true)} style={iconBtnStyle}>
+                  ⚙️
+                </button>
+
+                {/* Optional Admin (only if unlocked) */}
+                {user && adminMode && adminUnlocked && (
+                  <button type="button" title="Admin" onClick={() => setActive("admin")} style={iconBtnStyle}>
+                    🛡️
+                  </button>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
