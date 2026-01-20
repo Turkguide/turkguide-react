@@ -2081,7 +2081,7 @@ return (
         style={{
           maxWidth: 1240,
           margin: "0 auto",
-          padding: "10px 12px", // ✅ mobilde daha ince
+          padding: "10px 12px",
           display: "grid",
           gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
           alignItems: "center",
@@ -2091,79 +2091,112 @@ return (
       >
         <div />
 
-        <div style={{ transform: "translateY(1px)", cursor: "pointer", minWidth: 0 }}>
+        {/* LOGO (dar ekranda kırpılır -> ikonlar kaybolmaz) */}
+        <div
+          style={{
+            transform: "translateY(1px)",
+            cursor: "pointer",
+            minWidth: 0,
+            maxWidth: "56vw",
+            justifySelf: "center",
+          }}
+        >
           <div
             style={{
-              fontSize: "clamp(34px, 9vw, 56px)", // ✅ mobilde otomatik küçülür
+              fontSize: "clamp(32px, 8.5vw, 56px)",
               fontWeight: 950,
               letterSpacing: -1,
               lineHeight: 1,
               whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             Turk<span style={{ color: ui.blue }}>G</span>uide
           </div>
         </div>
 
-        {/* RIGHT ACTIONS — icon only */}
+        {/* RIGHT ACTIONS */}
         <div
           style={{
             display: "flex",
             justifyContent: "flex-end",
             alignItems: "center",
-            gap: 8,
+            gap: 6,
             flexWrap: "nowrap",
-            maxWidth: "100%",
-            overflow: "visible", // ✅ hidden yüzünden buton kaybolmasın
             minWidth: 0,
+            overflow: "visible",
+            justifySelf: "end",
+            flexShrink: 0,
           }}
         >
           {(() => {
             const iconBtnStyle = {
-              width: 36,
-              height: 36,
-              borderRadius: 12,
+              width: 32,
+              height: 32,
+              borderRadius: 10,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              border: `1px solid ${ui.border}`, // ✅ kareler kalsın
-              background: ui.mode === "light" ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.04)", // ✅ daha minimal
+              border: `1px solid ${ui.border}`,
+              background: ui.mode === "light" ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.03)",
               color: ui.text,
               cursor: "pointer",
-              fontSize: 16,
+              fontSize: 15,
               padding: 0,
               lineHeight: 1,
-              flex: "0 0 auto",
-              boxShadow: "none", // ✅ belirginlik azalır
+              flexShrink: 0,
+              boxShadow: "none",
               WebkitTapHighlightColor: "transparent",
             };
 
             return (
               <>
-                {/* Notifications */}
-                <button type="button" title="Bildirimler" onClick={() => setActive("notifications")} style={iconBtnStyle}>
+                <button
+                  type="button"
+                  title="Bildirimler"
+                  onClick={() => setActive("notifications")}
+                  style={iconBtnStyle}
+                >
                   🔔
                 </button>
 
-                {/* Messages (only when logged in) OR Login (when logged out) */}
                 {user ? (
-                  <button type="button" title="Mesajlar" onClick={() => setActive("messages")} style={iconBtnStyle}>
+                  <button
+                    type="button"
+                    title="Mesajlar"
+                    onClick={() => setActive("messages")}
+                    style={iconBtnStyle}
+                  >
                     💬
                   </button>
                 ) : (
-                  <button type="button" title="Giriş" onClick={() => setShowAuth(true)} style={iconBtnStyle}>
+                  <button
+                    type="button"
+                    title="Giriş"
+                    onClick={() => setShowAuth(true)}
+                    style={iconBtnStyle}
+                  >
                     ⤴️
                   </button>
                 )}
 
-                {/* Settings */}
-                <button type="button" title="Ayarlar" onClick={() => setShowSettings(true)} style={iconBtnStyle}>
+                <button
+                  type="button"
+                  title="Ayarlar"
+                  onClick={() => setShowSettings(true)}
+                  style={iconBtnStyle}
+                >
                   ⚙️
                 </button>
 
-                {/* Optional Admin (only if unlocked) */}
                 {user && adminMode && adminUnlocked && (
-                  <button type="button" title="Admin" onClick={() => setActive("admin")} style={iconBtnStyle}>
+                  <button
+                    type="button"
+                    title="Admin"
+                    onClick={() => setActive("admin")}
+                    style={iconBtnStyle}
+                  >
                     🛡️
                   </button>
                 )}
