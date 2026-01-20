@@ -2081,7 +2081,7 @@ return (
         style={{
           maxWidth: 1240,
           margin: "0 auto",
-          padding: "16px 16px",
+          padding: "10px 12px", // ✅ mobilde daha dengeli
           display: "grid",
           gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
@@ -2090,8 +2090,16 @@ return (
       >
         <div />
 
-        <div style={{ transform: "translateY(2px)", cursor: "pointer" }}>
-          <div style={{ fontSize: 56, fontWeight: 950, letterSpacing: -1, lineHeight: 1 }}>
+        <div style={{ transform: "translateY(2px)", cursor: "pointer", minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: "clamp(34px, 9vw, 56px)", // ✅ mobilde küçülür
+              fontWeight: 950,
+              letterSpacing: -1,
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+            }}
+          >
             Turk<span style={{ color: ui.blue }}>G</span>uide
           </div>
         </div>
@@ -2102,10 +2110,11 @@ return (
             display: "flex",
             justifyContent: "flex-end",
             alignItems: "center",
-            gap: 10,
+            gap: 8,
             flexWrap: "nowrap",
             maxWidth: "100%",
             overflow: "hidden",
+            minWidth: 0,
           }}
         >
           {/* Notifications */}
@@ -2114,9 +2123,9 @@ return (
             title="Bildirimler"
             onClick={() => setActive("notifications")}
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 14,
+              width: 40,
+              height: 40,
+              borderRadius: 12,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -2140,9 +2149,9 @@ return (
               title="Mesajlar"
               onClick={() => setActive("messages")}
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: 14,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2165,9 +2174,9 @@ return (
               title="Giriş"
               onClick={() => setShowAuth(true)}
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: 14,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2191,9 +2200,9 @@ return (
             title="Ayarlar"
             onClick={() => setShowSettings(true)}
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 14,
+              width: 40,
+              height: 40,
+              borderRadius: 12,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -2217,9 +2226,9 @@ return (
               title="Admin"
               onClick={() => setActive("admin")}
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: 14,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2240,7 +2249,7 @@ return (
       </div>
     </div>
 
-    {/* ...devamı sende... */}
+
 
 
       {/* CONTENT */}
