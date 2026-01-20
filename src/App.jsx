@@ -604,7 +604,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
               maxWidth: "100%",
             }}
           >
-            <span style={{ opacity: 0.65 }}>●</span> AMERİKA’NIN EN BÜYÜK TÜRK REHBERİ
+            <span style={{ opacity: 0.65 }}>●</span> DÜNYANIN İLK TÜRK İŞLETMELER REHBERİ
           </div>
 
           <h1
@@ -629,7 +629,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
           </h1>
 
           <div style={{ marginTop: 14, color: ui.muted, fontSize: 18, textAlign: "center" }}>
-            Amerika'nın her köşesinden Türk işletmeleri ve profesyonelleri keşfedin
+            Dünyanın her köşesinden Türk işletmeleri ve profesyonelleri keşfedin
           </div>
 
           <div
