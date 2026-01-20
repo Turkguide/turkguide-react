@@ -2095,46 +2095,56 @@ return (
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <Button ui={ui} variant="blue" onClick={() => setShowSettings(true)} title="Ayarlar">
-            ⚙️ Ayarlar
-          </Button>
+        <div
+  style={{
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+    maxWidth: "100%",
+    overflow: "hidden",
+  }}
+>
+  <Button
+    ui={ui}
+    variant="blue"
+    onClick={() => setShowSettings(true)}
+    title="Ayarlar"
+    style={{ whiteSpace: "nowrap" }}
+  >
+    ⚙️ Ayarlar
+  </Button>
 
-          {user ? (
-            <>
-              {adminMode && adminUnlocked && (
-                <Button ui={ui} onClick={() => setActive("admin")} variant="blue">
-                  🛡️ Admin
-                </Button>
-              )}
+  {user ? (
+    <>
+      {adminMode && adminUnlocked && (
+        <Button ui={ui} onClick={() => setActive("admin")} variant="blue" style={{ whiteSpace: "nowrap" }}>
+          🛡️ Admin
+        </Button>
+      )}
 
-              <Chip
-                ui={ui}
-                onClick={() => {
-                  setProfileTarget({ type: "user", userId: user.id, username: user.username });
-                  setProfileOpen(true);
-                }}
-              >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-                  <Avatar ui={ui} src={user.avatar} size={28} label={user.username} />
-                  @{user.username}
-                </span>
-              </Chip>
+      <Chip
+        ui={ui}
+        onClick={() => {
+          setProfileTarget({ type: "user", userId: user.id, username: user.username });
+          setProfileOpen(true);
+        }}
+        style={{ whiteSpace: "nowrap" }}
+      >
+        @{user.username}
+      </Chip>
 
-              <Chip ui={ui} title="Okunmamış mesaj" style={{ opacity: unreadForMe ? 1 : 0.65 }}>
-                💬 {unreadForMe}
-              </Chip>
-
-              <Button ui={ui} onClick={logout} variant="danger">
-                Çıkış
-              </Button>
-            </>
-          ) : (
-            <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue">
-              ⤴︎ Giriş
-            </Button>
-          )}
-        </div>
+      <Button ui={ui} onClick={logout} variant="danger" style={{ whiteSpace: "nowrap" }}>
+        Çıkış
+      </Button>
+    </>
+  ) : (
+    <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue" style={{ whiteSpace: "nowrap" }}>
+      ⤴︎ Giriş
+    </Button>
+  )}
+</div>
       </div>
     </div>
 
