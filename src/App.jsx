@@ -515,33 +515,36 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
   };
 
   const Seg = ({ id, icon, label }) => {
-    const isActive = active === id;
-    return (
-      <div
-        onClick={() => setActive(id)}
-        style={{
-          minWidth: 0, // ✅ grid içinde taşma yapmasın
-          padding: "14px 12px",
-          borderRadius: 14,
-          background: isActive ? "#fff" : "transparent",
-          color: isActive ? "#000" : "rgba(0,0,0,0.50)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-          fontWeight: 950,
-          cursor: "pointer",
-          userSelect: "none",
-          textAlign: "center",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        <span style={{ opacity: isActive ? 1 : 0.75 }}>{icon}</span> {label}
-      </div>
-    );
-  };
+  const isActive = active === id;
+
+  return (
+    <div
+      onClick={() => setActive(id)}
+      style={{
+        flex: 1,
+        minWidth: 0,
+        padding: "14px 12px",
+        borderRadius: 14,
+        background: isActive ? "#fff" : "rgba(255,255,255,0.55)",
+        color: "#000",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        fontWeight: 950,
+        cursor: "pointer",
+        userSelect: "none",
+        textAlign: "center",
+        whiteSpace: "nowrap",
+        boxShadow: isActive ? "0 10px 26px rgba(0,0,0,0.12)" : "none",
+        opacity: isActive ? 1 : 0.9,
+      }}
+    >
+      <span style={{ opacity: isActive ? 1 : 0.8 }}>{icon}</span>
+      {label}
+    </div>
+  );
+};
 
   return (
     <div
@@ -641,13 +644,27 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
             </Button>
           </div>
 
-          <div style={{ width: "100%", maxWidth: 1100, boxSizing: "border-box" }}>
-            <div style={segWrap}>
-              <Seg id="biz" icon="🏢" label="İşletmeler" />
-              <Seg id="news" icon="📰" label="Haberler" />
-              <Seg id="hub" icon="👥" label="HUB" />
-            </div>
-          </div>
+          <div
+  style={{
+    width: "100%",
+    padding: "0 8px",
+    boxSizing: "border-box",
+    display: "flex",
+    justifyContent: "center",
+  }}
+>
+  <div
+    style={{
+      ...segWrap,
+      width: "100%",
+      maxWidth: 1000,
+    }}
+  >
+    <Seg id="biz" icon="🏢" label="İşletmeler" />
+    <Seg id="news" icon="📰" label="Haberler" />
+    <Seg id="hub" icon="👥" label="HUB" />
+  </div>
+</div>
         </div>
       </div>
     </div>
