@@ -497,6 +497,7 @@ function ToggleRow({ ui, label, desc, value, onToggle }) {
 }
 
 /* ====== Landing (2. görsel) ====== */
+/* ====== Landing (2. görsel) ====== */
 function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearch }) {
   const segWrap = {
     marginTop: 40,
@@ -520,7 +521,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
       <div
         onClick={() => setActive(id)}
         style={{
-          minWidth: 0, // ✅ grid içinde taşma yapmasın
+          minWidth: 0,
           padding: "14px 12px",
           borderRadius: 14,
           background: isActive ? "#fff" : "transparent",
@@ -538,28 +539,36 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
           textOverflow: "ellipsis",
         }}
       >
-        <span style={{ opacity: isActive ? 1 : 0.75 }}>{icon}</span> {label}
+        <span style={{ opacity: isActive ? 1 : 0.75, flex: "0 0 auto" }}>{icon}</span>
+        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
       </div>
     );
   };
 
   return (
+    // ✅ FULL-WIDTH HERO (gri ambians sağ-sol tam dolar)
     <div
       style={{
-        width: "100%",
-        maxWidth: "100vw",
-        overflowX: "hidden",
+        width: "100vw",
+        marginLeft: "calc(50% - 50vw)",
         padding: "70px 0 28px",
-
-        // ✅ ambians full-width (kenarlara tam oturur)
+        overflow: "hidden",
         background:
           ui.mode === "light"
-            ? "linear-gradient(180deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 70%)"
-            : "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%)",
+            ? "linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0) 75%)"
+            : "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 75%)",
       }}
     >
       {/* ✅ içerik max-width burada kalsın */}
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 16px", boxSizing: "border-box" }}>
+      <div
+        style={{
+          maxWidth: 1240,
+          margin: "0 auto",
+          padding: "0 16px",
+          boxSizing: "border-box",
+          width: "100%",
+        }}
+      >
         <div style={{ display: "grid", placeItems: "center" }}>
           <div
             style={{
@@ -574,6 +583,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
               fontSize: 12,
               letterSpacing: 0.2,
               boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
+              maxWidth: "100%",
             }}
           >
             <span style={{ opacity: 0.65 }}>●</span> AMERİKA’NIN EN BÜYÜK TÜRK REHBERİ
@@ -588,7 +598,8 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
               lineHeight: 1.05,
               fontSize: "clamp(32px, 8.5vw, 64px)",
               padding: "0 12px",
-              margin: "26px auto 0",
+              marginLeft: "auto",
+              marginRight: "auto",
               maxWidth: "100%",
               overflowWrap: "anywhere",
               wordBreak: "break-word",
