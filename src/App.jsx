@@ -516,34 +516,38 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
   };
 
   const Seg = ({ id, icon, label }) => {
-    const isActive = active === id;
-    return (
-      <div
-        onClick={() => setActive(id)}
-        style={{
-          minWidth: 0,
-          padding: "14px 12px",
-          borderRadius: 14,
-          background: isActive ? "#fff" : "transparent",
-          color: isActive ? "#000" : "rgba(0,0,0,0.50)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-          fontWeight: 950,
-          cursor: "pointer",
-          userSelect: "none",
-          textAlign: "center",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        <span style={{ opacity: isActive ? 1 : 0.75, flex: "0 0 auto" }}>{icon}</span>
-        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
-      </div>
-    );
-  };
+  const isActive = active === id;
+  return (
+    <div
+      onClick={() => setActive(id)}
+      style={{
+        minWidth: 0,
+        padding: "14px 10px",
+        borderRadius: 14,
+        background: isActive ? "#fff" : "transparent",
+        color: isActive ? "#000" : "rgba(0,0,0,0.50)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        fontWeight: 950,
+        cursor: "pointer",
+        userSelect: "none",
+        textAlign: "center",
+
+        // ✅ KIRPMA YOK
+        whiteSpace: "normal",
+        overflow: "visible",
+        textOverflow: "clip",
+        lineHeight: 1.1,
+        fontSize: 13,
+      }}
+    >
+      <span style={{ opacity: isActive ? 1 : 0.75 }}>{icon}</span>
+      <span style={{ display: "inline-block" }}>{label}</span>
+    </div>
+  );
+};
 
   return (
     // ✅ FULL-WIDTH HERO (gri ambians sağ-sol tam dolar)
