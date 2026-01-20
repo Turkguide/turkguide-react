@@ -563,29 +563,30 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
 };
 
   return (
-    // ✅ FULL-WIDTH HERO (gri ambians sağ-sol tam dolar)
+  // ✅ FULL-WIDTH HERO (gri ambians sağ-sol tam dolar)
+  <div
+    style={{
+      width: "100vw",
+      marginLeft: "calc(50% - 50vw)",
+      marginRight: "calc(50% - 50vw)",
+      padding: "70px 0 28px",
+      overflowX: "hidden",
+      background:
+        ui.mode === "light"
+          ? "linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0) 75%)"
+          : "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 75%)",
+    }}
+  >
+    {/* ✅ içerik max-width burada kalsın */}
     <div
       style={{
-        width: "100vw",
-        marginLeft: "calc(50% - 50vw)",
-        padding: "70px 0 28px",
-        overflow: "hidden",
-        background:
-          ui.mode === "light"
-            ? "linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0) 75%)"
-            : "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 75%)",
+        maxWidth: 1240,
+        margin: "0 auto",
+        padding: "0 16px",
+        boxSizing: "border-box",
+        width: "100%",
       }}
     >
-      {/* ✅ içerik max-width burada kalsın */}
-      <div
-        style={{
-          maxWidth: 1240,
-          margin: "0 auto",
-          padding: "0 16px",
-          boxSizing: "border-box",
-          width: "100%",
-        }}
-      >
         <div style={{ display: "grid", placeItems: "center" }}>
           <div
             style={{
