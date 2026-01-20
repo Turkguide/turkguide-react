@@ -540,7 +540,21 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
   };
 
   return (
-    <div style={{ padding: "70px 0 28px", width: "100%", maxWidth: "100vw", overflowX: "hidden" }}>
+  <div
+    style={{
+      width: "100%",
+      maxWidth: "100vw",
+      overflowX: "hidden",
+      padding: "70px 0 28px",
+      // ✅ ambians full-width (kenarlara tam oturur)
+      background:
+        ui.mode === "light"
+          ? "linear-gradient(180deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0) 70%)"
+          : "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 70%)",
+    }}
+  >
+    {/* ✅ içerik max-width burada kalsın */}
+    <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 16px" }}>
       <div style={{ display: "grid", placeItems: "center" }}>
         <div
           style={{
@@ -561,26 +575,26 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
         </div>
 
         <h1
-  style={{
-    marginTop: 26,
-    textAlign: "center",
-    fontWeight: 950,
-    color: ui.blue,
-    lineHeight: 1.05,
-    fontSize: "clamp(32px, 8.5vw, 64px)",
-    padding: "0 12px",
-    margin: "26px auto 0",
-    maxWidth: "100%",
-    overflowWrap: "anywhere",
-    wordBreak: "break-word",
-  }}
->
-  Discover
-  <br />
-  Turkish Businesses
-</h1>
+          style={{
+            marginTop: 26,
+            textAlign: "center",
+            fontWeight: 950,
+            color: ui.blue,
+            lineHeight: 1.05,
+            fontSize: "clamp(32px, 8.5vw, 64px)",
+            padding: "0 12px",
+            margin: "26px auto 0",
+            maxWidth: "100%",
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
+          }}
+        >
+          Discover
+          <br />
+          Turkish Businesses
+        </h1>
 
-        <div style={{ marginTop: 14, color: ui.muted, fontSize: 18 }}>
+        <div style={{ marginTop: 14, color: ui.muted, fontSize: 18, textAlign: "center" }}>
           Amerika'nın her köşesinden Türk işletmeleri ve profesyonelleri keşfedin
         </div>
 
@@ -628,7 +642,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
           </Button>
         </div>
 
-        <div style={{ width: "100%", maxWidth: 1100, boxSizing: "border-box", overflowX: "hidden" }}>
+        <div style={{ width: "100%", maxWidth: 1100 }}>
           <div style={segWrap}>
             <Seg id="biz" icon="🏢" label="İşletmeler" />
             <Seg id="news" icon="📰" label="Haberler" />
@@ -637,8 +651,8 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
         </div>
       </div>
     </div>
-  );
-}
+  </div>
+);
 
 function CategoryGrid({ ui, counts, onPickCategory }) {
   const items = [
