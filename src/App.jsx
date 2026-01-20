@@ -2082,34 +2082,32 @@ return (
           maxWidth: 1240,
           margin: "0 auto",
           padding: "10px 12px",
-          display: "grid",
-          gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
+          display: "flex",
           alignItems: "center",
-          gap: 10,
-          minWidth: 0,
+          justifyContent: "space-between",
+          position: "relative",
         }}
       >
-        <div />
+        {/* LEFT spacer */}
+        <div style={{ width: 44 }} />
 
-        {/* LOGO (dar ekranda kırpılır -> ikonlar kaybolmaz) */}
+        {/* LOGO (true center, never pushes buttons) */}
         <div
           style={{
-            transform: "translateY(1px)",
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%) translateY(1px)",
             cursor: "pointer",
-            minWidth: 0,
-            maxWidth: "56vw",
-            justifySelf: "center",
+            whiteSpace: "nowrap",
+            pointerEvents: "auto",
           }}
         >
           <div
             style={{
-              fontSize: "clamp(32px, 8.5vw, 56px)",
+              fontSize: "clamp(32px, 8.5vw, 52px)",
               fontWeight: 950,
               letterSpacing: -1,
               lineHeight: 1,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
             }}
           >
             Turk<span style={{ color: ui.blue }}>G</span>uide
@@ -2120,83 +2118,53 @@ return (
         <div
           style={{
             display: "flex",
-            justifyContent: "flex-end",
             alignItems: "center",
             gap: 6,
-            flexWrap: "nowrap",
-            minWidth: 0,
-            overflow: "visible",
-            justifySelf: "end",
-            flexShrink: 0,
           }}
         >
           {(() => {
             const iconBtnStyle = {
-              width: 32,
-              height: 32,
+              width: 34,
+              height: 34,
               borderRadius: 10,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               border: `1px solid ${ui.border}`,
-              background: ui.mode === "light" ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.03)",
+              background:
+                ui.mode === "light"
+                  ? "rgba(255,255,255,0.55)"
+                  : "rgba(255,255,255,0.05)",
               color: ui.text,
-              cursor: "pointer",
               fontSize: 15,
               padding: 0,
-              lineHeight: 1,
-              flexShrink: 0,
+              cursor: "pointer",
               boxShadow: "none",
               WebkitTapHighlightColor: "transparent",
             };
 
             return (
               <>
-                <button
-                  type="button"
-                  title="Bildirimler"
-                  onClick={() => setActive("notifications")}
-                  style={iconBtnStyle}
-                >
+                <button title="Bildirimler" onClick={() => setActive("notifications")} style={iconBtnStyle}>
                   🔔
                 </button>
 
                 {user ? (
-                  <button
-                    type="button"
-                    title="Mesajlar"
-                    onClick={() => setActive("messages")}
-                    style={iconBtnStyle}
-                  >
+                  <button title="Mesajlar" onClick={() => setActive("messages")} style={iconBtnStyle}>
                     💬
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    title="Giriş"
-                    onClick={() => setShowAuth(true)}
-                    style={iconBtnStyle}
-                  >
+                  <button title="Giriş" onClick={() => setShowAuth(true)} style={iconBtnStyle}>
                     ⤴️
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  title="Ayarlar"
-                  onClick={() => setShowSettings(true)}
-                  style={iconBtnStyle}
-                >
+                <button title="Ayarlar" onClick={() => setShowSettings(true)} style={iconBtnStyle}>
                   ⚙️
                 </button>
 
                 {user && adminMode && adminUnlocked && (
-                  <button
-                    type="button"
-                    title="Admin"
-                    onClick={() => setActive("admin")}
-                    style={iconBtnStyle}
-                  >
+                  <button title="Admin" onClick={() => setActive("admin")} style={iconBtnStyle}>
                     🛡️
                   </button>
                 )}
