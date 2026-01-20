@@ -515,36 +515,33 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
   };
 
   const Seg = ({ id, icon, label }) => {
-  const isActive = active === id;
-
-  return (
-    <div
-      onClick={() => setActive(id)}
-      style={{
-        flex: 1,
-        minWidth: 0,
-        padding: "14px 12px",
-        borderRadius: 14,
-        background: isActive ? "#fff" : "rgba(255,255,255,0.55)",
-        color: "#000",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-        fontWeight: 950,
-        cursor: "pointer",
-        userSelect: "none",
-        textAlign: "center",
-        whiteSpace: "nowrap",
-        boxShadow: isActive ? "0 10px 26px rgba(0,0,0,0.12)" : "none",
-        opacity: isActive ? 1 : 0.9,
-      }}
-    >
-      <span style={{ opacity: isActive ? 1 : 0.8 }}>{icon}</span>
-      {label}
-    </div>
-  );
-};
+    const isActive = active === id;
+    return (
+      <div
+        onClick={() => setActive(id)}
+        style={{
+          minWidth: 0, // ✅ grid içinde taşma yapmasın
+          padding: "14px 12px",
+          borderRadius: 14,
+          background: isActive ? "#fff" : "transparent",
+          color: isActive ? "#000" : "rgba(0,0,0,0.50)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          fontWeight: 950,
+          cursor: "pointer",
+          userSelect: "none",
+          textAlign: "center",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        <span style={{ opacity: isActive ? 1 : 0.75 }}>{icon}</span> {label}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -552,7 +549,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
         width: "100%",
         maxWidth: "100vw",
         overflowX: "hidden",
-        padding: "28px 0 24px",
+        padding: "70px 0 28px",
 
         // ✅ ambians full-width (kenarlara tam oturur)
         background:
@@ -644,27 +641,13 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
             </Button>
           </div>
 
-          <div
-  style={{
-    width: "100%",
-    padding: "0 8px",
-    boxSizing: "border-box",
-    display: "flex",
-    justifyContent: "center",
-  }}
->
-  <div
-    style={{
-      ...segWrap,
-      width: "100%",
-      maxWidth: 1000,
-    }}
-  >
-    <Seg id="biz" icon="🏢" label="İşletmeler" />
-    <Seg id="news" icon="📰" label="Haberler" />
-    <Seg id="hub" icon="👥" label="HUB" />
-  </div>
-</div>
+          <div style={{ width: "100%", maxWidth: 1100, boxSizing: "border-box" }}>
+            <div style={segWrap}>
+              <Seg id="biz" icon="🏢" label="İşletmeler" />
+              <Seg id="news" icon="📰" label="Haberler" />
+              <Seg id="hub" icon="👥" label="HUB" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2053,143 +2036,82 @@ function clearFilters() {
 if (!booted) return null;
 
 return (
-  <div
-    style={{
-      minHeight: "100vh",
-      width: "100%",
-      maxWidth: "100vw",
-      overflowX: "hidden",
-      background: ui.bg,
-      color: ui.text,
-    }}
-  >
+  <div style={{ minHeight: "100vh", width: "100%", background: ui.bg, color: ui.text }}>
     {/* TOP BAR */}
-<div
-  style={{
-    position: "sticky",
-    top: 0,
-    zIndex: 50,
-    backdropFilter: "blur(14px)",
-    background: ui.top,
+    <div
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        backdropFilter: "blur(14px)",
+        background: ui.top,
+        borderBottom: `1px solid ${ui.border}`,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1240,
+          margin: "0 auto",
+          padding: "16px 16px",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
+          alignItems: "center",
+        }}
+      >
+        <div />
 
-    width: "100%",
-    maxWidth: "100vw",
-    overflowX: "hidden",
+        <div style={{ transform: "translateY(2px)", cursor: "pointer" }}>
+          <div style={{ fontSize: 56, fontWeight: 950, letterSpacing: -1, lineHeight: 1 }}>
+            Turk<span style={{ color: ui.blue }}>G</span>uide
+          </div>
+        </div>
 
-    /* ✅ borderBottom'u kaldırıyoruz */
-    borderBottom: "none",
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <Button ui={ui} variant="blue" onClick={() => setShowSettings(true)} title="Ayarlar">
+            ⚙️ Ayarlar
+          </Button>
 
-    /* ✅ tek çizgi hissi */
-    boxShadow:
-      ui.mode === "light"
-        ? "0 1px 0 rgba(0,0,0,0.06)"
-        : "0 1px 0 rgba(255,255,255,0.08)",
-  }}
->
-  <div
-    style={{
-      maxWidth: 1240,
-      margin: "0 auto",
-      padding: "16px",
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      width: "100%",
-      minWidth: 0,
-      flexWrap: "wrap",
-      overflowX: "hidden",
-      boxSizing: "border-box",
-    }}
-  >
-    {/* SOL SPACER */}
-    <div style={{ flex: 1, minWidth: 0 }} />
+          {user ? (
+            <>
+              {adminMode && adminUnlocked && (
+                <Button ui={ui} onClick={() => setActive("admin")} variant="blue">
+                  🛡️ Admin
+                </Button>
+              )}
 
-    {/* LOGO (ORTA) */}
-    <div style={{ flex: "0 0 auto", maxWidth: "100%" }}>
-      <div style={{ transform: "translateY(2px)", cursor: "pointer", maxWidth: "100%" }}>
-        <div
-          style={{
-            fontSize: "clamp(28px, 8vw, 56px)",
-            fontWeight: 950,
-            letterSpacing: -1,
-            lineHeight: 1,
-            textAlign: "center",
-            maxWidth: "100%",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Turk<span style={{ color: ui.blue }}>G</span>uide
+              <Chip
+                ui={ui}
+                onClick={() => {
+                  setProfileTarget({ type: "user", userId: user.id, username: user.username });
+                  setProfileOpen(true);
+                }}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                  <Avatar ui={ui} src={user.avatar} size={28} label={user.username} />
+                  @{user.username}
+                </span>
+              </Chip>
+
+              <Chip ui={ui} title="Okunmamış mesaj" style={{ opacity: unreadForMe ? 1 : 0.65 }}>
+                💬 {unreadForMe}
+              </Chip>
+
+              <Button ui={ui} onClick={logout} variant="danger">
+                Çıkış
+              </Button>
+            </>
+          ) : (
+            <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue">
+              ⤴︎ Giriş
+            </Button>
+          )}
         </div>
       </div>
     </div>
 
-    {/* SAĞ BUTONLAR */}
-    <div
-      style={{
-        flex: 1,
-        minWidth: 0,
-        display: "flex",
-        justifyContent: "flex-end",
-        gap: 10,
-        alignItems: "center",
-        flexWrap: "wrap",
-      }}
-    >
-      <Button ui={ui} variant="blue" onClick={() => setShowSettings(true)} title="Ayarlar">
-        ⚙️ Ayarlar
-      </Button>
-
-      {user ? (
-        <>
-          {adminMode && adminUnlocked && (
-            <Button ui={ui} onClick={() => setActive("admin")} variant="blue">
-              🛡️ Admin
-            </Button>
-          )}
-
-          <Chip
-            ui={ui}
-            onClick={() => {
-              setProfileTarget({ type: "user", userId: user.id, username: user.username });
-              setProfileOpen(true);
-            }}
-          >
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-              <Avatar ui={ui} src={user.avatar} size={28} label={user.username} />
-              @{user.username}
-            </span>
-          </Chip>
-
-          <Chip ui={ui} title="Okunmamış mesaj" style={{ opacity: unreadForMe ? 1 : 0.65 }}>
-            💬 {unreadForMe}
-          </Chip>
-
-          <Button ui={ui} onClick={logout} variant="danger">
-            Çıkış
-          </Button>
-        </>
-      ) : (
-        <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue">
-          ⤴︎ Giriş
-        </Button>
-      )}
-    </div>
-  </div>
-</div>
-
 
       {/* CONTENT */}
-<div
-  style={{
-    maxWidth: 1240,
-    margin: "0 auto",
-    padding: "0 16px 16px",
-    width: "100%",
-    maxWidth: "100vw",
-    overflowX: "hidden",
-  }}
->
+      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 16px 16px" }}>
         {/* LANDING — sadece biz/news/hub ekranlarında üstte görünür (2. görsel) */}
         {(active === "biz" || active === "news" || active === "hub") && (
           <>
