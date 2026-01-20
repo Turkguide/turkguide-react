@@ -509,6 +509,120 @@ function LogoutIcon(props) {
   );
 }
 
+// ====== HUB MEDIA HELPERS (Instagram-style) ======
+const IG_W = 1080;
+const IG_H = 1350; // 4:5
+const MAX_VIDEO_SECONDS = 60;
+const MAX_VIDEO_DIM = 2048; // 2K max dimension
+const MAX_VIDEO_BYTES = 12 * 1024 * 1024; // 12MB (localStorage için)
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;  // 8MB
+
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Dosya okunamadı"));
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function normalizeImageToInstagram(file) {
+  if (!file) throw new Error("Dosya seçilmedi");
+  if (file.size > MAX_IMAGE_BYTES) throw new Error("Fotoğraf çok büyük. (max ~8MB)");
+
+  const dataUrl = await fileToDataURL(file);
+
+  const img = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error("Fotoğraf yüklenemedi"));
+    i.src = dataUrl;
+  });
+
+  const srcW = img.naturalWidth || img.width;
+  const srcH = img.naturalHeight || img.height;
+  if (!srcW || !srcH) throw new Error("Fotoğraf boyutu okunamadı");
+
+  // Cover-crop to 4:5 (Instagram feed)
+  const targetRatio = IG_W / IG_H;
+  const srcRatio = srcW / srcH;
+
+  let sx = 0, sy = 0, sw = srcW, sh = srcH;
+  if (srcRatio > targetRatio) {
+    // wider -> crop left/right
+    sh = srcH;
+    sw = Math.round(sh * targetRatio);
+    sx = Math.round((srcW - sw) / 2);
+  } else {
+    // taller -> crop top/bottom
+    sw = srcW;
+    sh = Math.round(sw / targetRatio);
+    sy = Math.round((srcH - sh) / 2);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = IG_W;
+  canvas.height = IG_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas desteklenmiyor");
+
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, IG_W, IG_H);
+
+  // jpeg export
+  const out = canvas.toDataURL("image/jpeg", 0.9);
+
+  return {
+    kind: "image",
+    src: out,
+    width: IG_W,
+    height: IG_H,
+    mime: "image/jpeg",
+    originalName: file.name,
+  };
+}
+
+async function validateAndLoadVideo(file) {
+  if (!file) throw new Error("Dosya seçilmedi");
+  if (file.size > MAX_VIDEO_BYTES) throw new Error("Video çok büyük. (max ~12MB)");
+
+  const dataUrl = await fileToDataURL(file);
+
+  const meta = await new Promise((resolve, reject) => {
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.muted = true;
+    v.playsInline = true;
+    v.onloadedmetadata = () => {
+      resolve({
+        w: v.videoWidth || 0,
+        h: v.videoHeight || 0,
+        d: v.duration || 0,
+      });
+    };
+    v.onerror = () => reject(new Error("Video metadata okunamadı"));
+    v.src = dataUrl;
+  });
+
+  if (meta.d > MAX_VIDEO_SECONDS + 0.01) {
+    throw new Error("Video 1 dakikadan uzun olamaz (max 60 saniye).");
+  }
+
+  const maxDim = Math.max(meta.w || 0, meta.h || 0);
+  if (maxDim > MAX_VIDEO_DIM) {
+    throw new Error("Video çözünürlüğü çok yüksek. 2K'ya kadar (max 2048px).");
+  }
+
+  return {
+    kind: "video",
+    src: dataUrl,
+    width: meta.w,
+    height: meta.h,
+    duration: meta.d,
+    mime: file.type || "video/mp4",
+    originalName: file.name,
+  };
+}
+
 /** Read file as base64 for avatar uploads */
 function useFileToBase64() {
   const pickRef = useRef(null);
@@ -874,6 +988,7 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
   // HUB
   const [composer, setComposer] = useState("");
   const [commentDraft, setCommentDraft] = useState({});
+  const [hubMedia, setHubMedia] = useState(null);
 
   // Profile view
   const [profileOpen, setProfileOpen] = useState(false);
@@ -892,6 +1007,69 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
   // Landing search (UI)
   const [landingSearch, setLandingSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+
+  // HUB media picker ref (hidden input)
+  const hubMediaPickRef = useRef(null);
+
+function pickHubMedia() {
+  hubMediaPickRef.current?.click();
+}
+
+async function onPickHubMediaFile(e) {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  if (!file) return;
+
+  try {
+    const isVideo = (file.type || "").startsWith("video/");
+    const isImage = (file.type || "").startsWith("image/");
+
+    if (!isVideo && !isImage) {
+      alert("Sadece fotoğraf veya video yükleyebilirsin.");
+      return;
+    }
+
+    const media = isImage
+      ? await normalizeImageToInstagram(file)
+      : await validateAndLoadVideo(file);
+
+    setHubMedia(media);
+  } catch (err) {
+    console.error("HUB media error:", err);
+    alert(err?.message || "Medya yüklenemedi");
+    setHubMedia(null);
+  }
+}
+
+function pickHubMedia() {
+  hubMediaPickRef.current?.click();
+}
+
+async function onPickHubMediaFile(e) {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  if (!file) return;
+
+  try {
+    const isVideo = (file.type || "").startsWith("video/");
+    const isImage = (file.type || "").startsWith("image/");
+
+    if (!isVideo && !isImage) {
+      alert("Sadece fotoğraf veya video yükleyebilirsin.");
+      return;
+    }
+
+    const media = isImage
+      ? await normalizeImageToInstagram(file)
+      : await validateAndLoadVideo(file);
+
+    setHubMedia(media);
+  } catch (err) {
+    console.error("HUB media error:", err);
+    alert(err?.message || "Medya yüklenemedi");
+    setHubMedia(null);
+  }
+}
 
     // File upload helpers
   const userAvatarPicker = useFileToBase64();
@@ -1615,16 +1793,28 @@ function hubShare() {
   if (!text) return;
 
   const post = {
-    id: uid(),
-    createdAt: now(),
-    byType: "user",
-    byUsername: user.username,
-    content: text,
-    likes: 0,
-    comments: [],
-  };
+  id: uid(),
+  createdAt: now(),
+  byType: "user",
+  byUsername: user.username,
+  content: text,
+  media: hubMedia
+    ? {
+        kind: hubMedia.kind,
+        src: hubMedia.src,
+        width: hubMedia.width,
+        height: hubMedia.height,
+        duration: hubMedia.duration,
+        mime: hubMedia.mime,
+        originalName: hubMedia.originalName,
+      }
+    : null,
+  likes: 0,
+  comments: [],
+};
   setPosts((prev) => [post, ...prev]);
   setComposer("");
+  setHubMedia(null);
 }
 
 function hubLike(postId) {
@@ -2603,6 +2793,56 @@ return (
                     <div style={{ marginTop: 10, fontSize: 18, fontWeight: 900 }}>
                       {p.content}
                     </div>
+
+                    {p.media ? (
+                      <div style={{ marginTop: 12 }}>
+                        <div
+                          style={{
+                            width: "min(520px, 100%)",
+                            aspectRatio: "4 / 5",
+                            borderRadius: 16,
+                            overflow: "hidden",
+                            border: `1px solid ${ui.border}`,
+                            background:
+                              ui.mode === "light"
+                                ? "rgba(0,0,0,0.03)"
+                                : "rgba(255,255,255,0.04)",
+                          }}
+                        >
+                          {p.media.kind === "image" ? (
+                            <img
+                              src={p.media.src}
+                              alt=""
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                display: "block",
+                              }}
+                            />
+                          ) : (
+                            <video
+                              src={p.media.src}
+                              controls
+                              playsInline
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                display: "block",
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        <div style={{ color: ui.muted, fontSize: 12, marginTop: 8 }}>
+                          {p.media.kind === "video" && p.media.duration
+                            ? `Video: ${Math.round(p.media.duration)}s • `
+                            : ""}
+                          Instagram oranı: 4:5 • Video max 60s / 2K
+                        </div>
+                      </div>
+                    ) : null}
 
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
                       <Button ui={ui} onClick={() => hubLike(p.id)}>Like ({p.likes || 0})</Button>
