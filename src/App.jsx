@@ -2202,6 +2202,12 @@ return (
           }}
         >
           <div
+            onClick={() => {
+              setActive("biz");
+              setCategoryFilter("");
+              setLandingSearch("");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
             style={{
               transform: "translateY(1px)",
               cursor: "pointer",
