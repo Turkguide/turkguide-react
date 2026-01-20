@@ -990,6 +990,10 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
   const [commentDraft, setCommentDraft] = useState({});
   const [hubMedia, setHubMedia] = useState(null);
 
+  // HUB edit/delete
+const [editingPostId, setEditingPostId] = useState(null);
+const [editPostDraft, setEditPostDraft] = useState("");
+
   // Profile view
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileTarget, setProfileTarget] = useState(null);
