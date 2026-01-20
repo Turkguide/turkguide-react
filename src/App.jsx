@@ -2868,6 +2868,55 @@ return (
                     <div style={{ marginTop: 10, fontSize: 18, fontWeight: 900 }}>
                       {p.content}
                     </div>
+                    {p.media ? (
+  <div style={{ marginTop: 12 }}>
+    <div
+      style={{
+        width: "min(520px, 100%)",
+        aspectRatio: "4 / 5",
+        borderRadius: 16,
+        overflow: "hidden",
+        border: `1px solid ${ui.border}`,
+        background:
+          ui.mode === "light"
+            ? "rgba(0,0,0,0.03)"
+            : "rgba(255,255,255,0.04)",
+      }}
+    >
+      {p.media.kind === "image" ? (
+        <img
+          src={p.media.src}
+          alt=""
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+      ) : (
+        <video
+          src={p.media.src}
+          controls
+          playsInline
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+      )}
+    </div>
+
+    <div style={{ color: ui.muted, fontSize: 12, marginTop: 8 }}>
+      {p.media.kind === "video" && p.media.duration
+        ? `Video: ${Math.round(p.media.duration)}s • `
+        : ""}
+      Instagram oranı: 4:5 • Video max 60s / 2K
+    </div>
+  </div>
+) : null}
 
                     {p.media ? (
                       <div style={{ marginTop: 12 }}>
