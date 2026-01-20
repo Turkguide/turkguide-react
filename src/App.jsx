@@ -549,7 +549,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
         width: "100%",
         maxWidth: "100vw",
         overflowX: "hidden",
-        padding: "70px 0 28px",
+        padding: "28px 0 24px",
 
         // ✅ ambians full-width (kenarlara tam oturur)
         background:
@@ -2054,100 +2054,110 @@ return (
     zIndex: 50,
     backdropFilter: "blur(14px)",
     background: ui.top,
-    borderBottom: `1px solid ${ui.border}`,
+
     width: "100%",
     maxWidth: "100vw",
     overflowX: "hidden",
+
+    /* ✅ borderBottom'u kaldırıyoruz */
+    borderBottom: "none",
+
+    /* ✅ tek çizgi hissi */
+    boxShadow:
+      ui.mode === "light"
+        ? "0 1px 0 rgba(0,0,0,0.06)"
+        : "0 1px 0 rgba(255,255,255,0.08)",
   }}
 >
-  <div
-  style={{
-    maxWidth: 1240,
-    margin: "0 auto",
-    padding: "16px",
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    width: "100%",
-    minWidth: 0,
-    flexWrap: "wrap",
-    overflowX: "hidden",
-  }}
->
-  {/* SOL SPACER (logo tam ortalansın) */}
-  <div style={{ flex: 1, minWidth: 0 }} />
-
-  {/* LOGO (ORTA) */}
-  <div style={{ flex: "0 0 auto", maxWidth: "100%" }}>
-    <div style={{ transform: "translateY(2px)", cursor: "pointer", maxWidth: "100%" }}>
-      <div
-        style={{
-          fontSize: "clamp(28px, 8vw, 56px)",
-          fontWeight: 950,
-          letterSpacing: -1,
-          lineHeight: 1,
-          textAlign: "center",
-          maxWidth: "100%",
-          overflow: "hidden",
-          whiteSpace: "nowrap",
-        }}
-      >
-        Turk<span style={{ color: ui.blue }}>G</span>uide
-      </div>
-    </div>
-  </div>
-
-  {/* SAĞ BUTONLAR */}
   <div
     style={{
-      flex: 1,
-      minWidth: 0,
+      maxWidth: 1240,
+      margin: "0 auto",
+      padding: "16px",
       display: "flex",
-      justifyContent: "flex-end",
-      gap: 10,
       alignItems: "center",
+      gap: 12,
+      width: "100%",
+      minWidth: 0,
       flexWrap: "wrap",
+      overflowX: "hidden",
+      boxSizing: "border-box",
     }}
   >
-    <Button ui={ui} variant="blue" onClick={() => setShowSettings(true)} title="Ayarlar">
-      ⚙️ Ayarlar
-    </Button>
+    {/* SOL SPACER */}
+    <div style={{ flex: 1, minWidth: 0 }} />
 
-    {user ? (
-      <>
-        {adminMode && adminUnlocked && (
-          <Button ui={ui} onClick={() => setActive("admin")} variant="blue">
-            🛡️ Admin
-          </Button>
-        )}
-
-        <Chip
-          ui={ui}
-          onClick={() => {
-            setProfileTarget({ type: "user", userId: user.id, username: user.username });
-            setProfileOpen(true);
+    {/* LOGO (ORTA) */}
+    <div style={{ flex: "0 0 auto", maxWidth: "100%" }}>
+      <div style={{ transform: "translateY(2px)", cursor: "pointer", maxWidth: "100%" }}>
+        <div
+          style={{
+            fontSize: "clamp(28px, 8vw, 56px)",
+            fontWeight: 950,
+            letterSpacing: -1,
+            lineHeight: 1,
+            textAlign: "center",
+            maxWidth: "100%",
+            overflow: "hidden",
+            whiteSpace: "nowrap",
           }}
         >
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-            <Avatar ui={ui} src={user.avatar} size={28} label={user.username} />
-            @{user.username}
-          </span>
-        </Chip>
+          Turk<span style={{ color: ui.blue }}>G</span>uide
+        </div>
+      </div>
+    </div>
 
-        <Chip ui={ui} title="Okunmamış mesaj" style={{ opacity: unreadForMe ? 1 : 0.65 }}>
-          💬 {unreadForMe}
-        </Chip>
-
-        <Button ui={ui} onClick={logout} variant="danger">
-          Çıkış
-        </Button>
-      </>
-    ) : (
-      <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue">
-        ⤴︎ Giriş
+    {/* SAĞ BUTONLAR */}
+    <div
+      style={{
+        flex: 1,
+        minWidth: 0,
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: 10,
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
+      <Button ui={ui} variant="blue" onClick={() => setShowSettings(true)} title="Ayarlar">
+        ⚙️ Ayarlar
       </Button>
-    )}
-  </div>
+
+      {user ? (
+        <>
+          {adminMode && adminUnlocked && (
+            <Button ui={ui} onClick={() => setActive("admin")} variant="blue">
+              🛡️ Admin
+            </Button>
+          )}
+
+          <Chip
+            ui={ui}
+            onClick={() => {
+              setProfileTarget({ type: "user", userId: user.id, username: user.username });
+              setProfileOpen(true);
+            }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+              <Avatar ui={ui} src={user.avatar} size={28} label={user.username} />
+              @{user.username}
+            </span>
+          </Chip>
+
+          <Chip ui={ui} title="Okunmamış mesaj" style={{ opacity: unreadForMe ? 1 : 0.65 }}>
+            💬 {unreadForMe}
+          </Chip>
+
+          <Button ui={ui} onClick={logout} variant="danger">
+            Çıkış
+          </Button>
+        </>
+      ) : (
+        <Button ui={ui} onClick={() => setShowAuth(true)} variant="blue">
+          ⤴︎ Giriş
+        </Button>
+      )}
+    </div>
   </div>
 </div>
 
