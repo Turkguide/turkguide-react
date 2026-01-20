@@ -2773,7 +2773,7 @@ return (
       </Chip>
     ) : (
       <span style={{ color: ui.muted2, fontSize: 12 }}>
-        Instagram oranı: 4:5 • Video max 60s • 2K’ye kadar
+        4:5 Oran 2K 
       </span>
     )}
   </div>
