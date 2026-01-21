@@ -1821,13 +1821,37 @@ async function loginNow(provider = "email", mode = "login") {
 // ✅ LOGOUT
 async function logout() {
   try {
-    await supabase.auth.signOut();
+    await supabase?.auth?.signOut?.();
   } catch (e) {
     console.error("logout error:", e);
   } finally {
+    // ✅ auth state
     setUser(null);
-    lsSet(KEY.USER, null);
+    try {
+      localStorage.removeItem(KEY.USER);
+    } catch (_) {}
+
+    // ✅ UI reset (modals/overlays kapanmazsa login tıklanamıyor gibi görünebiliyor)
     setShowAuth(true);
+    setShowRegister(false);
+    setShowSettings(false);
+    setShowBizApply(false);
+
+    setProfileOpen(false);
+    setProfileTarget(null);
+
+    setShowEditUser(false);
+    setEditUserCtx(null);
+
+    setShowDm(false);
+    setDmTarget(null);
+    setDmText("");
+
+    setShowAppt(false);
+    setApptBizId(null);
+    setApptMsg("");
+
+    setActive("biz");
   }
 }
 
