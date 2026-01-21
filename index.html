@@ -19,14 +19,28 @@
     <meta name="color-scheme" content="dark light" />
 
     <style>
-      /* Base background to prevent white bars */
-      html, body {
+      /* HARD FORCE DARK — prevent any white flash or safe-area bleed */
+
+      html {
+        background: #07080c;
+        color-scheme: dark;
+      }
+
+      body {
         background: #07080c;
         margin: 0;
         padding: 0;
+        min-height: 100vh;
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
       }
 
-      /* iOS safe-area fill */
+      #root {
+        min-height: 100vh;
+        background: #07080c;
+      }
+
+      /* iOS safe-area fill (top & bottom) */
       body::before,
       body::after {
         content: "";
@@ -34,13 +48,19 @@
         left: 0;
         right: 0;
         background: #07080c;
-        z-index: -1;
+        pointer-events: none;
+        z-index: 9999;
       }
-      body::before { top: 0; height: env(safe-area-inset-top); }
-      body::after  { bottom: 0; height: env(safe-area-inset-bottom); }
 
-      /* Dark scrollbars on supported browsers */
-      :root { color-scheme: dark; }
+      body::before {
+        top: 0;
+        height: env(safe-area-inset-top);
+      }
+
+      body::after {
+        bottom: 0;
+        height: env(safe-area-inset-bottom);
+      }
     </style>
   </head>
   <body>
