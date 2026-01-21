@@ -1870,7 +1870,8 @@ function openBizApply() {
 }
 
 // ✅ Business CTA (reusable)
-function BizCta({ ui, onClick, compact = false, block = false }) {  return (
+function BizCta({ ui, onClick, compact = false, block = false }) {
+  return (
     <button
       type="button"
       onClick={onClick}
@@ -1884,7 +1885,7 @@ function BizCta({ ui, onClick, compact = false, block = false }) {  return (
         width: block ? "100%" : "auto",
         maxWidth: "100%",
         alignItems: "center",
-        justifyContent: block ? "space-between" : "center",
+        justifyContent: "flex-start",
         gap: 10,
         padding: compact ? "10px 14px" : "14px 18px",
         borderRadius: 999,
@@ -1923,7 +1924,7 @@ function BizCta({ ui, onClick, compact = false, block = false }) {  return (
         </IconBase>
       </span>
 
-      <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+      <span style={{ display: "inline-flex", flexDirection: "column", gap: 2, flex: block ? "1 1 auto" : "0 0 auto", textAlign: "center", alignItems: "center" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           İşletmenizi Ekleyin
           <span aria-hidden="true" style={{ opacity: 0.9 }}>
@@ -1936,6 +1937,16 @@ function BizCta({ ui, onClick, compact = false, block = false }) {  return (
           </span>
         ) : null}
       </span>
+      {block ? (
+        <span
+          aria-hidden="true"
+          style={{
+            width: compact ? 26 : 30,
+            height: compact ? 26 : 30,
+            flex: "0 0 auto",
+          }}
+        />
+      ) : null}
 
       <span
         aria-hidden="true"
