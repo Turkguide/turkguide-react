@@ -54,6 +54,10 @@ function fmt(ts) {
 function normalizeUsername(s) {
   return String(s || "").trim().toLowerCase();
 }
+function getXP(u) {
+  // legacy + yeni alanlar: XP / xp
+  return Number(u?.XP ?? u?.xp ?? 0);
+}
 function isAdminUser(username, admins) {
   const u = normalizeUsername(username);
   return (admins || []).map((x) => normalizeUsername(x)).includes(u);
@@ -2357,7 +2361,7 @@ async function saveEditUser() {
         ...u,
         username,
         avatar: u.avatar ?? old.avatar ?? "",
-        tier: u.Tier ?? old.Tier ?? "Onaylı İşletme",
+        Tier: u.Tier ?? old.Tier ?? "Onaylı İşletme",
         XP: Number(u.XP ?? old.XP ?? 0),
         createdAt: u.createdAt ?? old.createdAt ?? new Date().toISOString(),
         email: u.email ?? old.email ?? "",
@@ -2370,8 +2374,8 @@ async function saveEditUser() {
         id: u.id,
         email: u.email || "",
         username,
-        tier: u.Tier || "Onaylı İşletme",
-        xp: Number(u.XP || 0),
+        Tier: u.Tier || "Onaylı İşletme",
+        XP: Number(u.XP || 0),
         avatar: u.avatar || "",
         createdAt: u.createdAt || new Date().toISOString(),
       },
@@ -2388,8 +2392,8 @@ async function saveEditUser() {
       email: me.email,
       username,
       avatar: u.avatar ?? p?.avatar ?? "",
-      tier: u.tier ?? p?.Tier ?? "Onaylı İşletme",
-      xp: Number(u.XP ?? p?.xp ?? 0),
+      Tier: u.Tier ?? p?.Tier ?? "Onaylı İşletme",
+      XP: Number(u.XP ?? p?.XP ?? 0),
     }));
   }
 
