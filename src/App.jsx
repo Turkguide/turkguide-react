@@ -4460,7 +4460,15 @@ return (
   onClose={() => setInfoPage(null)}
   width={760}
 >
-  {typeof renderInfoPage === "function" ? renderInfoPage(infoPage) : null}
+  <div
+    style={{
+      maxHeight: "70vh",
+      overflowY: "auto",
+      paddingRight: 6,
+    }}
+  >
+    {typeof renderInfoPage === "function" ? renderInfoPage(infoPage) : null}
+  </div>
 </Modal>
 
 {/* LOGIN MODAL */}
