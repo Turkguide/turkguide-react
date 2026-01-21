@@ -3189,17 +3189,31 @@ return (
           {landingSearch ? <Chip ui={ui} active>Arama: {landingSearch}</Chip> : null}
         </div>
 
-        <Card ui={ui} style={{ background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.04)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 950 }}>İşletmeler</div>
-              <div style={{ color: ui.muted, marginTop: 4 }}>
-                Seçtiğin kategori/arama filtresine göre listelenir.
-              </div>
-            </div>
-            <BizCta ui={ui} onClick={openBizApply} compact />
-          </div>
-        </Card>
+        {filteredBiz.length === 0 ? (
+  <Card
+    ui={ui}
+    style={{
+      background: ui.mode === "light"
+        ? "rgba(0,0,0,0.02)"
+        : "rgba(255,255,255,0.04)",
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 12,
+        flexWrap: "wrap",
+      }}
+    >
+      <div style={{ fontWeight: 700 }}>
+        Bu kategoride henüz işletme yok.
+      </div>
+      <BizCta ui={ui} onClick={openBizApply} compact />
+    </div>
+  </Card>
+) : null}
        {/* ORTA CTA — filtreler ile liste arası */}
 <div
   style={{
