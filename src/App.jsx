@@ -2089,42 +2089,33 @@ function submitBizApplication(data) {
     return;
   }
 
-  setBizApps((prev) => [
+    setBizApps((prev) => [
     {
       id: uid(),
       createdAt: now(),
       status: "pending",
       applicant: user.username,
       ownerUsername: user.username,
-
-      // Business
       name,
       category,
       desc,
-
-      // Address
       country,
       state,
       zip,
       apt,
       address1,
-      address: [address1, apt ? `Apt ${apt}` : "", cityOnly, state, zip, country]
-        .filter(Boolean)
-        .join(", "),
-      city, // e.g. "Los Angeles, CA"
-
-      // Phone
+      address: [address1, apt ? `Apt ${apt}` : "", cityOnly, state, zip, country].filter(Boolean).join(", "),
+      city,
       phoneDial,
       phoneLocal,
       phone,
-
-      // Keep existing shape
       plan: String(data?.plan || "business").trim(),
       avatar: String(data?.avatar || "").trim() || "",
     },
     ...prev,
   ]);
 
+  alert("✅ Başvurunuz alındı. İncelendikten sonra işletmeler listesinde görünecek.");
   setShowBizApply(false);
 }
 
@@ -4762,6 +4753,45 @@ function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
   const [category, setCategory] = useState(TG_DEFAULT_CATEGORIES?.[0]?.key || "");
 
   const [desc, setDesc] = useState("");
+  // ✅ ZIP -> City / State otomatik doldurma (US)
+useEffect(() => {
+  const c = String(country || "").toLowerCase().trim();
+  const z = String(zip || "").trim();
+
+  // Sadece ABD ve 5 haneli ZIP
+  if (!(c === "united states" || c === "usa" || c === "us")) return;
+  if (!/^\d{5}$/.test(z)) return;
+
+  const controller = new AbortController();
+
+  const timer = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://api.zippopotam.us/us/${z}`, {
+        signal: controller.signal,
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const place = data?.places?.[0];
+      if (!place) return;
+
+      const autoCity = place["place name"];
+      const autoState = place["state"];
+
+      // Kullanıcı elle yazmadıysa doldur
+      setCity((prev) => (prev ? prev : autoCity));
+      setState((prev) => (prev ? prev : autoState));
+      if (!country) setCountry("United States");
+    } catch (e) {
+      // sessiz geç
+    }
+  }, 400);
+
+  return () => {
+    clearTimeout(timer);
+    controller.abort();
+  };
+}, [zip, country]);
 
   // ✅ kategori listesi (default + dinamik)
   const categoryOptions = useMemo(() => {
