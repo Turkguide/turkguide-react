@@ -9,7 +9,39 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
 
+    <!-- ✅ Dark UI for browser bars / iOS status bar -->
+    <meta name="theme-color" content="#07080c" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
     <title>TurkGuide</title>
+
+    <!-- ✅ Force dark background behind safe-areas (iOS/Android browser bars) -->
+    <meta name="color-scheme" content="dark light" />
+
+    <style>
+      /* Base background to prevent white bars */
+      html, body {
+        background: #07080c;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* iOS safe-area fill */
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        left: 0;
+        right: 0;
+        background: #07080c;
+        z-index: -1;
+      }
+      body::before { top: 0; height: env(safe-area-inset-top); }
+      body::after  { bottom: 0; height: env(safe-area-inset-bottom); }
+
+      /* Dark scrollbars on supported browsers */
+      :root { color-scheme: dark; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
