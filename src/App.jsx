@@ -787,7 +787,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
               maxWidth: "100%",
             }}
           >
-            <span style={{ opacity: 0.65 }}>●</span> AMERİKA’NIN EN BÜYÜK TÜRK REHBERİ
+            <span style={{ opacity: 0.65 }}>●</span> AMERİKA’NIN EN BÜYÜK TÜRK İŞLETMELER REHBERİ
           </div>
 
           <h1
