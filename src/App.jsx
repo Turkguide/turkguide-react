@@ -168,14 +168,16 @@ function ensureSeed() {
     });
   }
 
-  // 🔐 Admin secret yoksa oluştur (ilk kurulum için)
-  if (!lsGet(KEY.ADMIN_SECRET, null)) {
-    lsSet(KEY.ADMIN_SECRET, uid() + "-" + uid());
-  }
-  // 🔒 Admin panel kilidi (varsayılan: kapalı)
-  if (!lsGet(KEY.ADMIN_UNLOCK, null)) {
-    lsSet(KEY.ADMIN_UNLOCK, false);
-  }
+  // 🔐 Admin secret — sadece yoksa oluşturulur
+if (lsGet(KEY.ADMIN_SECRET, null) == null) {
+  lsSet(KEY.ADMIN_SECRET, `${uid()}-${uid()}`);
+}
+
+// 🔓 Admin panel kilidi — ilk kurulumda AÇIK
+// (mevcut değer varsa dokunulmaz)
+if (lsGet(KEY.ADMIN_UNLOCK, null) == null) {
+  lsSet(KEY.ADMIN_UNLOCK, true);
+}
 }
 
 function useSystemTheme() {
