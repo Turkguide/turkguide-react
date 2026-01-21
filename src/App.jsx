@@ -32,64 +32,11 @@ function safeParse(raw, fallback) {
     return fallback;
   }
 }
-function lsSet(key, val) {
-  try {
-    localStorage.setItem(key, JSON.stringify(val));
-  } catch (e) {
-    const msg = String(e?.name || e?.message || e);
-    const isQuota = msg.includes("Quota") || msg.includes("quota") || msg.includes("QUOTA");
-    if (!isQuota) throw e;
-
-    // ✅ Quota recovery: en büyük alanları (base64) temizleyip 1 kez daha dene
-    try {
-      const cloned = JSON.parse(JSON.stringify(val));
-
-      // user kaydıysa avatar'ı boşalt
-      if (key === KEY.USER && cloned && typeof cloned === "object") {
-        if (typeof cloned.avatar === "string") cloned.avatar = "";
-      }
-
-      // users listesi ise avatar'ları boşalt
-      if (key === KEY.USERS && Array.isArray(cloned)) {
-        for (const u of cloned) {
-          if (u && typeof u.avatar === "string") u.avatar = "";
-        }
-      }
-
-      // posts ise media src'yi boşalt (base64 burada patlatıyor)
-      if (key === KEY.POSTS && Array.isArray(cloned)) {
-        for (const p of cloned) {
-          if (p?.media?.src && typeof p.media.src === "string") {
-            p.media.src = "";
-          }
-        }
-      }
-
-      localStorage.setItem(key, JSON.stringify(cloned));
-    } catch (e2) {
-      console.error("localStorage quota exceeded; write skipped for", key, e2);
-    }
-  }
+function lsGet(key, fallback) {
+  return safeParse(localStorage.getItem(key), fallback);
 }
-
-// ✅ “Uygula” butonu bununla localStorage’ı kalıcı toparlayacak
-function applyQuotaFix() {
-  try {
-    localStorage.removeItem(KEY.USER);
-    localStorage.removeItem(KEY.USERS);
-    localStorage.removeItem(KEY.POSTS);
-    localStorage.removeItem(KEY.DMS);
-    localStorage.removeItem(KEY.BIZ);
-    localStorage.removeItem(KEY.BIZ_APPS);
-    localStorage.removeItem(KEY.APPTS);
-    // admin/theme/config kalsın
-  } catch (e) {
-    console.error("applyQuotaFix error:", e);
-  } finally {
-    try {
-      window.location.reload();
-    } catch (_) {}
-  }
+function lsSet(key, val) {
+  localStorage.setItem(key, JSON.stringify(val));
 }
 function now() {
   return Date.now();
