@@ -1180,6 +1180,9 @@ export default function App() {
   const [adminLog, setAdminLog] = useState([]);
   const [adminConfig, setAdminConfig] = useState({ admins: DEFAULT_ADMINS });
   const [adminUnlocked, setAdminUnlocked] = useState(() => lsGet(KEY.ADMIN_UNLOCK, false));
+  
+  const [infoPage, setInfoPage] = useState(null);
+// infoPage: "about" | "help" | "privacy" | "terms" | "contact" | null
 
   // Settings
   const [showSettings, setShowSettings] = useState(false);
@@ -2673,6 +2676,104 @@ function openCall(phone) {
   window.location.href = `tel:${p}`;
 }
 
+const INFO_TITLES = {
+  about: "About TurkGuide",
+  help: "Help",
+  privacy: "Privacy Policy (Summary)",
+  terms: "Terms of Use (Summary)",
+  contact: "Contact",
+};
+
+function renderInfoPage(page) {
+  if (page === "about") {
+    return (
+      <div style={{ display: "grid", gap: 12, lineHeight: 1.6 }}>
+        <div style={{ fontWeight: 950 }}>What we do</div>
+        <div>
+          TurkGuide helps users and businesses stay connected by making Turkish businesses and professionals easier to discover.
+        </div>
+
+        <div style={{ fontWeight: 950 }}>Community-first</div>
+        <div>
+          Listings and community content are provided for convenience. TurkGuide does not guarantee accuracy, availability, or outcomes.
+        </div>
+
+        <div style={{ fontWeight: 950 }}>No professional advice</div>
+        <div>
+          Content on TurkGuide is not legal, medical, financial, or other professional advice. Always confirm details directly with the business/provider.
+        </div>
+      </div>
+    );
+  }
+
+  if (page === "help") {
+    return (
+      <div style={{ display: "grid", gap: 12, lineHeight: 1.6 }}>
+        <div style={{ fontWeight: 950 }}>Getting started</div>
+        <div>
+          Use Search or Categories to discover businesses. In HUB, you can share posts and interact with the community.
+        </div>
+
+        <div style={{ fontWeight: 950 }}>Support</div>
+        <div>
+          If something looks wrong, contact us and include screenshots and your username (if available).
+        </div>
+      </div>
+    );
+  }
+
+  if (page === "privacy") {
+    return (
+      <div style={{ display: "grid", gap: 12, lineHeight: 1.6 }}>
+        <div style={{ fontWeight: 950 }}>Data we may process</div>
+        <div>
+          We may process account information (such as email and username), content you submit (posts, comments, business applications), and basic technical data needed to operate the app.
+        </div>
+
+        <div style={{ fontWeight: 950 }}>Your choices</div>
+        <div>
+          You can request support regarding your account or content via the Contact section. We do not sell personal information.
+        </div>
+
+        <div style={{ opacity: 0.7, fontSize: 12 }}>
+          This is a short, non-binding summary for in-app UI only.
+        </div>
+      </div>
+    );
+  }
+
+  if (page === "terms") {
+    return (
+      <div style={{ display: "grid", gap: 12, lineHeight: 1.6 }}>
+        <div style={{ fontWeight: 950 }}>Using TurkGuide</div>
+        <div>
+          By using TurkGuide, you agree to use the app lawfully and respectfully, and not to post prohibited or harmful content.
+        </div>
+
+        <div style={{ fontWeight: 950 }}>No warranties</div>
+        <div>
+          TurkGuide is provided “as is” and “as available” without warranties.
+        </div>
+
+        <div style={{ opacity: 0.7, fontSize: 12 }}>
+          This is a short, non-binding summary for in-app UI only.
+        </div>
+      </div>
+    );
+  }
+
+  // contact
+  return (
+    <div style={{ display: "grid", gap: 12, lineHeight: 1.6 }}>
+      <div style={{ fontWeight: 950 }}>Contact</div>
+      <div>📧 Email: info@turkguide.net</div>
+      <div>🌐 Web: www.turkguide.net</div>
+      <div>🐦 X (Twitter): @Turk_Guide</div>
+      <div>📷 Instagram: @turkguideusa</div>
+    </div>
+  );
+}
+
 // ✅ Unread counters
 // - unreadDmForMe: unread message count (legacy)
 // - unreadThreadsForMe: unread "thread" count = farklı gönderen sayısı (badge bunu gösterecek)
@@ -3955,28 +4056,54 @@ return (
           <div style={{ display: "grid", gap: 14, paddingTop: 26 }}>
             <Card ui={ui}>
               <div style={{ fontSize: 18, fontWeight: 950 }}>Admin Dashboard</div>
-              <div style={{ color: ui.muted, marginTop: 6 }}>Bu ekranı sadece adminler görür.</div>
+              <div style={{ color: ui.muted, marginTop: 6 }}>
+                Bu ekranı sadece adminler görür.
+              </div>
             </Card>
 
             <Card ui={ui}>
-              <div style={{ fontSize: 16, fontWeight: 950 }}>Bekleyen İşletme Başvuruları</div>
+              <div style={{ fontSize: 16, fontWeight: 950 }}>
+                Bekleyen İşletme Başvuruları
+              </div>
               {pendingApps.length === 0 ? (
                 <div style={{ color: ui.muted, marginTop: 10 }}>Bekleyen başvuru yok.</div>
               ) : (
                 <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
                   {pendingApps.map((a) => (
-                    <div key={a.id} style={{ border: `1px solid ${ui.border}`, borderRadius: 16, padding: 12, background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div
+                      key={a.id}
+                      style={{
+                        border: `1px solid ${ui.border}`,
+                        borderRadius: 16,
+                        padding: 12,
+                        background:
+                          ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          flexWrap: "wrap",
+                        }}
+                      >
                         <div>
                           <div style={{ fontSize: 16, fontWeight: 950 }}>{a.name}</div>
                           <div style={{ color: ui.muted, marginTop: 4 }}>
                             {a.city} • {a.category} • Durum: Beklemede • Başvuran: @{a.applicant}
                           </div>
-                          <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>{fmt(a.createdAt)}</div>
+                          <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
+                            {fmt(a.createdAt)}
+                          </div>
                         </div>
                         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                          <Button ui={ui} variant="ok" onClick={() => adminApprove(a)}>Onayla</Button>
-                          <Button ui={ui} variant="danger" onClick={() => openReject(a)}>Reddet</Button>
+                          <Button ui={ui} variant="ok" onClick={() => adminApprove(a)}>
+                            Onayla
+                          </Button>
+                          <Button ui={ui} variant="danger" onClick={() => openReject(a)}>
+                            Reddet
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -3991,7 +4118,20 @@ return (
 
               <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                 {approvedBiz.map((b) => (
-                  <div key={b.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", border: `1px solid ${ui.border}`, borderRadius: 16, padding: 12, background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)" }}>
+                  <div
+                    key={b.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      flexWrap: "wrap",
+                      border: `1px solid ${ui.border}`,
+                      borderRadius: 16,
+                      padding: 12,
+                      background:
+                        ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                    }}
+                  >
                     <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                       <Avatar ui={ui} src={b.avatar} size={44} label={b.name} />
                       <div>
@@ -4003,8 +4143,12 @@ return (
                     </div>
 
                     <div style={{ display: "flex", gap: 10 }}>
-                      <Button ui={ui} variant="blue" onClick={() => openEditBiz(b)}>Yönet / Düzenle</Button>
-                      <Button ui={ui} variant="danger" onClick={() => openDelete("biz", b)}>Sil</Button>
+                      <Button ui={ui} variant="blue" onClick={() => openEditBiz(b)}>
+                        Yönet / Düzenle
+                      </Button>
+                      <Button ui={ui} variant="danger" onClick={() => openDelete("biz", b)}>
+                        Sil
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -4013,15 +4157,33 @@ return (
 
             <Card ui={ui}>
               <div style={{ fontSize: 16, fontWeight: 950 }}>Randevu Talepleri</div>
-              <div style={{ color: ui.muted, marginTop: 6 }}>Bu talepler işletmeye iletilmiş kabul edilir (MVP).</div>
+              <div style={{ color: ui.muted, marginTop: 6 }}>
+                Bu talepler işletmeye iletilmiş kabul edilir (MVP).
+              </div>
 
               {appts.length === 0 ? (
                 <div style={{ color: ui.muted, marginTop: 10 }}>Henüz randevu yok.</div>
               ) : (
                 <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                   {appts.slice(0, 30).map((a) => (
-                    <div key={a.id} style={{ border: `1px solid ${ui.border}`, borderRadius: 16, padding: 12, background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <div
+                      key={a.id}
+                      style={{
+                        border: `1px solid ${ui.border}`,
+                        borderRadius: 16,
+                        padding: 12,
+                        background:
+                          ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          flexWrap: "wrap",
+                        }}
+                      >
                         <div style={{ fontWeight: 950 }}>
                           {a.bizName} <span style={{ color: ui.muted }}>({a.status})</span>
                         </div>
@@ -4029,7 +4191,10 @@ return (
                       </div>
                       <div style={{ marginTop: 6, color: ui.muted }}>
                         Talep eden:{" "}
-                        <span style={{ textDecoration: "underline", cursor: "pointer" }} onClick={() => openProfileByUsername(a.fromUsername)}>
+                        <span
+                          style={{ textDecoration: "underline", cursor: "pointer" }}
+                          onClick={() => openProfileByUsername(a.fromUsername)}
+                        >
                           @{a.fromUsername}
                         </span>
                       </div>
@@ -4046,12 +4211,27 @@ return (
 
               <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                 {users.map((u) => (
-                  <div key={u.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", border: `1px solid ${ui.border}`, borderRadius: 16, padding: 12, background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)" }}>
+                  <div
+                    key={u.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      flexWrap: "wrap",
+                      border: `1px solid ${ui.border}`,
+                      borderRadius: 16,
+                      padding: 12,
+                      background:
+                        ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                    }}
+                  >
                     <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                       <Avatar ui={ui} src={u.avatar} size={44} label={u.username} />
                       <div>
                         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                          <Chip ui={ui} onClick={() => openProfileByUsername(u.username)}>@{u.username}</Chip>
+                          <Chip ui={ui} onClick={() => openProfileByUsername(u.username)}>
+                            @{u.username}
+                          </Chip>
                           <span style={{ color: ui.muted }}>Tier: {u.Tier || "Onaylı İşletme"}</span>
                           <span style={{ color: ui.muted }}>XP: {u.xp || 0}</span>
                         </div>
@@ -4060,7 +4240,9 @@ return (
                     </div>
 
                     <div style={{ display: "flex", gap: 10 }}>
-                      <Button ui={ui} variant="blue" onClick={() => openEditUser(u)}>Yönet / Düzenle</Button>
+                      <Button ui={ui} variant="blue" onClick={() => openEditUser(u)}>
+                        Yönet / Düzenle
+                      </Button>
                       <Button
                         ui={ui}
                         variant="danger"
@@ -4083,13 +4265,31 @@ return (
               ) : (
                 <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                   {adminLog.slice(0, 40).map((l) => (
-                    <div key={l.id} style={{ border: `1px solid ${ui.border}`, borderRadius: 16, padding: 12, background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div
+                      key={l.id}
+                      style={{
+                        border: `1px solid ${ui.border}`,
+                        borderRadius: 16,
+                        padding: 12,
+                        background:
+                          ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          flexWrap: "wrap",
+                        }}
+                      >
                         <div style={{ fontWeight: 950 }}>{l.action}</div>
                         <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(l.createdAt)}</div>
                       </div>
                       <div style={{ marginTop: 6, color: ui.muted }}>Admin: @{l.admin}</div>
-                      <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>{JSON.stringify(l.payload)}</div>
+                      <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>
+                        {JSON.stringify(l.payload)}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -4099,34 +4299,69 @@ return (
         )}
       </div>
 
-   {/* FOOTER */}
-<div
-  style={{
-    maxWidth: 1240,
-    margin: "0 auto",
-    padding: "20px 16px 28px",
-    color: ui.muted2,
-    fontSize: 12,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 10,
-  }}
->
-  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
-    <a href="#" style={{ color: ui.muted2, textDecoration: "none" }}>About</a>
-    <a href="#" style={{ color: ui.muted2, textDecoration: "none" }}>Help</a>
-    <a href="#" style={{ color: ui.muted2, textDecoration: "none" }}>Privacy</a>
-    <a href="#" style={{ color: ui.muted2, textDecoration: "none" }}>Terms</a>
-    <a href="#" style={{ color: ui.muted2, textDecoration: "none" }}>Contact</a>
-  </div>
+      {/* FOOTER */}
+      <div
+        style={{
+          maxWidth: 1240,
+          margin: "0 auto",
+          padding: "20px 16px 28px",
+          color: ui.muted2,
+          fontSize: 12,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            flexWrap: "wrap",
+            justifyContent: "center",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setInfoPage("about")}
+            style={{ background: "none", border: "none", color: ui.muted2, cursor: "pointer" }}
+          >
+            About
+          </button>
+          <button
+            type="button"
+            onClick={() => setInfoPage("help")}
+            style={{ background: "none", border: "none", color: ui.muted2, cursor: "pointer" }}
+          >
+            Help
+          </button>
+          <button
+            type="button"
+            onClick={() => setInfoPage("privacy")}
+            style={{ background: "none", border: "none", color: ui.muted2, cursor: "pointer" }}
+          >
+            Privacy
+          </button>
+          <button
+            type="button"
+            onClick={() => setInfoPage("terms")}
+            style={{ background: "none", border: "none", color: ui.muted2, cursor: "pointer" }}
+          >
+            Terms
+          </button>
+          <button
+            type="button"
+            onClick={() => setInfoPage("contact")}
+            style={{ background: "none", border: "none", color: ui.muted2, cursor: "pointer" }}
+          >
+            Contact
+          </button>
+        </div>
 
-  <div style={{ opacity: 0.7 }}>
-    © 2026 TurkGuide
-  </div>
-</div>
+        <div style={{ opacity: 0.7 }}>© 2026 TurkGuide</div>
+      </div>
 
-     {/* SETTINGS MODAL */}
+      {/* SETTINGS MODAL */}
 <Modal
   ui={ui}
   open={showSettings}
@@ -4139,10 +4374,7 @@ return (
       ui={ui}
       style={{
         padding: 14,
-        background:
-          ui.mode === "light"
-            ? "rgba(0,0,0,0.02)"
-            : "rgba(255,255,255,0.03)",
+        background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
       }}
     >
       <div style={{ fontWeight: 950, fontSize: 14 }}>Tema</div>
@@ -4172,9 +4404,7 @@ return (
           label="Sohbeti Aç/Kapat"
           desc="Kapalıysa gelen/giden mesajlar sessizce engellenir."
           value={!!settings.chatEnabled}
-          onToggle={() =>
-            setSettings((p) => ({ ...p, chatEnabled: !p.chatEnabled }))
-          }
+          onToggle={() => setSettings((p) => ({ ...p, chatEnabled: !p.chatEnabled }))}
         />
 
         <ToggleRow
@@ -4182,9 +4412,7 @@ return (
           label="Görüldü Özelliği"
           desc="Açıkken mesajlar ‘okundu’ olarak işaretlenebilir (MVP)."
           value={!!settings.readReceipts}
-          onToggle={() =>
-            setSettings((p) => ({ ...p, readReceipts: !p.readReceipts }))
-          }
+          onToggle={() => setSettings((p) => ({ ...p, readReceipts: !p.readReceipts }))}
         />
 
         <ToggleRow
@@ -4192,12 +4420,9 @@ return (
           label="Mesaj Bildirimleri"
           desc="Açıkken rozet/okunmamış sayısı güncel tutulur (MVP)."
           value={!!settings.msgNotifications}
-          onToggle={() =>
-            setSettings((p) => ({ ...p, msgNotifications: !p.msgNotifications }))
-          }
+          onToggle={() => setSettings((p) => ({ ...p, msgNotifications: !p.msgNotifications }))}
         />
 
-        {/* ⚠️ HESAP SİLME */}
         <div
           style={{
             marginTop: 24,
@@ -4216,7 +4441,18 @@ return (
   </div>
 </Modal>
 
-     {/* LOGIN MODAL */}
+{/* INFO MODAL */}
+<Modal
+  ui={ui}
+  open={!!infoPage}
+  title={(INFO_TITLES && infoPage && INFO_TITLES[infoPage]) || "Info"}
+  onClose={() => setInfoPage(null)}
+  width={760}
+>
+  {typeof renderInfoPage === "function" ? renderInfoPage(infoPage) : null}
+</Modal>
+
+{/* LOGIN MODAL */}
 <Modal ui={ui} open={showAuth} title="Giriş / Kayıt" onClose={() => setShowAuth(false)}>
   <div style={{ color: ui.muted, marginBottom: 10 }}>
     Paylaşım, yorum, mesaj ve randevu için giriş zorunlu.
@@ -4254,8 +4490,6 @@ return (
       onClick={() => {
         setShowAuth(false);
         setShowRegister(true);
-
-        // Register alanlarını temizle
         setAuthUsername("");
         setAuthEmail("");
         setAuthPassword("");
@@ -4274,28 +4508,25 @@ return (
     Not: Gerçek email doğrulama (kod/OTP) için Supabase/Firebase bağlayacağız.
   </div>
 
-  {/* AYRAÇ */}
   <div style={{ textAlign: "center", color: ui.muted, fontSize: 12, margin: "12px 0" }}>
     veya
   </div>
 
-  {/* OAUTH GİRİŞ BUTONLARI */}
-<div style={{ display: "grid", gap: 10 }}>
-  <Button
-    ui={ui}
-    onClick={() => oauthLogin("apple")}
-    style={{
-      width: "100%",
-      background: "#000",
-      color: "#fff",
-      fontWeight: 900,
-      borderRadius: 999,
-    }}
-  >
-     Apple ile Giriş
-  </Button>
-</div>
-
+  <div style={{ display: "grid", gap: 10 }}>
+    <Button
+      ui={ui}
+      onClick={() => oauthLogin("apple")}
+      style={{
+        width: "100%",
+        background: "#000",
+        color: "#fff",
+        fontWeight: 900,
+        borderRadius: 999,
+      }}
+    >
+       Apple ile Giriş
+    </Button>
+  </div>
 </Modal>
 
 {/* REGISTER MODAL */}
