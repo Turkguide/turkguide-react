@@ -1169,12 +1169,55 @@ export default function App() {
   // Tabs
   const [active, setActive] = useState("biz");
 
+  // 🧪 DEBUG: active değişimini takip et
+  useEffect(() => {
+    console.log("🧪 ACTIVE CHANGED ->", active);
+  }, [active]);
+
+  // 🔄 Fetch + Realtime subscribe when HUB tab becomes active
+  useEffect(() => {
+    let channel = null;
+
+    if (active === "hub") {
+      console.log("🟣 HUB tab active -> fetchHubPosts() running");
+      // initial load
+      fetchHubPosts();
+
+      // realtime: any insert/update/delete on hub_posts refreshes the list
+      if (supabase?.channel) {
+        channel = supabase
+          .channel("realtime:hub_posts")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "hub_posts" },
+            () => {
+              // keep it simple: re-fetch latest
+              fetchHubPosts();
+            }
+          )
+          .subscribe();
+      }
+    }
+
+    return () => {
+      try {
+        if (channel) supabase.removeChannel(channel);
+      } catch (_) {}
+    };
+  }, [active]);
+
   // Data
   const [user, setUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [biz, setBiz] = useState([]);
   const [bizApps, setBizApps] = useState([]);
   const [posts, setPosts] = useState([]);
+  // 🧪 DEBUG: posts state gerçekten güncelleniyor mu?
+  useEffect(() => {
+    try {
+      console.log("🧪 POSTS STATE CHANGED -> len=", (posts || []).length, "first=", (posts || [])[0]);
+    } catch (_) {}
+  }, [posts]);
   const [dms, setDms] = useState([]);
   const [appts, setAppts] = useState([]);
   const [adminLog, setAdminLog] = useState([]);
@@ -2235,15 +2278,52 @@ function confirmDelete() {
   setDeleteCtx(null);
   setReasonText("");
 }
+async function fetchHubPosts() {
+  try {
+    console.log("🟣 fetchHubPosts: start");
+    const { data, error } = await supabase
+      .from("hub_posts")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
 
-function hubShare() {
+    if (error) throw error;
+    console.log("🟣 fetchHubPosts: ok rows=", (data || []).length, "first=", (data || [])[0]);
+
+    const mapped = (data || []).map((r) => ({
+      id: r.id,
+      createdAt: new Date(r.created_at).getTime(),
+      byType: "user",
+      byUsername: r.username || r.by_username || r.bu_username || "",
+      content: r.content || "",
+      media: r.media || null,
+      likes: r.likes || 0,
+      comments: r.comments || [],
+    }));
+
+    setPosts(mapped);
+    console.log("🟣 fetchHubPosts: setPosts mapped len=", mapped.length);
+  } catch (e) {
+    console.error("fetchHubPosts error:", e);
+    console.log("🟣 fetchHubPosts: catch raw=", e);
+    // UI'de de görünür olsun (RLS/policy vs. anında yakalamak için)
+    try {
+      const msg = e?.message || e?.error_description || JSON.stringify(e);
+      alert("HUB postları çekilemedi: " + msg);
+    } catch (_) {}
+  }
+}
+
+async function hubShare() {
   if (!requireAuth()) return;
+  console.log("HUB SHARE ÇALIŞTI");
 
   const text = String(composer || "").trim();
   if (!text && !hubMedia) return;
 
   const stamp = now();
 
+  // Local shape (DB response ile senkronlayacağız)
   const post = {
     id: uid(),
     createdAt: stamp,
@@ -2265,27 +2345,59 @@ function hubShare() {
     comments: [],
   };
 
-  setPosts((prev) => {
-    const top = prev?.[0];
+  try {
+    if (!supabase?.from) throw new Error("Supabase client hazır değil.");
 
-    const sameAuthor = normalizeUsername(top?.byUsername) === normalizeUsername(post.byUsername);
+    const { data: insertedRow, error } = await supabase
+      .from("hub_posts")
+      .insert({
+        user_id: user?.id || null,
+        username: user?.username || "",
+        content: text || "",
+        media: post.media,
+        likes: 0,
+        comments: [],
+      })
+      .select("*")
+      .single();
 
-    const sameText = String(top?.content || "").trim() === post.content;
+    if (error) {
+      console.error("hubShare insert error:", error);
+      alert("Paylaşım gönderilemedi: " + (error.message || ""));
+      return;
+    }
 
-    const sameMedia =
-      (top?.media?.src || "") && (post.media?.src || "") && top.media.src === post.media.src;
+    // DB'den dönen id/created_at ile senkron post
+    const postFromDb = {
+      ...post,
+      id: insertedRow?.id || post.id,
+      createdAt: insertedRow?.created_at ? new Date(insertedRow.created_at).getTime() : stamp,
+      byUsername: insertedRow?.username || post.byUsername,
+      content: insertedRow?.content ?? post.content,
+      media: insertedRow?.media ?? post.media,
+      likes: insertedRow?.likes ?? post.likes,
+      comments: insertedRow?.comments ?? post.comments,
+    };
 
-    const closeInTime = typeof top?.createdAt === "number" && Math.abs(stamp - top.createdAt) < 1500;
-
-    // ✅ Eğer click/handler iki kere tetiklendiyse aynı post'u iki kere ekleme
-    if (sameAuthor && sameText && sameMedia && closeInTime) return prev;
-
-    return [post, ...(prev || [])];
-  });
+    // Double eklemeyi engelle (özellikle realtime + local update çakışırsa)
+    setPosts((prev) => {
+      if ((prev || []).some((p) => p?.id === postFromDb.id)) return prev;
+      return [postFromDb, ...(prev || [])];
+    });
+  } catch (e) {
+    console.error("hubShare crash:", e);
+    alert("Paylaşım gönderilemedi.");
+    return;
+  }
 
   setComposer("");
   setHubMedia(null);
   setPostMenuOpenId(null);
+
+  // ✅ Realtime çalışmasa bile liste hemen güncellensin
+  try {
+    await fetchHubPosts();
+  } catch (_) {}
 }
 
 function hubLike(postId) {
@@ -2293,19 +2405,62 @@ function hubLike(postId) {
   setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p)));
 }
 
-function hubComment(postId) {
+async function hubComment(postId) {
   if (!requireAuth()) return;
+
   const text = String(commentDraft[postId] || "").trim();
   if (!text) return;
 
+  const newComment = {
+    id: uid(),
+    createdAt: now(),
+    byUsername: user.username,
+    text,
+  };
+
+  // 1) Optimistic UI update (hemen ekranda göster)
   setPosts((prev) =>
     prev.map((p) =>
       p.id === postId
-        ? { ...p, comments: [...(p.comments || []), { id: uid(), createdAt: now(), byUsername: user.username, text }] }
+        ? { ...p, comments: [...(p.comments || []), newComment] }
         : p
     )
   );
+
   setCommentDraft((d) => ({ ...d, [postId]: "" }));
+
+  // 2) Supabase'e kalıcı olarak yaz
+  try {
+    const target = posts.find((p) => p.id === postId);
+    const currentComments = Array.isArray(target?.comments) ? target.comments : [];
+    const nextComments = [...currentComments, newComment];
+
+    const { error } = await supabase
+      .from("hub_posts")
+      .update({ comments: nextComments })
+      .eq("id", postId);
+
+    if (error) throw error;
+
+    // garanti olsun diye tekrar DB'den çek
+    await fetchHubPosts();
+  } catch (e) {
+    console.error("hubComment DB error:", e);
+
+    // DB başarısızsa optimistic yorumu geri al
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              comments: (p.comments || []).filter((c) => c.id !== newComment.id),
+            }
+          : p
+      )
+    );
+
+    alert("Yorum kaydedilemedi.");
+  }
 }
 
 function openAppointment(bizId) {
@@ -3565,399 +3720,483 @@ return (
                 İçerik paylaşın, yorum yapın, bağlantıda kalın.
               </div>
 
+              <div style={{ color: ui.muted2, marginTop: 6, fontSize: 12 }}>
+                DEBUG posts = {Array.isArray(posts) ? posts.length : "NOT_ARRAY"}
+              </div>
+
               <div style={{ marginTop: 12 }}>
- {/* Composer */}
- <div style={{ position: "relative" }}>
-   <textarea
-     placeholder={user ? "Bir şey yaz ve paylaş..." : "Paylaşmak için giriş yap"}
-     value={composer}
-     onChange={(e) => setComposer(e.target.value)}
-     onFocus={() => {
-       if (!user) setShowAuth(true);
-     }}
-     style={inputStyle(ui, {
-       minHeight: 110,
-       borderRadius: 14,
-       resize: "vertical",
-       paddingBottom: 56, // ✅ ikon için içeride boşluk
-     })}
-   />
+                {/* Composer */}
+                <div style={{ position: "relative" }}>
+                  <textarea
+                    placeholder={user ? "Bir şey yaz ve paylaş..." : "Paylaşmak için giriş yap"}
+                    value={composer}
+                    onChange={(e) => setComposer(e.target.value)}
+                    onFocus={() => {
+                      if (!user) setShowAuth(true);
+                    }}
+                    style={inputStyle(ui, {
+                      minHeight: 110,
+                      borderRadius: 14,
+                      resize: "vertical",
+                      paddingBottom: 56,
+                    })}
+                  />
 
-   {/* ✅ Instagram/Twitter gibi: textarea içine medya ikonu */}
-   <button
-     type="button"
-     aria-label="Foto/Video ekle"
-     title="Foto/Video ekle"
-     onClick={() => {
-       if (!user) {
-         setShowAuth(true);
-         return;
-       }
-       pickHubMedia();
-     }}
-     onMouseDown={(e) => e.stopPropagation()}
-     style={{
-       position: "absolute",
-       right: 12,
-       bottom: 12,
-       width: 40,
-       height: 40,
-       borderRadius: 999,
-       border: `1px solid ${ui.border}`,
-       background: ui.mode === "light" ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)",
-       color: ui.text,
-       display: "inline-flex",
-       alignItems: "center",
-       justifyContent: "center",
-       cursor: "pointer",
-       padding: 0,
-       lineHeight: 1,
-     }}
-   >
-     <svg
-       width="22"
-       height="22"
-       viewBox="0 0 24 24"
-       fill="none"
-       stroke="currentColor"
-       strokeWidth="2"
-       strokeLinecap="round"
-       strokeLinejoin="round"
-       aria-hidden="true"
-       focusable="false"
-     >
-       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-       <circle cx="12" cy="13" r="4" />
-     </svg>
-   </button>
- </div>
+                  {/* ✅ textarea içine medya ikonu */}
+                  <button
+                    type="button"
+                    aria-label="Foto/Video ekle"
+                    title="Foto/Video ekle"
+                    onClick={() => {
+                      if (!user) {
+                        setShowAuth(true);
+                        return;
+                      }
+                      pickHubMedia();
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    style={{
+                      position: "absolute",
+                      right: 12,
+                      bottom: 12,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 999,
+                      border: `1px solid ${ui.border}`,
+                      background:
+                        ui.mode === "light" ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)",
+                      color: ui.text,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      padding: 0,
+                      lineHeight: 1,
+                    }}
+                  >
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                  </button>
+                </div>
 
+                {/* Preview */}
+                {hubMedia ? (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      border: `1px solid ${ui.border}`,
+                      borderRadius: 18,
+                      overflow: "hidden",
+                      background:
+                        ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                      maxWidth: 420,
+                    }}
+                  >
+                    <div style={{ position: "relative" }}>
+                      <div style={{ width: "100%", aspectRatio: "4 / 5" }}>
+                        {hubMedia.kind === "image" ? (
+                          <img
+                            src={hubMedia.src}
+                            alt=""
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              display: "block",
+                            }}
+                          />
+                        ) : (
+                          <video
+                            src={hubMedia.src}
+                            controls
+                            playsInline
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              display: "block",
+                            }}
+                          />
+                        )}
+                      </div>
 
-  {/* Preview */}
-  {hubMedia ? (
-    <div
-      style={{
-        marginTop: 10,
-        border: `1px solid ${ui.border}`,
-        borderRadius: 18,
-        overflow: "hidden",
-        background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-        maxWidth: 420,
-      }}
-    >
-      <div style={{ position: "relative" }}>
-        <div style={{ width: "100%", aspectRatio: "4 / 5" }}>
-          {hubMedia.kind === "image" ? (
-            <img
-              src={hubMedia.src}
-              alt=""
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            />
-          ) : (
-            <video
-              src={hubMedia.src}
-              controls
-              playsInline
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            />
-          )}
-        </div>
+                      <button
+                        type="button"
+                        onClick={() => setHubMedia(null)}
+                        aria-label="Medya kaldır"
+                        title="Kaldır"
+                        style={{
+                          position: "absolute",
+                          top: 10,
+                          right: 10,
+                          width: 34,
+                          height: 34,
+                          borderRadius: 999,
+                          border: `1px solid ${ui.border}`,
+                          background:
+                            ui.mode === "light"
+                              ? "rgba(255,255,255,0.92)"
+                              : "rgba(10,12,18,0.82)",
+                          color: ui.text,
+                          cursor: "pointer",
+                          fontWeight: 950,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
 
-        <button
-          type="button"
-          onClick={() => setHubMedia(null)}
-          aria-label="Medya kaldır"
-          title="Kaldır"
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            width: 34,
-            height: 34,
-            borderRadius: 999,
-            border: `1px solid ${ui.border}`,
-            background: ui.mode === "light" ? "rgba(255,255,255,0.92)" : "rgba(10,12,18,0.82)",
-            color: ui.text,
-            cursor: "pointer",
-            fontWeight: 950,
-          }}
-        >
-          ✕
-        </button>
-      </div>
+                    <div style={{ padding: 10, color: ui.muted2, fontSize: 12 }}>
+                      {hubMedia.kind === "video"
+                        ? `Video: ${Math.round((hubMedia.duration || 0) * 10) / 10}s • Max 60s • 2K`
+                        : "Fotoğraf: 4:5"}
+                    </div>
+                  </div>
+                ) : null}
 
-      <div style={{ padding: 10, color: ui.muted2, fontSize: 12 }}>
-        {hubMedia.kind === "video"
-          ? `Video: ${Math.round((hubMedia.duration || 0) * 10) / 10}s • Max 60s • 2K`
-          : "Fotoğraf: 4:5"}
-      </div>
-    </div>
-  ) : null}
-
-  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-    <Button ui={ui} variant="solidBlue" onClick={hubShare}>Paylaş</Button>
-  </div>
-</div>
+                <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <Button ui={ui} variant="solidBlue" onClick={hubShare}>
+                    Paylaş
+                  </Button>
+                </div>
+              </div>
             </Card>
 
-            {posts.length === 0 ? (
+            {/* ✅ Empty state must also handle NOT_ARRAY */}
+            {!Array.isArray(posts) || posts.length === 0 ? (
               <div style={{ color: ui.muted, padding: 10 }}>Henüz paylaşım yok.</div>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 {posts.map((p) => (
-                  <Card ui={ui} key={p.id} style={{ background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)" }}>
+                  <Card
+                    ui={ui}
+                    key={p.id}
+                    style={{
+                      background:
+                        ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    {/* outside click closes menu */}
                     <div onMouseDown={() => setPostMenuOpenId(null)}>
-<div
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 10,
-    flexWrap: "wrap",
-    alignItems: "center",
-  }}
->
-  <Chip ui={ui} onClick={() => openProfileByUsername(hubPostAuthor(p))}>
-    @{hubPostAuthor(p)}
-  </Chip>
+                      {/* header row */}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Chip ui={ui} onClick={() => openProfileByUsername(hubPostAuthor(p))}>
+                          @{hubPostAuthor(p)}
+                        </Chip>
 
-  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-    <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(p.createdAt)}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(p.createdAt)}</span>
 
-    {canEditPost(p) ? (
-      <div style={{ position: "relative" }}>
-        <button
-          type="button"
-          aria-label="Post menüsü"
-          title="Seçenekler"
-          onMouseDown={(e) => {
-            e.stopPropagation();
-            setPostMenuOpenId((cur) => (cur === p.id ? null : p.id));
-          }}
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 10,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: `1px solid ${ui.border}`,
-            background: ui.mode === "light" ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.25)",
-            color: ui.text,
-            cursor: "pointer",
-            fontWeight: 950,
-            lineHeight: 1,
-          }}
-        >
-          ⋯
-        </button>
+                          {canEditPost(p) ? (
+                            <div style={{ position: "relative" }}>
+                              <button
+                                type="button"
+                                aria-label="Post menüsü"
+                                title="Seçenekler"
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  setPostMenuOpenId((cur) => (cur === p.id ? null : p.id));
+                                }}
+                                style={{
+                                  width: 34,
+                                  height: 34,
+                                  borderRadius: 10,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  border: `1px solid ${ui.border}`,
+                                  background:
+                                    ui.mode === "light"
+                                      ? "rgba(255,255,255,0.8)"
+                                      : "rgba(0,0,0,0.25)",
+                                  color: ui.text,
+                                  cursor: "pointer",
+                                  fontWeight: 950,
+                                  lineHeight: 1,
+                                }}
+                              >
+                                ⋯
+                              </button>
 
-        {postMenuOpenId === p.id ? (
-          <div
-            onMouseDown={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute",
-              right: 0,
-              top: 40,
-              minWidth: 160,
-              borderRadius: 14,
-              border: `1px solid ${ui.border}`,
-              background: ui.panel,
-              boxShadow: `0 18px 40px ${ui.glow}`,
-              overflow: "hidden",
-              zIndex: 20,
-            }}
-          >
-            {editingPostId === p.id ? (
-              <>
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    saveEditPost(p.id);
-                    setPostMenuOpenId(null);
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    textAlign: "left",
-                    border: "none",
-                    background: "transparent",
-                    color: ui.text,
-                    cursor: "pointer",
-                    fontWeight: 900,
-                  }}
-                >
-                  Kaydet
-                </button>
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    cancelEditPost();
-                    setPostMenuOpenId(null);
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    textAlign: "left",
-                    border: "none",
-                    background: "transparent",
-                    color: ui.text,
-                    cursor: "pointer",
-                    fontWeight: 900,
-                  }}
-                >
-                  İptal
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    startEditPost(p);
-                    setPostMenuOpenId(null);
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    textAlign: "left",
-                    border: "none",
-                    background: "transparent",
-                    color: ui.text,
-                    cursor: "pointer",
-                    fontWeight: 900,
-                  }}
-                >
-                  ✏️ Düzenle
-                </button>
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    deletePost(p.id);
-                    setPostMenuOpenId(null);
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    textAlign: "left",
-                    border: "none",
-                    background: "transparent",
-                    color: ui.text,
-                    cursor: "pointer",
-                    fontWeight: 900,
-                  }}
-                >
-                  🗑️ Sil
-                </button>
-              </>
-            )}
-          </div>
-        ) : null}
-      </div>
-    ) : null}
-  </div>
-</div>
-
-                    {editingPostId === p.id ? (
-  <textarea
-    value={editPostDraft}
-    onChange={(e) => setEditPostDraft(e.target.value)}
-    style={inputStyle(ui, { minHeight: 90, borderRadius: 14, resize: "vertical", marginTop: 10 })}
-  />
-) : (
-  <div style={{ marginTop: 10, fontSize: 18, fontWeight: 900 }}>
-    {p.content}
-  </div>
-)}
-{p.editedAt ? (
-  <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>Düzenlendi</div>
-) : null}
-                    {p.media ? (
-  <div style={{ marginTop: 12 }}>
-    <div
-      style={{
-        width: "min(520px, 100%)",
-        aspectRatio: "4 / 5",
-        borderRadius: 16,
-        overflow: "hidden",
-        border: `1px solid ${ui.border}`,
-        background:
-          ui.mode === "light"
-            ? "rgba(0,0,0,0.03)"
-            : "rgba(255,255,255,0.04)",
-      }}
-    >
-      {p.media.kind === "image" ? (
-        <img
-          src={p.media.src}
-          alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
-        />
-      ) : (
-        <video
-          src={p.media.src}
-          controls
-          playsInline
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
-        />
-      )}
-    </div>
-
-    <div style={{ color: ui.muted, fontSize: 12, marginTop: 8 }}>
-      {p.media.kind === "video" && p.media.duration
-        ? `Video: ${Math.round(p.media.duration)}s • `
-        : ""}
-      Fotograf oranı: 4:5 • Video max 60s / 2K
-    </div>
-  </div>
-) : null}
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-                      <Button ui={ui} onClick={() => hubLike(p.id)}>Like ({p.likes || 0})</Button>
-                      <Button ui={ui} variant="solidBlue" onClick={() => openDmToUser(hubPostAuthor(p))}>💬 Mesaj</Button>
-                    </div>
-
-                    <Divider ui={ui} />
-
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <input
-                        placeholder={user ? "Yorum yaz..." : "Yorum için giriş yap"}
-                        value={commentDraft[p.id] || ""}
-                        onChange={(e) => setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))}
-                        onFocus={() => { if (!user) setShowAuth(true); }}
-                        style={inputStyle(ui, { padding: "10px 12px" })}
-                      />
-                      <Button ui={ui} variant="solidBlue" onClick={() => hubComment(p.id)}>Gönder</Button>
-                    </div>
-
-                    <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                      {(p.comments || []).slice().reverse().map((c) => (
-                        <div key={c.id} style={{ padding: 10, borderRadius: 14, border: `1px solid ${ui.border}`, background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)" }}>
-                          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                            <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>@{c.byUsername}</Chip>
-                            <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
-                            {user ? (
-                              <Button ui={ui} variant="blue" onClick={() => openDmToUser(c.byUsername)} style={{ padding: "6px 12px", borderRadius: 999, fontWeight: 900 }}>
-                                Mesaj
-                              </Button>
-                            ) : null}
-                          </div>
-                          <div style={{ marginTop: 8 }}>{c.text}</div>
+                              {postMenuOpenId === p.id ? (
+                                <div
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  style={{
+                                    position: "absolute",
+                                    right: 0,
+                                    top: 40,
+                                    minWidth: 160,
+                                    borderRadius: 14,
+                                    border: `1px solid ${ui.border}`,
+                                    background: ui.panel,
+                                    boxShadow: `0 18px 40px ${ui.glow}`,
+                                    overflow: "hidden",
+                                    zIndex: 20,
+                                  }}
+                                >
+                                  {editingPostId === p.id ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                          e.stopPropagation();
+                                          saveEditPost(p.id);
+                                          setPostMenuOpenId(null);
+                                        }}
+                                        style={{
+                                          width: "100%",
+                                          padding: "10px 12px",
+                                          textAlign: "left",
+                                          border: "none",
+                                          background: "transparent",
+                                          color: ui.text,
+                                          cursor: "pointer",
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        Kaydet
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                          e.stopPropagation();
+                                          cancelEditPost();
+                                          setPostMenuOpenId(null);
+                                        }}
+                                        style={{
+                                          width: "100%",
+                                          padding: "10px 12px",
+                                          textAlign: "left",
+                                          border: "none",
+                                          background: "transparent",
+                                          color: ui.text,
+                                          cursor: "pointer",
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        İptal
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                          e.stopPropagation();
+                                          startEditPost(p);
+                                          setPostMenuOpenId(null);
+                                        }}
+                                        style={{
+                                          width: "100%",
+                                          padding: "10px 12px",
+                                          textAlign: "left",
+                                          border: "none",
+                                          background: "transparent",
+                                          color: ui.text,
+                                          cursor: "pointer",
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        ✏️ Düzenle
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                          e.stopPropagation();
+                                          deletePost(p.id);
+                                          setPostMenuOpenId(null);
+                                        }}
+                                        style={{
+                                          width: "100%",
+                                          padding: "10px 12px",
+                                          textAlign: "left",
+                                          border: "none",
+                                          background: "transparent",
+                                          color: ui.text,
+                                          cursor: "pointer",
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        🗑️ Sil
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+
+                      {/* body */}
+                      {editingPostId === p.id ? (
+                        <textarea
+                          value={editPostDraft}
+                          onChange={(e) => setEditPostDraft(e.target.value)}
+                          style={inputStyle(ui, {
+                            minHeight: 90,
+                            borderRadius: 14,
+                            resize: "vertical",
+                            marginTop: 10,
+                          })}
+                        />
+                      ) : (
+                        <div style={{ marginTop: 10, fontSize: 18, fontWeight: 900 }}>{p.content}</div>
+                      )}
+
+                      {p.editedAt ? (
+                        <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>Düzenlendi</div>
+                      ) : null}
+
+                      {p.media ? (
+                        <div style={{ marginTop: 12 }}>
+                          <div
+                            style={{
+                              width: "min(520px, 100%)",
+                              aspectRatio: "4 / 5",
+                              borderRadius: 16,
+                              overflow: "hidden",
+                              border: `1px solid ${ui.border}`,
+                              background:
+                                ui.mode === "light"
+                                  ? "rgba(0,0,0,0.03)"
+                                  : "rgba(255,255,255,0.04)",
+                            }}
+                          >
+                            {p.media.kind === "image" ? (
+                              <img
+                                src={p.media.src}
+                                alt=""
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                  display: "block",
+                                }}
+                              />
+                            ) : (
+                              <video
+                                src={p.media.src}
+                                controls
+                                playsInline
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                  display: "block",
+                                }}
+                              />
+                            )}
+                          </div>
+
+                          <div style={{ color: ui.muted, fontSize: 12, marginTop: 8 }}>
+                            {p.media.kind === "video" && p.media.duration
+                              ? `Video: ${Math.round(p.media.duration)}s • `
+                              : ""}
+                            Fotograf oranı: 4:5 • Video max 60s / 2K
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+                        <Button ui={ui} onClick={() => hubLike(p.id)}>
+                          Like ({p.likes || 0})
+                        </Button>
+                        <Button ui={ui} variant="solidBlue" onClick={() => openDmToUser(hubPostAuthor(p))}>
+                          💬 Mesaj
+                        </Button>
+                      </div>
+
+                      <Divider ui={ui} />
+
+                      {/* comment input */}
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <input
+                          placeholder={user ? "Yorum yaz..." : "Yorum için giriş yap"}
+                          value={commentDraft[p.id] || ""}
+                          onChange={(e) =>
+                            setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))
+                          }
+                          onFocus={() => {
+                            if (!user) setShowAuth(true);
+                          }}
+                          style={inputStyle(ui, { padding: "10px 12px" })}
+                        />
+                        <Button ui={ui} variant="solidBlue" onClick={() => hubComment(p.id)}>
+                          Gönder
+                        </Button>
+                      </div>
+
+                      {/* comments */}
+                      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                        {(p.comments || [])
+                          .slice()
+                          .reverse()
+                          .map((c) => (
+                            <div
+                              key={c.id}
+                              style={{
+                                padding: 10,
+                                borderRadius: 14,
+                                border: `1px solid ${ui.border}`,
+                                background:
+                                  ui.mode === "light"
+                                    ? "rgba(0,0,0,0.03)"
+                                    : "rgba(255,255,255,0.03)",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 10,
+                                  alignItems: "center",
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>
+                                  @{c.byUsername}
+                                </Chip>
+                                <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
+                                {user ? (
+                                  <Button
+                                    ui={ui}
+                                    variant="blue"
+                                    onClick={() => openDmToUser(c.byUsername)}
+                                    style={{
+                                      padding: "6px 12px",
+                                      borderRadius: 999,
+                                      fontWeight: 900,
+                                    }}
+                                  >
+                                    Mesaj
+                                  </Button>
+                                ) : null}
+                              </div>
+                              <div style={{ marginTop: 8 }}>{c.text}</div>
+                            </div>
+                          ))}
+                      </div>
                     </div>
                   </Card>
                 ))}
