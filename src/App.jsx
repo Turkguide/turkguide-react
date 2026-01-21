@@ -1870,8 +1870,7 @@ function openBizApply() {
 }
 
 // ✅ Business CTA (reusable)
-function BizCta({ ui, onClick, compact = false }) {
-  return (
+function BizCta({ ui, onClick, compact = false, block = false }) {  return (
     <button
       type="button"
       onClick={onClick}
@@ -1882,8 +1881,10 @@ function BizCta({ ui, onClick, compact = false }) {
         userSelect: "none",
         WebkitTapHighlightColor: "transparent",
         display: "inline-flex",
+        width: block ? "100%" : "auto",
+        maxWidth: "100%",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: block ? "space-between" : "center",
         gap: 10,
         padding: compact ? "10px 14px" : "14px 18px",
         borderRadius: 999,
@@ -2685,7 +2686,16 @@ function clearFilters() {
 if (!booted) return null;
 
 return (
-  <div style={{ minHeight: "100vh", width: "100%", background: ui.bg, color: ui.text }}>
+  <div
+    style={{
+      minHeight: "100vh",
+      width: "100%",
+      background: ui.bg,
+      color: ui.text,
+      // ✅ Sticky Bottom CTA alanı içerikle çakışmasın
+      paddingBottom: active === "biz" ? 96 : 0,
+    }}
+  >
         <style>{`
       .tg-cta { transform: translateZ(0); }
       .tg-cta:hover { filter: brightness(1.03); }
@@ -2709,6 +2719,27 @@ return (
       style={{ display: "none" }}
       onChange={onPickHubMediaFile}
     />
+
+    {/* ✅ STICKY BOTTOM CTA (sadece BUSINESS sekmesi) */}
+    {active === "biz" ? (
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 60,
+          padding: "12px 16px",
+          background: ui.mode === "light" ? "rgba(246,247,251,0.88)" : "rgba(7,8,12,0.78)",
+          backdropFilter: "blur(14px)",
+          borderTop: `1px solid ${ui.border}`,
+        }}
+      >
+        <div style={{ maxWidth: 1240, margin: "0 auto" }}>
+          <BizCta ui={ui} onClick={openBizApply} block />
+        </div>
+      </div>
+    ) : null}
 
     {/* TOP BAR */}
     <div
@@ -2976,16 +3007,21 @@ return (
             <BizCta ui={ui} onClick={openBizApply} compact />
           </div>
         </Card>
-        {/* ORTA CTA — filtreler ile liste arası */}
-        <div
-          style={{
-            marginTop: 6,
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <BizCta ui={ui} onClick={openBizApply} />
-        </div>
+       {/* ORTA CTA — filtreler ile liste arası */}
+<div
+  style={{
+    marginTop: 6,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    maxWidth: 1240,
+    marginLeft: "auto",
+    marginRight: "auto",
+  }}
+>
+  <BizCta ui={ui} onClick={openBizApply} block />
+</div>
 
         {filteredBiz.length === 0 ? (
   <div style={{ color: ui.muted, padding: 10 }}>Bu filtrede işletme yok.</div>
@@ -3704,52 +3740,30 @@ return (
         )}
       </div>
 
-{/* FOOTER */}
+   {/* FOOTER */}
 <div
   style={{
     maxWidth: 1240,
     margin: "0 auto",
-    padding: "24px 16px 40px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-    alignItems: "center",
+    padding: "20px 16px 28px",
     color: ui.muted2,
     fontSize: 12,
-    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 10,
   }}
 >
-  <div
-    style={{
-      display: "flex",
-      flexWrap: "wrap",
-      gap: 14,
-      justifyContent: "center",
-    }}
-  >
-    {[
-      "About",
-      "Help",
-      "Privacy",
-      "Terms",
-      "Contact",
-    ].map((label) => (
-      <span
-        key={label}
-        onClick={() => alert("Coming soon")}
-        style={{
-          cursor: "pointer",
-          userSelect: "none",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {label}
-      </span>
-    ))}
+  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
+    <a href="#" style={{ color: ui.muted2, textDecoration: "none" }}>About</a>
+    <a href="#" style={{ color: ui.muted2, textDecoration: "none" }}>Help</a>
+    <a href="#" style={{ color: ui.muted2, textDecoration: "none" }}>Privacy</a>
+    <a href="#" style={{ color: ui.muted2, textDecoration: "none" }}>Terms</a>
+    <a href="#" style={{ color: ui.muted2, textDecoration: "none" }}>Contact</a>
   </div>
 
-  <div style={{ marginTop: 6 }}>
-    © {new Date().getFullYear()} TurkGuide
+  <div style={{ opacity: 0.7 }}>
+    © 2026 TurkGuide
   </div>
 </div>
 
