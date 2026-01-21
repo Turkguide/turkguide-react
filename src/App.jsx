@@ -2038,7 +2038,7 @@ function BizCta({ ui, onClick, compact = false, block = false }) {
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    whiteSpace: "nowrap",
+    whiteSpace: "normal",
   }}
 >
   <span style={{ fontWeight: 950 }}>İşletmenizi Ekleyin</span>
