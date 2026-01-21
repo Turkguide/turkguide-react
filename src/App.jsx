@@ -4744,6 +4744,7 @@ function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [country, setCountry] = useState("United States");
+  
 
   // Phone
   const [phoneCode, setPhoneCode] = useState(TG_PHONE_CODES?.[0]?.dial || "+1");
