@@ -3720,10 +3720,6 @@ return (
                 İçerik paylaşın, yorum yapın, bağlantıda kalın.
               </div>
 
-              <div style={{ color: ui.muted2, marginTop: 6, fontSize: 12 }}>
-                DEBUG posts = {Array.isArray(posts) ? posts.length : "NOT_ARRAY"}
-              </div>
-
               <div style={{ marginTop: 12 }}>
                 {/* Composer */}
                 <div style={{ position: "relative" }}>
