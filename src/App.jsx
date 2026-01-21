@@ -996,12 +996,12 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
   );
 }
 
-function CategoryGrid({ ui, counts, onPickCategory }) {
+function CategoryGrid({ ui, counts = {}, onPickCategory, biz = [] }) {
   const [cols, setCols] = useState(() => {
     const w = window.innerWidth;
-    if (w < 768) return 2;        // 📱 Mobile (iPhone / Android)
-    if (w < 1200) return 3;       // 📱 Tablet / küçük web
-    return 4;                     // 🖥️ Desktop
+    if (w < 768) return 2;
+    if (w < 1200) return 3;
+    return 4;
   });
 
   useEffect(() => {
@@ -1013,20 +1013,41 @@ function CategoryGrid({ ui, counts, onPickCategory }) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const items = [
-    { key: "Avukatlar", icon: "law", title: "Avukatlar" },
-    { key: "Doktorlar & Sağlık Hizmetleri", icon: "health", title: "Doktorlar & Sağlık Hizmetleri" },
-    { key: "Restoranlar", icon: "restaurant", title: "Restoranlar" },
-    { key: "Emlak Hizmetleri", icon: "realestate", title: "Emlak Hizmetleri" },
-    { key: "Araç Hizmetleri", icon: "autoservice", title: "Araç Hizmetleri" },
-    { key: "Kuaförler", icon: "salon", title: "Kuaförler" },
-    { key: "Berberler", icon: "barber", title: "Berberler" },
-    { key: "Araç Kiralama", icon: "rental", title: "Araç Kiralama" },
-    { key: "Araç Bayileri", icon: "dealership", title: "Araç Bayileri" },
-    { key: "Türk Marketleri", icon: "market", title: "Türk Marketleri" },
-    { key: "Okullar & Eğitim Hizmetleri", icon: "education", title: "Okullar & Eğitim Hizmetleri" },
-    { key: "Tamir Ustası / Ev Hizmetleri", icon: "handyman", title: "Tamir Ustası / Ev Hizmetleri" },
-    { key: "Temizlik Hizmetleri", icon: "cleaning", title: "Temizlik Hizmetleri" },
+  // 🔒 Varsayılan (şu an projede olan) kategoriler
+  const DEFAULT_CATEGORIES = [
+    { key: "Avukatlar", icon: "law" },
+    { key: "Doktorlar & Sağlık Hizmetleri", icon: "health" },
+    { key: "Restoranlar", icon: "restaurant" },
+    { key: "Emlak Hizmetleri", icon: "realestate" },
+    { key: "Araç Hizmetleri", icon: "autoservice" },
+    { key: "Kuaförler", icon: "salon" },
+    { key: "Berberler", icon: "barber" },
+    { key: "Araç Kiralama", icon: "rental" },
+    { key: "Araç Bayileri", icon: "dealership" },
+    { key: "Türk Marketleri", icon: "market" },
+    { key: "Okullar & Eğitim Hizmetleri", icon: "education" },
+    { key: "Tamir Ustası / Ev Hizmetleri", icon: "handyman" },
+    { key: "Temizlik Hizmetleri", icon: "cleaning" },
+  ];
+
+  // 🧠 Dinamik kategoriler (admin panel / yeni işletmelerden otomatik)
+  const dynamicCategories = Array.from(
+    new Set(
+      biz
+        .filter((b) => b?.status === "approved" && b?.category)
+        .map((b) => String(b.category).trim())
+    )
+  ).map((cat) => ({
+    key: cat,
+    icon: "default", // ikon bilinmiyorsa default
+  }));
+
+  // 🔗 Default + Dynamic birleşimi (duplicate yok)
+  const categories = [
+    ...DEFAULT_CATEGORIES,
+    ...dynamicCategories.filter(
+      (d) => !DEFAULT_CATEGORIES.some((c) => c.key === d.key)
+    ),
   ];
 
   return (
@@ -1038,13 +1059,16 @@ function CategoryGrid({ ui, counts, onPickCategory }) {
           gap: 18,
         }}
       >
-        {items.map((it) => (
+        {categories.map((it) => (
           <div
             key={it.key}
             onClick={() => onPickCategory?.(it.key)}
             style={{
               cursor: "pointer",
-              background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.05)",
+              background:
+                ui.mode === "light"
+                  ? "rgba(0,0,0,0.03)"
+                  : "rgba(255,255,255,0.05)",
               border: `1px solid ${ui.border}`,
               borderRadius: 22,
               padding: 22,
@@ -1056,12 +1080,13 @@ function CategoryGrid({ ui, counts, onPickCategory }) {
             }}
           >
             <div style={{ width: 28, height: 28, display: "grid", placeItems: "center" }}>
-              <CatIcon name={it.icon} size={28} color={ui.text} />
+              <CatIcon name={it.icon || "default"} size={28} color={ui.text} />
             </div>
+
             <div>
-              <div style={{ fontWeight: 950, fontSize: 16 }}>{it.title}</div>
+              <div style={{ fontWeight: 950, fontSize: 16 }}>{it.key}</div>
               <div style={{ color: ui.muted, fontSize: 13, marginTop: 6 }}>
-                {(counts?.[it.key] ?? 0)} listing
+                {(counts[it.key] ?? 0)} listing
               </div>
             </div>
           </div>
@@ -1885,7 +1910,7 @@ function BizCta({ ui, onClick, compact = false, block = false }) {
         width: block ? "100%" : "auto",
         maxWidth: "100%",
         alignItems: "center",
-        justifyContent: "flex-start",
+        justifyContent: block ? "space-between" : "center",
         gap: 10,
         padding: compact ? "10px 14px" : "14px 18px",
         borderRadius: 999,
@@ -2996,7 +3021,12 @@ return (
     {/* ✅ Kategori seçilmediyse: SADECE KATEGORİLER GÖZÜKSÜN */}
     {!categoryFilter && !landingSearch ? (
       <div style={{ paddingTop: 26 }}>
-        <CategoryGrid ui={ui} counts={categoryCounts} onPickCategory={pickCategory} />
+        <CategoryGrid
+  ui={ui}
+  counts={categoryCounts}
+  onPickCategory={pickCategory}
+  biz={approvedBiz}
+/>
       </div>
     ) : (
       /* ✅ Kategori seçildiyse veya arama varsa: SADECE FİLTRELİ İŞLETMELER */
