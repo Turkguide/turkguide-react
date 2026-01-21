@@ -2990,12 +2990,12 @@ return (
             const goMyProfile = () => {
               if (!user) return;
 
-              setProfileTarget({
-                type: "user",
-                userId: user.id,
-                username: user.username,
-              });
-              setProfileOpen(true);
+              // Sadece Profil sekmesine geç (modal otomatik açılmasın)
+              setActive("profile");
+
+              // Olası açık profil modalını kapat
+              setProfileOpen(false);
+              setProfileTarget(null);
             };
 
             return (
@@ -3716,6 +3716,100 @@ return (
           </div>
         )}
 
+        {/* PROFILE */}
+        {active === "profile" && (
+          <div style={{ paddingTop: 26 }}>
+            <Card ui={ui}>
+              <div style={{ fontSize: 18, fontWeight: 950 }}>Profil</div>
+              {!user ? (
+                <div style={{ marginTop: 8, color: ui.muted }}>
+                  Giriş yapmadın. Profil bilgisi için giriş yap.
+                </div>
+              ) : (
+                <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                    <Avatar ui={ui} src={user.avatar} size={70} label={user.username} />
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 950 }}>@{user.username}</div>
+                      <div style={{ color: ui.muted, marginTop: 4 }}>
+                        Üyelik: {user.tier ?? user.Tier ?? "Onaylı işletme"} • XP: {user.xp ?? user.XP ?? 0}
+                      </div>
+                      <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
+                        Kayıt: {fmt(user.createdAt || new Date().toISOString())}
+                      </div>
+                    </div>
+                  </div>
+
+                  <UserAvatarInput onBase64={(b64) => setMyAvatar(b64)} />
+
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {/* ✅ Profili Düzenle (self edit) */}
+                    <Button
+                      ui={ui}
+                      variant="solidBlue"
+                      onClick={() => {
+                        // self edit modal
+                        setShowEditUser(true);
+                        setEditUserCtx({
+                          ...user,
+                          xp: user.xp ?? user.XP ?? 0,
+                          tier: user.tier ?? user.Tier ?? "Onaylı İşletme",
+                          createdAt: user.createdAt || new Date().toISOString(),
+                        });
+                      }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                      title="Profilini düzenle"
+                    >
+                      <IconBase size={18}>
+                        {/* pencil/edit icon */}
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z" />
+                      </IconBase>
+                      Profili Düzenle
+                    </Button>
+
+                    {/* ✅ Profil Fotoğrafı (emoji yok) */}
+                    <Button
+                      ui={ui}
+                      onClick={() => userAvatarPicker.pick()}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                      title="Profil fotoğrafını değiştir"
+                    >
+                      <IconBase size={18}>
+                        {/* camera icon */}
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </IconBase>
+                      Profil Fotoğrafı
+                    </Button>
+
+                    {/* Profil görünümü (modal) */}
+                    <Button
+                      ui={ui}
+                      onClick={() => {
+                        setProfileTarget({
+                          type: "user",
+                          userId: user.id,
+                          username: user.username,
+                        });
+                        setProfileOpen(true);
+                      }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                      title="Profilini görüntüle"
+                    >
+                      <IconBase size={18}>
+                        {/* user icon */}
+                        <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z" />
+                        <path d="M4 20a8 8 0 0 1 16 0" />
+                      </IconBase>
+                      Profil Görünümü
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
 
         {/* ADMIN */}
         {active === "admin" && adminMode && (
