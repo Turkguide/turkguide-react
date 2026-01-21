@@ -2980,7 +2980,18 @@ return (
               WebkitTapHighlightColor: "transparent",
               overflow: "visible",
             };
+
             const isAuthed = !!user?.id;
+
+            const goMyProfile = () => {
+              if (!user) return;
+              // Profil sekmesine git + gerekirse profil modalını da açabilirsin
+              setActive("profile");
+              // İstersen direkt modal da açsın:
+              // setProfileTarget({ type: "user", userId: user.id, username: user.username });
+              // setProfileOpen(true);
+            };
+
             return (
               <>
                 {isAuthed && (
@@ -3047,6 +3058,22 @@ return (
                       ) : null}
                     </button>
 
+                    {/* ✅ Profil (kullanıcı kendi profilini rahatça görsün/düzenlesin) */}
+                    <button
+                      type="button"
+                      aria-label="Profil"
+                      title="Profil"
+                      onClick={goMyProfile}
+                      style={iconBtnStyle}
+                    >
+                      <IconBase size={22}>
+                        {/* user icon */}
+                        <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z" />
+                        <path d="M4 20a8 8 0 0 1 16 0" />
+                      </IconBase>
+                    </button>
+
+                    {/* Çıkış */}
                     <button
                       type="button"
                       aria-label="Çıkış Yap"
@@ -3080,7 +3107,6 @@ return (
                     onClick={() => setActive("admin")}
                     style={iconBtnStyle}
                   >
-                    {/* Basit kalkan svg */}
                     <IconBase size={22}>
                       <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
                     </IconBase>
