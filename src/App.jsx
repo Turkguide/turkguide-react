@@ -2030,19 +2030,25 @@ function BizCta({ ui, onClick, compact = false, block = false }) {
         </IconBase>
       </span>
 
-      <span style={{ display: "inline-flex", flexDirection: "column", gap: 2, flex: block ? "1 1 auto" : "0 0 auto", textAlign: "center", alignItems: "center" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          İşletmenizi Ekleyin
-          <span aria-hidden="true" style={{ opacity: 0.9 }}>
-            →
-          </span>
-        </span>
-        {!compact ? (
-          <span style={{ fontSize: 12, fontWeight: 900, opacity: 0.9 }}>
-            Ücretsiz Başvur
-          </span>
-        ) : null}
-      </span>
+      <span
+  style={{
+    display: "inline-flex",
+    flex: block ? "1 1 auto" : "0 0 auto",
+    textAlign: "center",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    whiteSpace: "nowrap",
+  }}
+>
+  <span style={{ fontWeight: 950 }}>İşletmenizi Ekleyin</span>
+
+  {!compact ? (
+    <span style={{ fontSize: 12, fontWeight: 900, opacity: 0.9 }}>
+      Ücretsiz Başvur
+    </span>
+  ) : null}
+</span>
       {block ? (
         <span
           aria-hidden="true"
