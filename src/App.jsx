@@ -3192,7 +3192,6 @@ return (
       <div id="biz-list" style={{ display: "grid", gap: 14, paddingTop: 26 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <Button ui={ui} onClick={clearFilters}>← Tüm Kategoriler</Button>
-          {categoryFilter ? <Chip ui={ui} active>Filtre: {categoryFilter}</Chip> : null}
           {landingSearch ? <Chip ui={ui} active>Arama: {landingSearch}</Chip> : null}
         </div>
 
@@ -3213,7 +3212,7 @@ return (
         padding: "16px 10px",
       }}
     >
-      Bu kategoride henüz işletme yok.
+      {categoryFilter ? `${categoryFilter} kategorisinde şu an işletme yok.` : "Bu kategoride henüz işletme yok."}
     </div>
   </Card>
 ) : null}
@@ -3234,7 +3233,9 @@ return (
 </div>
 
        {filteredBiz.length === 0 ? (
-  <div style={{ color: ui.muted, padding: 10 }}>Bu filtrede işletme yok.</div>
+  <div style={{ color: ui.muted, padding: 10 }}>
+    {categoryFilter ? `${categoryFilter} kategorisinde şu an işletme yok.` : "Bu filtrede işletme yok."}
+  </div>
 ) : (
   <div style={{ display: "grid", gap: 12 }}>
     {filteredBiz.map((b) => {
