@@ -4477,7 +4477,7 @@ return (
   </div>
 
   <input
-    placeholder="Email veya Kullanıcı Adı"
+    placeholder="Email"
     value={authEmail}
     onChange={(e) => setAuthEmail(e.target.value)}
     style={inputStyle(ui)}
@@ -4523,7 +4523,7 @@ return (
   </div>
 
   <div style={{ marginTop: 10, color: ui.muted, fontSize: 12 }}>
-    Not: Gerçek email doğrulama (kod/OTP) için Supabase/Firebase bağlayacağız.
+    Not: Güvenli giriş için doğrulama ve güvenlik kontrolleri uygulanır.
   </div>
 
   <div style={{ textAlign: "center", color: ui.muted, fontSize: 12, margin: "12px 0" }}>
