@@ -2032,13 +2032,14 @@ function BizCta({ ui, onClick, compact = false, block = false }) {
 
       <span
   style={{
-    display: "inline-flex",
-    flex: block ? "1 1 auto" : "0 0 auto",
-    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    textAlign: "center",
+    gap: 3,
     whiteSpace: "normal",
+    lineHeight: 1.1,
   }}
 >
   <span style={{ fontWeight: 950 }}>İşletmenizi Ekleyin</span>
