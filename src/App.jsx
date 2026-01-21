@@ -2842,48 +2842,84 @@ return (
               </div>
 
               <div style={{ marginTop: 12 }}>
-  {/* Hidden media input */}
-  <input
-    ref={hubMediaPickRef}
-    type="file"
-    accept="image/*,video/*"
-    style={{ display: "none" }}
-    onChange={onPickHubMediaFile}
-  />
+ {/* Composer */}
+ <div style={{ position: "relative" }}>
+   <textarea
+     placeholder={user ? "Bir şey yaz ve paylaş..." : "Paylaşmak için giriş yap"}
+     value={composer}
+     onChange={(e) => setComposer(e.target.value)}
+     onFocus={() => {
+       if (!user) setShowAuth(true);
+     }}
+     style={inputStyle(ui, {
+       minHeight: 110,
+       borderRadius: 14,
+       resize: "vertical",
+       paddingBottom: 56, // ✅ ikon için içeride boşluk
+     })}
+   />
 
-  <textarea
-    placeholder={user ? "Bir şey yaz ve paylaş..." : "Paylaşmak için giriş yap"}
-    value={composer}
-    onChange={(e) => setComposer(e.target.value)}
-    onFocus={() => { if (!user) setShowAuth(true); }}
-    style={inputStyle(ui, { minHeight: 90, borderRadius: 14, resize: "vertical" })}
-  />
+   {/* ✅ Instagram/Twitter gibi: textarea içine medya ikonu */}
+   <button
+     type="button"
+     aria-label="Foto/Video ekle"
+     title="Foto/Video ekle"
+     onClick={() => {
+       if (!user) {
+         setShowAuth(true);
+         return;
+       }
+       pickHubMedia();
+     }}
+     onMouseDown={(e) => e.stopPropagation()}
+     style={{
+       position: "absolute",
+       right: 12,
+       bottom: 12,
+       width: 40,
+       height: 40,
+       borderRadius: 999,
+       border: `1px solid ${ui.border}`,
+       background: ui.mode === "light" ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)",
+       color: ui.text,
+       display: "inline-flex",
+       alignItems: "center",
+       justifyContent: "center",
+       cursor: "pointer",
+       padding: 0,
+       lineHeight: 1,
+     }}
+   >
+     <svg
+       width="22"
+       height="22"
+       viewBox="0 0 24 24"
+       fill="none"
+       stroke="currentColor"
+       strokeWidth="2"
+       strokeLinecap="round"
+       strokeLinejoin="round"
+       aria-hidden="true"
+       focusable="false"
+     >
+       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+       <circle cx="12" cy="13" r="4" />
+     </svg>
+   </button>
+ </div>
 
-  {/* Media picker row */}
-  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-    <Button
-      ui={ui}
-      onClick={() => {
-        if (!user) { setShowAuth(true); return; }
-        pickHubMedia();
-      }}
-      title="Fotoğraf veya video ekle"
-    >
-      + Media Ekle
-    </Button>
-
-    {hubMedia ? (
-      <Chip ui={ui} title={hubMedia.originalName || ""}>
-        {hubMedia.kind === "video"
-          ? `Video • ${Math.round((hubMedia.duration || 0) * 10) / 10}s`
-          : "Fotoğraf • 4:5"}
-      </Chip>
-    ) : (
-      <span style={{ color: ui.muted2, fontSize: 12 }}>
-        4:5 Oran 2K 
-      </span>
-    )}
-  </div>
+ {/* ✅ seçilen medya bilgisi (butonsuz) */}
+ <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+   {hubMedia ? (
+     <Chip ui={ui} title={hubMedia.originalName || ""}>
+       {hubMedia.kind === "video"
+         ? `Video • ${Math.round((hubMedia.duration || 0) * 10) / 10}s`
+         : "Fotoğraf • 4:5"}
+     </Chip>
+   ) : (
+     <span style={{ color: ui.muted2, fontSize: 12 }}>Foto: 4:5 • Video: max 60s / 2K</span>
+   )}
+ </div>
 
   {/* Preview */}
   {hubMedia ? (
