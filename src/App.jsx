@@ -995,6 +995,83 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
     </div>
   );
 }
+// ✅ Tek kaynak: default kategoriler (CategoryGrid + BizApplyForm)
+const TG_DEFAULT_CATEGORIES = [
+  { key: "Avukatlar", icon: "law" },
+  { key: "Doktorlar & Sağlık Hizmetleri", icon: "health" },
+  { key: "Restoranlar", icon: "restaurant" },
+  { key: "Emlak Hizmetleri", icon: "realestate" },
+  { key: "Araç Hizmetleri", icon: "autoservice" },
+  { key: "Kuaförler", icon: "salon" },
+  { key: "Berberler", icon: "barber" },
+  { key: "Araç Kiralama", icon: "rental" },
+  { key: "Araç Bayileri", icon: "dealership" },
+  { key: "Türk Marketleri", icon: "market" },
+  { key: "Okullar & Eğitim Hizmetleri", icon: "education" },
+  { key: "Tamir Ustası / Ev Hizmetleri", icon: "handyman" },
+  { key: "Temizlik Hizmetleri", icon: "cleaning" },
+];
+
+// ✅ Telefon ülke kodları (liste büyütülebilir)
+const TG_PHONE_CODES = [
+  { country: "United States", code: "US", dial: "+1" },
+  { country: "Canada", code: "CA", dial: "+1" },
+  { country: "Turkey", code: "TR", dial: "+90" },
+  { country: "United Kingdom", code: "GB", dial: "+44" },
+  { country: "Germany", code: "DE", dial: "+49" },
+  { country: "France", code: "FR", dial: "+33" },
+  { country: "Netherlands", code: "NL", dial: "+31" },
+  { country: "Belgium", code: "BE", dial: "+32" },
+  { country: "Spain", code: "ES", dial: "+34" },
+  { country: "Italy", code: "IT", dial: "+39" },
+  { country: "Switzerland", code: "CH", dial: "+41" },
+  { country: "Austria", code: "AT", dial: "+43" },
+  { country: "Sweden", code: "SE", dial: "+46" },
+  { country: "Norway", code: "NO", dial: "+47" },
+  { country: "Denmark", code: "DK", dial: "+45" },
+  { country: "Finland", code: "FI", dial: "+358" },
+  { country: "Ireland", code: "IE", dial: "+353" },
+  { country: "Portugal", code: "PT", dial: "+351" },
+  { country: "Greece", code: "GR", dial: "+30" },
+  { country: "Romania", code: "RO", dial: "+40" },
+  { country: "Bulgaria", code: "BG", dial: "+359" },
+  { country: "Poland", code: "PL", dial: "+48" },
+  { country: "Czechia", code: "CZ", dial: "+420" },
+  { country: "Hungary", code: "HU", dial: "+36" },
+  { country: "Ukraine", code: "UA", dial: "+380" },
+  { country: "Russia", code: "RU", dial: "+7" },
+  { country: "Georgia", code: "GE", dial: "+995" },
+  { country: "Azerbaijan", code: "AZ", dial: "+994" },
+  { country: "United Arab Emirates", code: "AE", dial: "+971" },
+  { country: "Saudi Arabia", code: "SA", dial: "+966" },
+  { country: "Qatar", code: "QA", dial: "+974" },
+  { country: "Kuwait", code: "KW", dial: "+965" },
+  { country: "Israel", code: "IL", dial: "+972" },
+  { country: "Egypt", code: "EG", dial: "+20" },
+  { country: "Morocco", code: "MA", dial: "+212" },
+  { country: "Tunisia", code: "TN", dial: "+216" },
+  { country: "Algeria", code: "DZ", dial: "+213" },
+  { country: "South Africa", code: "ZA", dial: "+27" },
+  { country: "India", code: "IN", dial: "+91" },
+  { country: "Pakistan", code: "PK", dial: "+92" },
+  { country: "Bangladesh", code: "BD", dial: "+880" },
+  { country: "China", code: "CN", dial: "+86" },
+  { country: "Japan", code: "JP", dial: "+81" },
+  { country: "South Korea", code: "KR", dial: "+82" },
+  { country: "Singapore", code: "SG", dial: "+65" },
+  { country: "Malaysia", code: "MY", dial: "+60" },
+  { country: "Indonesia", code: "ID", dial: "+62" },
+  { country: "Thailand", code: "TH", dial: "+66" },
+  { country: "Vietnam", code: "VN", dial: "+84" },
+  { country: "Philippines", code: "PH", dial: "+63" },
+  { country: "Australia", code: "AU", dial: "+61" },
+  { country: "New Zealand", code: "NZ", dial: "+64" },
+  { country: "Mexico", code: "MX", dial: "+52" },
+  { country: "Brazil", code: "BR", dial: "+55" },
+  { country: "Argentina", code: "AR", dial: "+54" },
+  { country: "Chile", code: "CL", dial: "+56" },
+  { country: "Colombia", code: "CO", dial: "+57" },
+];
 
 function CategoryGrid({ ui, counts = {}, onPickCategory, biz = [] }) {
   const [cols, setCols] = useState(() => {
@@ -1013,22 +1090,7 @@ function CategoryGrid({ ui, counts = {}, onPickCategory, biz = [] }) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // 🔒 Varsayılan (şu an projede olan) kategoriler
-  const DEFAULT_CATEGORIES = [
-    { key: "Avukatlar", icon: "law" },
-    { key: "Doktorlar & Sağlık Hizmetleri", icon: "health" },
-    { key: "Restoranlar", icon: "restaurant" },
-    { key: "Emlak Hizmetleri", icon: "realestate" },
-    { key: "Araç Hizmetleri", icon: "autoservice" },
-    { key: "Kuaförler", icon: "salon" },
-    { key: "Berberler", icon: "barber" },
-    { key: "Araç Kiralama", icon: "rental" },
-    { key: "Araç Bayileri", icon: "dealership" },
-    { key: "Türk Marketleri", icon: "market" },
-    { key: "Okullar & Eğitim Hizmetleri", icon: "education" },
-    { key: "Tamir Ustası / Ev Hizmetleri", icon: "handyman" },
-    { key: "Temizlik Hizmetleri", icon: "cleaning" },
-  ];
+  const DEFAULT_CATEGORIES = TG_DEFAULT_CATEGORIES;
 
   // 🧠 Dinamik kategoriler (admin panel / yeni işletmelerden otomatik)
   const dynamicCategories = Array.from(
@@ -1958,7 +2020,7 @@ function BizCta({ ui, onClick, compact = false, block = false }) {
         </span>
         {!compact ? (
           <span style={{ fontSize: 12, fontWeight: 900, opacity: 0.9 }}>
-            Ücretsiz başvur • 1 dk
+            Ücretsiz Başvur
           </span>
         ) : null}
       </span>
@@ -1989,15 +2051,41 @@ function BizCta({ ui, onClick, compact = false, block = false }) {
 
 function submitBizApplication(data) {
   if (!requireAuth()) return;
-  const name = String(data?.name || "").trim();
-  const city = String(data?.city || "").trim();
-  const address = String(data?.address || "").trim();
-  const phone = String(data?.phone || "").trim();
-  const category = String(data?.category || "").trim();
-  const plan = String(data?.plan || "Onaylı İşletme").trim();
 
-  if (!name || !city || !category) {
-    alert("Lütfen işletme adı / şehir / kategori doldur.");
+  // ✅ Core fields
+  const name = String(data?.name || "").trim();
+  const category = String(data?.category || "").trim();
+  const desc = String(data?.desc || "").trim();
+
+  // ✅ Address fields (more universal)
+  const country = String(data?.country || "").trim();
+  const state = String(data?.state || "").trim();
+  const cityOnly = String(data?.city || "").trim();
+  const zip = String(data?.zip || "").trim();
+  const address1 = String(data?.address1 || data?.address || "").trim();
+  const apt = String(data?.apt || "").trim();
+
+  // Keep backward-compatible `city` string used around the app
+  const city = [cityOnly, state].filter(Boolean).join(", ") || String(data?.city || "").trim();
+
+  // ✅ Phone (dial code select + local number)
+  const phoneDial = String(data?.phoneDial || "").trim();
+  const phoneLocal = String(data?.phoneLocal || "").trim();
+  const phone = String(data?.phone || "").trim() || [phoneDial, phoneLocal].filter(Boolean).join(" ").trim();
+
+  // Basic validation
+  if (!name || !category) {
+    alert("Lütfen işletme adı ve kategori doldur.");
+    return;
+  }
+
+  if (!country || !cityOnly || !zip || !address1) {
+    alert("Lütfen adres bilgilerini eksiksiz girin (Ülke / Şehir / ZIP / Adres).");
+    return;
+  }
+
+  if (!phone) {
+    alert("Lütfen telefon numarası girin.");
     return;
   }
 
@@ -2008,17 +2096,35 @@ function submitBizApplication(data) {
       status: "pending",
       applicant: user.username,
       ownerUsername: user.username,
+
+      // Business
       name,
-      city,
-      address,
-      phone,
       category,
-      plan,
-      desc: String(data?.desc || "").trim(),
-      avatar: "",
+      desc,
+
+      // Address
+      country,
+      state,
+      zip,
+      apt,
+      address1,
+      address: [address1, apt ? `Apt ${apt}` : "", cityOnly, state, zip, country]
+        .filter(Boolean)
+        .join(", "),
+      city, // e.g. "Los Angeles, CA"
+
+      // Phone
+      phoneDial,
+      phoneLocal,
+      phone,
+
+      // Keep existing shape
+      plan: String(data?.plan || "business").trim(),
+      avatar: String(data?.avatar || "").trim() || "",
     },
     ...prev,
   ]);
+
   setShowBizApply(false);
 }
 
@@ -4637,27 +4743,59 @@ return (
    SUB COMPONENTS
 =========================== */
 
-function BizApplyForm({ ui, onSubmit, onCancel }) {
+function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
   const [name, setName] = useState("");
-  const [city, setCity] = useState("Los Angeles, California");
+
+  // Address pieces
   const [address, setAddress] = useState("");
-  const [phone, setPhone] = useState("+1 ");
-  const [category, setCategory] = useState("Emlak");
+  const [apt, setApt] = useState("");
+  const [zip, setZip] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [country, setCountry] = useState("United States");
+
+  // Phone
+  const [phoneCode, setPhoneCode] = useState(TG_PHONE_CODES?.[0]?.dial || "+1");
+  const [phoneNumber, setPhoneNumber] = useState("");
+
+  // Category
+  const [category, setCategory] = useState(TG_DEFAULT_CATEGORIES?.[0]?.key || "");
+
   const [desc, setDesc] = useState("");
+
+  // ✅ kategori listesi (default + dinamik)
+  const categoryOptions = useMemo(() => {
+    const base = (TG_DEFAULT_CATEGORIES || []).map((c) => c.key);
+
+    const dyn = Array.from(
+      new Set(
+        (biz || [])
+          .filter((b) => b?.status === "approved" && b?.category)
+          .map((b) => String(b.category).trim())
+      )
+    );
+
+    return [...base, ...dyn.filter((d) => !base.includes(d))];
+  }, [biz]);
 
   const safeSubmit = () => {
     if (typeof onSubmit !== "function") {
       console.error("BizApplyForm: onSubmit function değil:", onSubmit);
-      alert("Başvuru gönderme fonksiyonu bağlı değil (onSubmit)."
-      );
+      alert("Başvuru gönderme fonksiyonu bağlı değil (onSubmit).");
       return;
     }
 
+    const phone = `${String(phoneCode || "").trim()} ${String(phoneNumber || "").trim()}`.trim();
+
     onSubmit({
       name: String(name || "").trim(),
-      city: String(city || "").trim(),
       address: String(address || "").trim(),
-      phone: String(phone || "").trim(),
+      apt: String(apt || "").trim(),
+      zip: String(zip || "").trim(),
+      city: String(city || "").trim(),
+      state: String(state || "").trim(),
+      country: String(country || "").trim(),
+      phone,
       category: String(category || "").trim(),
       desc: String(desc || "").trim(),
     });
@@ -4681,32 +4819,77 @@ function BizApplyForm({ ui, onSubmit, onCancel }) {
       />
 
       <input
-        placeholder="Şehir (örn: Los Angeles, California)"
-        value={city}
-        onChange={(e) => setCity(e.target.value)}
-        style={inputStyle(ui)}
-      />
-
-      <input
-        placeholder="Adres (yol tarifi için)"
+        placeholder="Adres"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
         style={inputStyle(ui)}
       />
 
       <input
-        placeholder="Telefon (+1 ...)"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
+        placeholder="Apt / Suite (opsiyonel)"
+        value={apt}
+        onChange={(e) => setApt(e.target.value)}
         style={inputStyle(ui)}
       />
 
-      <input
-        placeholder="Kategori (örn: Emlak, Restoran, Avukat, Doktor...)"
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-        style={inputStyle(ui)}
-      />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <input
+          placeholder="ZIP Code"
+          value={zip}
+          onChange={(e) => setZip(e.target.value)}
+          style={inputStyle(ui)}
+        />
+
+        <input
+          placeholder="City"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          style={inputStyle(ui)}
+        />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <input
+          placeholder="State"
+          value={state}
+          onChange={(e) => setState(e.target.value)}
+          style={inputStyle(ui)}
+        />
+
+        <input
+          placeholder="Country"
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          style={inputStyle(ui)}
+        />
+      </div>
+
+      {/* 📞 Telefon */}
+      <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 10 }}>
+        <select value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} style={inputStyle(ui)}>
+          {(TG_PHONE_CODES || []).map((p) => (
+            <option key={p.code} value={p.dial}>
+              {p.country} ({p.dial})
+            </option>
+          ))}
+        </select>
+
+        <input
+          placeholder="Telefon numarası"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          style={inputStyle(ui)}
+        />
+      </div>
+
+      {/* 🗂️ Kategori */}
+      <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle(ui)}>
+        {categoryOptions.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
 
       <textarea
         placeholder="Kısa açıklama"
