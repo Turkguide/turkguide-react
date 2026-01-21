@@ -787,7 +787,7 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
               maxWidth: "100%",
             }}
           >
-            <span style={{ opacity: 0.65 }}>●</span> AMERİKA’NIN EN BÜYÜK TÜRK İŞLETMELER REHBERİ
+            <span style={{ opacity: 0.65 }}>●</span> AMERİKA’NIN İLK TÜRK REHBERİ
           </div>
 
           <h1
@@ -2984,13 +2984,6 @@ return (
 
   <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
     <Button ui={ui} variant="solidBlue" onClick={hubShare}>Paylaş</Button>
-    <Button
-      ui={ui}
-      onClick={() => { setComposer(""); setHubMedia(null); }}
-      disabled={!composer && !hubMedia}
-    >
-      Temizle
-    </Button>
   </div>
 </div>
             </Card>
