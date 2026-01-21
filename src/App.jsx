@@ -62,48 +62,39 @@ function isAdminUser(username, admins) {
 function ensureSeed() {
   const users = lsGet(KEY.USERS, null);
   if (!users || !Array.isArray(users) || users.length === 0) {
- lsSet(KEY.USERS, [
-  {
-    id: uid(),
-    username: "secer",
-    email: "secer@example.com",
-    providers: {},
-    tier: "Onaylı İşletme",
-    xp: 120,
-    createdAt: now(),
-    avatar: "",
-  },
-  {
-    id: uid(),
-    username: "vicdan",
-    email: "vicdan@example.com",
-    providers: { google: { sub: "google_seed_vicdan" } },
-    tier: "verified",
-    xp: 9000,
-    createdAt: now(),
-    avatar: "",
-  },
-  {
-    id: uid(),
-    username: "secer",
-    email: "secer@example.com",
-    providers: { apple: { sub: "apple_seed_secer" } },
-    tier: "verified",
-    xp: 12000,
-    createdAt: now(),
-    avatar: "",
-  },
-  {
-    id: uid(),
-    username: "turkguide",
-    email: "admin@turkguide.app",
-    providers: { email: true },
-    tier: "verified",
-    xp: 15000,
-    createdAt: now(),
-    avatar: "",
-  },
-]);
+    // ✅ Seed users (no duplicates)
+    lsSet(KEY.USERS, [
+      {
+        id: uid(),
+        username: "secer",
+        email: "secer@example.com",
+        providers: { apple: { sub: "apple_seed_secer" } },
+        tier: "verified",
+        xp: 12000,
+        createdAt: now(),
+        avatar: "",
+      },
+      {
+        id: uid(),
+        username: "vicdan",
+        email: "vicdan@example.com",
+        providers: { google: { sub: "google_seed_vicdan" } },
+        tier: "verified",
+        xp: 9000,
+        createdAt: now(),
+        avatar: "",
+      },
+      {
+        id: uid(),
+        username: "turkguide",
+        email: "admin@turkguide.app",
+        providers: { email: true },
+        tier: "verified",
+        xp: 15000,
+        createdAt: now(),
+        avatar: "",
+      },
+    ]);
   }
 
   const cfg = lsGet(KEY.ADMIN_CONFIG, null);
@@ -111,56 +102,56 @@ function ensureSeed() {
     lsSet(KEY.ADMIN_CONFIG, { admins: DEFAULT_ADMINS });
   }
 
- const biz = lsGet(KEY.BIZ, null);
-if (!biz || !Array.isArray(biz) || biz.length === 0) {
-  lsSet(KEY.BIZ, [
-    {
-      id: uid(),
-      name: "Secer Auto",
-      ownerUsername: "secer",
-      category: "Araç Bayileri",
-      status: "approved",
-      address: "Los Angeles, CA",
-      phone: "+1 310 555 0101",
-      city: "Los Angeles, California",
-      desc: "Araç alım-satım • Finans & sigorta yönlendirme • Güvenilir süreç",
-      avatar: "",
-      createdAt: now(),
-      approvedAt: now(),
-      approvedBy: "secer",
-    },
-    {
-      id: uid(),
-      name: "Turkish Market LA",
-      ownerUsername: "vicdan",
-      category: "Türk Marketleri",
-      status: "approved",
-      address: "Los Angeles, CA",
-      phone: "+1 213 555 0199",
-      city: "Los Angeles, California",
-      desc: "Türk ürünleri • Taze ürün • Haftalık indirimler",
-      avatar: "",
-      createdAt: now(),
-      approvedAt: now(),
-      approvedBy: "vicdan",
-    },
-    {
-      id: uid(),
-      name: "AydinStay",
-      ownerUsername: "secer",
-      category: "Konaklama",
-      status: "approved",
-      address: "West Hollywood, CA",
-      phone: "+1 424 555 0133",
-      city: "Los Angeles, California",
-      desc: "Kısa dönem konaklama • Temiz ve güvenilir • Türkçe iletişim",
-      avatar: "",
-      createdAt: now(),
-      approvedAt: now(),
-      approvedBy: "secer",
-    },
-  ]);
-}
+  const biz = lsGet(KEY.BIZ, null);
+  if (!biz || !Array.isArray(biz) || biz.length === 0) {
+    lsSet(KEY.BIZ, [
+      {
+        id: uid(),
+        name: "Secer Auto",
+        ownerUsername: "secer",
+        category: "Araç Bayileri",
+        status: "approved",
+        address: "Los Angeles, CA",
+        phone: "+1 310 555 0101",
+        city: "Los Angeles, California",
+        desc: "Araç alım-satım • Finans & sigorta yönlendirme • Güvenilir süreç",
+        avatar: "",
+        createdAt: now(),
+        approvedAt: now(),
+        approvedBy: "secer",
+      },
+      {
+        id: uid(),
+        name: "Turkish Market LA",
+        ownerUsername: "vicdan",
+        category: "Türk Marketleri",
+        status: "approved",
+        address: "Los Angeles, CA",
+        phone: "+1 213 555 0199",
+        city: "Los Angeles, California",
+        desc: "Türk ürünleri • Taze ürün • Haftalık indirimler",
+        avatar: "",
+        createdAt: now(),
+        approvedAt: now(),
+        approvedBy: "vicdan",
+      },
+      {
+        id: uid(),
+        name: "AydinStay",
+        ownerUsername: "secer",
+        category: "Konaklama",
+        status: "approved",
+        address: "West Hollywood, CA",
+        phone: "+1 424 555 0133",
+        city: "Los Angeles, California",
+        desc: "Kısa dönem konaklama • Temiz ve güvenilir • Türkçe iletişim",
+        avatar: "",
+        createdAt: now(),
+        approvedAt: now(),
+        approvedBy: "secer",
+      },
+    ]);
+  }
 
   if (!lsGet(KEY.BIZ_APPS, null)) lsSet(KEY.BIZ_APPS, []);
   if (!lsGet(KEY.POSTS, null)) lsSet(KEY.POSTS, []);
@@ -176,14 +167,15 @@ if (!biz || !Array.isArray(biz) || biz.length === 0) {
       msgNotifications: true,
     });
   }
+
   // 🔐 Admin secret yoksa oluştur (ilk kurulum için)
-if (!lsGet(KEY.ADMIN_SECRET, null)) {
-  lsSet(KEY.ADMIN_SECRET, uid() + "-" + uid());
-}
-// 🔒 Admin panel kilidi (varsayılan: kapalı)
-if (!lsGet(KEY.ADMIN_UNLOCK, null)) {
-  lsSet(KEY.ADMIN_UNLOCK, false);
-}
+  if (!lsGet(KEY.ADMIN_SECRET, null)) {
+    lsSet(KEY.ADMIN_SECRET, uid() + "-" + uid());
+  }
+  // 🔒 Admin panel kilidi (varsayılan: kapalı)
+  if (!lsGet(KEY.ADMIN_UNLOCK, null)) {
+    lsSet(KEY.ADMIN_UNLOCK, false);
+  }
 }
 
 function useSystemTheme() {
