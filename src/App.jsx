@@ -1869,6 +1869,87 @@ function openBizApply() {
   setShowBizApply(true);
 }
 
+// ✅ Business CTA (reusable)
+function BizCta({ ui, onClick, compact = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="tg-cta"
+      style={{
+        border: "none",
+        cursor: "pointer",
+        userSelect: "none",
+        WebkitTapHighlightColor: "transparent",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        padding: compact ? "10px 14px" : "14px 18px",
+        borderRadius: 999,
+        fontWeight: 950,
+        fontSize: compact ? 13 : 15,
+        letterSpacing: -0.2,
+        color: "#fff",
+        background:
+          "linear-gradient(135deg, rgba(47,102,255,1) 0%, rgba(123,97,255,1) 45%, rgba(255,79,216,1) 100%)",
+        boxShadow: "0 22px 70px rgba(47,102,255,0.28)",
+        position: "relative",
+        overflow: "hidden",
+        minHeight: compact ? 40 : 46,
+        lineHeight: 1,
+        whiteSpace: "nowrap",
+      }}
+      title="İşletmenizi TurkGuide'a ekleyin"
+      aria-label="İşletmenizi ekleyin"
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: compact ? 26 : 30,
+          height: compact ? 26 : 30,
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.16)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flex: "0 0 auto",
+        }}
+      >
+        <IconBase size={compact ? 16 : 18}>
+          <path d="M12 5v14" />
+          <path d="M5 12h14" />
+        </IconBase>
+      </span>
+
+      <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          İşletmenizi Ekleyin
+          <span aria-hidden="true" style={{ opacity: 0.9 }}>
+            →
+          </span>
+        </span>
+        {!compact ? (
+          <span style={{ fontSize: 12, fontWeight: 900, opacity: 0.9 }}>
+            Ücretsiz başvur • 1 dk
+          </span>
+        ) : null}
+      </span>
+
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(600px 120px at 20% 10%, rgba(255,255,255,0.22), transparent 60%)",
+          pointerEvents: "none",
+        }}
+      />
+    </button>
+  );
+}
+
 function submitBizApplication(data) {
   if (!requireAuth()) return;
   const name = String(data?.name || "").trim();
@@ -2605,6 +2686,21 @@ if (!booted) return null;
 
 return (
   <div style={{ minHeight: "100vh", width: "100%", background: ui.bg, color: ui.text }}>
+        <style>{`
+      .tg-cta { transform: translateZ(0); }
+      .tg-cta:hover { filter: brightness(1.03); }
+      .tg-cta:active { transform: scale(0.99); }
+      @keyframes tgCtaPulse {
+        0% { box-shadow: 0 18px 60px rgba(47,102,255,0.22); }
+        50% { box-shadow: 0 26px 90px rgba(255,79,216,0.26); }
+        100% { box-shadow: 0 18px 60px rgba(47,102,255,0.22); }
+      }
+      .tg-cta { animation: tgCtaPulse 2.2s ease-in-out infinite; }
+      @media (prefers-reduced-motion: reduce) {
+        .tg-cta { animation: none; }
+      }
+    `}</style>
+    
     {/* HUB Media hidden input (single occurrence) */}
     <input
       ref={hubMediaPickRef}
@@ -2877,9 +2973,19 @@ return (
                 Seçtiğin kategori/arama filtresine göre listelenir.
               </div>
             </div>
-            <Button ui={ui} onClick={openBizApply} variant="solidBlue">+ İşletmenizi Ekleyin</Button>
+            <BizCta ui={ui} onClick={openBizApply} compact />
           </div>
         </Card>
+        {/* ORTA CTA — filtreler ile liste arası */}
+        <div
+          style={{
+            marginTop: 6,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <BizCta ui={ui} onClick={openBizApply} />
+        </div>
 
         {filteredBiz.length === 0 ? (
   <div style={{ color: ui.muted, padding: 10 }}>Bu filtrede işletme yok.</div>
@@ -3598,10 +3704,54 @@ return (
         )}
       </div>
 
-      {/* FOOTER */}
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "12px 16px 28px", color: ui.muted2, fontSize: 12 }}>
-        TurkGuide • MVP (LocalStorage) • v6
-      </div>
+{/* FOOTER */}
+<div
+  style={{
+    maxWidth: 1240,
+    margin: "0 auto",
+    padding: "24px 16px 40px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    alignItems: "center",
+    color: ui.muted2,
+    fontSize: 12,
+    textAlign: "center",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 14,
+      justifyContent: "center",
+    }}
+  >
+    {[
+      "About",
+      "Help",
+      "Privacy",
+      "Terms",
+      "Contact",
+    ].map((label) => (
+      <span
+        key={label}
+        onClick={() => alert("Coming soon")}
+        style={{
+          cursor: "pointer",
+          userSelect: "none",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </span>
+    ))}
+  </div>
+
+  <div style={{ marginTop: 6 }}>
+    © {new Date().getFullYear()} TurkGuide
+  </div>
+</div>
 
      {/* SETTINGS MODAL */}
 <Modal
