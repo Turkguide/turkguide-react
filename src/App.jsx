@@ -23,7 +23,7 @@ const KEY = {
   SETTINGS: "tg_settings_v6", // mesaj ayarları vs.
 };
 
-const DEFAULT_ADMINS = ["vicdan", "sadullah", "turkguide"];
+const DEFAULT_ADMINS = ["vicdan", "secer", "turkguide"];
 
 function safeParse(raw, fallback) {
   try {
@@ -85,9 +85,9 @@ function ensureSeed() {
   },
   {
     id: uid(),
-    username: "sadullah",
-    email: "sadullah@example.com",
-    providers: { apple: { sub: "apple_seed_sadullah" } },
+    username: "secer",
+    email: "secer@example.com",
+    providers: { apple: { sub: "apple_seed_secer" } },
     tier: "verified",
     xp: 12000,
     createdAt: now(),
@@ -117,7 +117,7 @@ if (!biz || !Array.isArray(biz) || biz.length === 0) {
     {
       id: uid(),
       name: "Secer Auto",
-      ownerUsername: "sadullah",
+      ownerUsername: "secer",
       category: "Araç Bayileri",
       status: "approved",
       address: "Los Angeles, CA",
@@ -127,7 +127,7 @@ if (!biz || !Array.isArray(biz) || biz.length === 0) {
       avatar: "",
       createdAt: now(),
       approvedAt: now(),
-      approvedBy: "sadullah",
+      approvedBy: "secer",
     },
     {
       id: uid(),
@@ -157,7 +157,7 @@ if (!biz || !Array.isArray(biz) || biz.length === 0) {
       avatar: "",
       createdAt: now(),
       approvedAt: now(),
-      approvedBy: "sadullah",
+      approvedBy: "secer",
     },
   ]);
 }
