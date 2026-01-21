@@ -1167,12 +1167,26 @@ export default function App() {
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
 
   // Tabs
-  const [active, setActive] = useState("biz");
+  // Tabs
+const [active, setActive] = useState(() => {
+  try {
+    return localStorage.getItem("tg_active_tab_v1") || "biz";
+  } catch (_) {
+    return "biz";
+  }
+});
 
-  // 🧪 DEBUG: active değişimini takip et
-  useEffect(() => {
-    console.log("🧪 ACTIVE CHANGED ->", active);
-  }, [active]);
+// 🧪 DEBUG: active değişimini takip et
+useEffect(() => {
+  console.log("🧪 ACTIVE CHANGED ->", active);
+}, [active]);
+
+// ✅ active tab'i kalıcı kaydet (refresh fix)
+useEffect(() => {
+  try {
+    localStorage.setItem("tg_active_tab_v1", active);
+  } catch (_) {}
+}, [active]);
 
   // 🔄 Fetch + Realtime subscribe when HUB tab becomes active
   useEffect(() => {
@@ -1877,7 +1891,7 @@ async function logout() {
       localStorage.removeItem(KEY.USER);
     } catch (_) {}
 
-    // ✅ UI reset (modals/overlays kapanmazsa login tıklanamıyor gibi görünebiliyor)
+    // ✅ UI reset
     setShowAuth(true);
     setShowRegister(false);
     setShowSettings(false);
@@ -1891,13 +1905,17 @@ async function logout() {
 
     setShowDm(false);
     setDmTarget(null);
-    setDmText("");  
+    setDmText("");
 
     setShowAppt(false);
     setApptBizId(null);
     setApptMsg("");
 
+    // ✅ aktif tab + kalıcı kayıt
     setActive("biz");
+    try {
+      localStorage.setItem("tg_active_tab_v1", "biz");
+    } catch (_) {}
   }
 }
 
