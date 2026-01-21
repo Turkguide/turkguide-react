@@ -4618,10 +4618,19 @@ function BizApplyForm({ ui, onSubmit, onCancel }) {
   const safeSubmit = () => {
     if (typeof onSubmit !== "function") {
       console.error("BizApplyForm: onSubmit function değil:", onSubmit);
-      alert("Başvuru gönderme fonksiyonu bağlı değil (onSubmit).");
+      alert("Başvuru gönderme fonksiyonu bağlı değil (onSubmit)."
+      );
       return;
     }
-    onSubmit({ name, city, address, phone, category, plan: "Onaylı İşletme", desc });
+
+    onSubmit({
+      name: String(name || "").trim(),
+      city: String(city || "").trim(),
+      address: String(address || "").trim(),
+      phone: String(phone || "").trim(),
+      category: String(category || "").trim(),
+      desc: String(desc || "").trim(),
+    });
   };
 
   const safeCancel = () => {
@@ -4640,18 +4649,21 @@ function BizApplyForm({ ui, onSubmit, onCancel }) {
         onChange={(e) => setName(e.target.value)}
         style={inputStyle(ui)}
       />
+
       <input
         placeholder="Şehir (örn: Los Angeles, California)"
         value={city}
         onChange={(e) => setCity(e.target.value)}
         style={inputStyle(ui)}
       />
+
       <input
         placeholder="Adres (yol tarifi için)"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
         style={inputStyle(ui)}
       />
+
       <input
         placeholder="Telefon (+1 ...)"
         value={phone}
@@ -4659,10 +4671,12 @@ function BizApplyForm({ ui, onSubmit, onCancel }) {
         style={inputStyle(ui)}
       />
 
-      <div style={{ ...inputStyle(ui), display: "flex", alignItems: "center" }}>
-  Onaylanmış İşletme
-</div>
-
+      <input
+        placeholder="Kategori (örn: Emlak, Restoran, Avukat, Doktor...)"
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+        style={inputStyle(ui)}
+      />
 
       <textarea
         placeholder="Kısa açıklama"
@@ -4701,14 +4715,13 @@ function BizApplyForm({ ui, onSubmit, onCancel }) {
             fontWeight: 900,
           }}
         >
-                İptal
+          İptal
         </button>
       </div>
 
       <div style={{ color: ui.muted2, fontSize: 12 }}>
-        Başvurunuz admin onayından sonra “işletmeler” listesinde görünür.
+        Başvurunuz incelendikten sonra “işletmeler” listesinde görünür.
       </div>
     </div>
   );
-
 }
