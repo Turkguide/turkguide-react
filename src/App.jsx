@@ -4236,32 +4236,21 @@ return (
 
 </Modal>
 
-/* REGISTER MODAL */
-<Modal
-  ui={ui}
-  open={showRegister}
-  title="Kayıt Ol"
-  onClose={() => {
-    setShowRegister(false);
-    // İsteğe bağlı: alanları temizle
-    setAuthUsername("");
-    setAuthEmail("");
-    setAuthPassword("");
-  }}
->
+{/* REGISTER MODAL */}
+<Modal ui={ui} open={showRegister} title="Kayıt Ol" onClose={() => setShowRegister(false)}>
   <div style={{ color: ui.muted, marginBottom: 10 }}>
-    E‑posta, kullanıcı adı ve şifre ile hesap oluştur.
+    Email, kullanıcı adı ve şifre ile hesap oluştur.
   </div>
 
   <input
-    placeholder="Kullanıcı adı"
+    placeholder="Kullanıcı Adı"
     value={authUsername}
     onChange={(e) => setAuthUsername(e.target.value)}
     style={inputStyle(ui)}
   />
 
   <input
-    placeholder="E‑posta"
+    placeholder="Email"
     value={authEmail}
     onChange={(e) => setAuthEmail(e.target.value)}
     style={{ ...inputStyle(ui), marginTop: 10 }}
@@ -4300,12 +4289,7 @@ return (
 
     <Button
       ui={ui}
-      onClick={() => {
-        setShowRegister(false);
-        setAuthUsername("");
-        setAuthEmail("");
-        setAuthPassword("");
-      }}
+      onClick={() => setShowRegister(false)}
       style={{ width: "100%" }}
     >
       Vazgeç
@@ -4313,7 +4297,7 @@ return (
   </div>
 
   <div style={{ marginTop: 10, color: ui.muted, fontSize: 12 }}>
-    Not: Giriş işlemi yalnızca e‑posta + şifre ile yapılır. Kullanıcı adı profil için kullanılır.
+    Not: Eğer Supabase bağlı değilse “Kaydı Tamamla” tıklayınca hata verebilir.
   </div>
 </Modal>
 
