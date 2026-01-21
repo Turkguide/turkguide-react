@@ -3189,28 +3189,24 @@ return (
           {landingSearch ? <Chip ui={ui} active>Arama: {landingSearch}</Chip> : null}
         </div>
 
-        {filteredBiz.length === 0 ? (
+       {filteredBiz.length === 0 ? (
   <Card
     ui={ui}
     style={{
-      background: ui.mode === "light"
-        ? "rgba(0,0,0,0.02)"
-        : "rgba(255,255,255,0.04)",
+      background:
+        ui.mode === "light"
+          ? "rgba(0,0,0,0.02)"
+          : "rgba(255,255,255,0.04)",
     }}
   >
     <div
       style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 12,
-        flexWrap: "wrap",
+        textAlign: "center",
+        fontWeight: 800,
+        padding: "16px 10px",
       }}
     >
-      <div style={{ fontWeight: 700 }}>
-        Bu kategoride henüz işletme yok.
-      </div>
-      <BizCta ui={ui} onClick={openBizApply} compact />
+      Bu kategoride henüz işletme yok.
     </div>
   </Card>
 ) : null}
