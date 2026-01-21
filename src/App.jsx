@@ -2674,9 +2674,9 @@ function openCall(phone) {
 }
 
 // ✅ Unread counters
-// - unreadForMe: unread message count (legacy)
+// - unreadDmForMe: unread message count (legacy)
 // - unreadThreadsForMe: unread "thread" count = farklı gönderen sayısı (badge bunu gösterecek)
-const unreadForMe = useMemo(() => {
+const unreadDmForMe = useMemo(() => {
   if (!user) return 0;
   const me = normalizeUsername(user.username);
 
@@ -2714,6 +2714,60 @@ const unreadThreadsForMe = useMemo(() => {
 
   return senders.size;
 }, [dms, user, biz]);
+
+// ✅ Bell (notifications) "last seen" — Bell'e girince sayıyı sıfırlamak için
+const NOTIF_SEEN_KEY = "tg:notif_seen_at";
+const [lastSeenNotificationsAt, setLastSeenNotificationsAt] = useState(() => {
+  try {
+    const v = localStorage.getItem(NOTIF_SEEN_KEY);
+    return v ? Number(v) : 0;
+  } catch (_) {
+    return 0;
+  }
+});
+
+function touchNotificationsSeen() {
+  const t = now();
+  setLastSeenNotificationsAt(t);
+  try {
+    localStorage.setItem(NOTIF_SEEN_KEY, String(t));
+  } catch (_) {}
+}
+
+// ✅ Top-bar Notifications badge (Bell)
+// Amaç: tek bir yerde "bildirim sayısı" üretmek.
+// NOT: Mesajlar ayrı (Chat badge). Bell sadece sistem/admin/randevu gibi bildirimleri sayar.
+const unreadNotificationsForMe = useMemo(() => {
+  if (!user) return 0;
+
+  let total = 0;
+
+  // Admin için: bekleyen işletme başvuruları (son görülenden sonra gelenler)
+  if (adminMode) {
+    const seenAt = Number(lastSeenNotificationsAt || 0);
+    total += (pendingApps || []).filter((x) => Number(x?.createdAt || 0) > seenAt).length;
+  }
+
+  // İşletme sahibi için: bekleyen randevular (son görülenden sonra gelenler)
+  try {
+    const seenAt = Number(lastSeenNotificationsAt || 0);
+    const me = normalizeUsername(user.username);
+    const myBizIds = (biz || [])
+      .filter((b) => b?.status === "approved" && normalizeUsername(b.ownerUsername) === me)
+      .map((b) => b.id);
+
+    const pendingApptCount = (appts || []).filter(
+      (a) =>
+        a?.status === "pending" &&
+        myBizIds.includes(a?.bizId) &&
+        Number(a?.createdAt || 0) > seenAt
+    ).length;
+
+    total += pendingApptCount;
+  } catch (_) {}
+
+  return total;
+}, [user, adminMode, pendingApps, biz, appts, lastSeenNotificationsAt]);
 
 function markThreadRead(target) {
   if (!user || !target) return;
@@ -3018,15 +3072,36 @@ return (
 
             const isAuthed = !!user?.id;
 
+            const closeTopOverlays = () => {
+              // header actionlarından sonra üst üste modal/overlay kalmasın
+              try {
+                setShowSettings(false);
+                setShowAuth(false);
+                setShowRegister(false);
+              } catch (_) {}
+
+              try {
+                setProfileOpen(false);
+                setProfileTarget(null);
+              } catch (_) {}
+            };
+
             const goMyProfile = () => {
               if (!user) return;
-
+              closeTopOverlays();
               // Sadece Profil sekmesine geç (modal otomatik açılmasın)
               setActive("profile");
+            };
 
-              // Olası açık profil modalını kapat
-              setProfileOpen(false);
-              setProfileTarget(null);
+            const goNotifications = () => {
+              closeTopOverlays();
+              touchNotificationsSeen();
+              setActive("notifications");
+            };
+
+            const goMessages = () => {
+              closeTopOverlays();
+              setActive("messages");
             };
 
             return (
@@ -3036,10 +3111,38 @@ return (
                     type="button"
                     aria-label="Bildirimler"
                     title="Bildirimler"
-                    onClick={() => setActive("notifications")}
-                    style={iconBtnStyle}
+                    onClick={goNotifications}
+                    style={{ ...iconBtnStyle, position: "relative" }}
                   >
                     <BellIcon size={22} />
+
+                    {/* Bildirim rozeti (varsa). */}
+                    {unreadNotificationsForMe > 0 ? (
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: -4,
+                          right: -4,
+                          minWidth: 18,
+                          height: 18,
+                          padding: "0 6px",
+                          borderRadius: 999,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 11,
+                          fontWeight: 950,
+                          lineHeight: 1,
+                          background: "#E53935",
+                          color: "#fff",
+                          border: `2px solid ${ui.top}`,
+                          boxSizing: "border-box",
+                          userSelect: "none",
+                        }}
+                      >
+                        {unreadNotificationsForMe > 99 ? "99+" : unreadNotificationsForMe}
+                      </span>
+                    ) : null}
                   </button>
                 )}
 
@@ -3048,7 +3151,10 @@ return (
                     type="button"
                     aria-label="Ayarlar"
                     title="Ayarlar"
-                    onClick={() => setShowSettings(true)}
+                    onClick={() => {
+                      closeTopOverlays();
+                      setShowSettings(true);
+                    }}
                     style={iconBtnStyle}
                   >
                     <SettingsIcon size={22} />
@@ -3061,7 +3167,7 @@ return (
                       type="button"
                       aria-label="Mesajlar"
                       title="Mesajlar"
-                      onClick={() => setActive("messages")}
+                      onClick={goMessages}
                       style={{ ...iconBtnStyle, position: "relative" }}
                     >
                       <ChatIcon size={22} />
@@ -3129,7 +3235,10 @@ return (
                     type="button"
                     aria-label="Giriş"
                     title="Giriş"
-                    onClick={() => setShowAuth(true)}
+                    onClick={() => {
+                      closeTopOverlays();
+                      setShowAuth(true);
+                    }}
                     style={iconBtnStyle}
                   >
                     <LoginIcon size={22} />
