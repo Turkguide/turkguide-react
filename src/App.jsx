@@ -2765,7 +2765,6 @@ function renderInfoPage(page) {
   // contact
   return (
     <div style={{ display: "grid", gap: 12, lineHeight: 1.6 }}>
-      <div style={{ fontWeight: 950 }}>Contact</div>
       <div>📧 Email: info@turkguide.net</div>
       <div>🌐 Web: www.turkguide.net</div>
       <div>🐦 X (Twitter): @Turk_Guide</div>
