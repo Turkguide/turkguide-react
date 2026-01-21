@@ -509,6 +509,136 @@ function LogoutIcon(props) {
   );
 }
 
+// ====== CATEGORY ICONS (SVG) ======
+function CatIcon({ name, size = 28, color = "currentColor" }) {
+  const common = { size, style: { color } };
+
+  switch (name) {
+    case "law":
+      return (
+        <IconBase {...common}>
+          <path d="M6 21h12" />
+          <path d="M12 3v18" />
+          <path d="M7 7h10" />
+          <path d="M8 7l-3 5h6l-3-5z" />
+          <path d="M16 7l-3 5h6l-3-5z" />
+        </IconBase>
+      );
+    case "health":
+      return (
+        <IconBase {...common}>
+          <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10z" />
+          <path d="M12 10v4" />
+          <path d="M10 12h4" />
+        </IconBase>
+      );
+    case "restaurant":
+      return (
+        <IconBase {...common}>
+          <path d="M4 3v7" />
+          <path d="M6 3v7" />
+          <path d="M5 10v11" />
+          <path d="M13 3v8" />
+          <path d="M13 11c0 3 2 3 2 3v7" />
+          <path d="M17 3v8c0 3-2 3-2 3" />
+        </IconBase>
+      );
+    case "realestate":
+      return (
+        <IconBase {...common}>
+          <path d="M3 11l9-7 9 7" />
+          <path d="M5 10v11h14V10" />
+          <path d="M9 21v-6h6v6" />
+        </IconBase>
+      );
+    case "autoservice":
+      return (
+        <IconBase {...common}>
+          <path d="M6 9l2-4h8l2 4" />
+          <path d="M5 9h14l-1 8H6L5 9z" />
+          <path d="M7 17v2" />
+          <path d="M17 17v2" />
+          <circle cx="8" cy="13" r="1" />
+          <circle cx="16" cy="13" r="1" />
+        </IconBase>
+      );
+    case "salon":
+      return (
+        <IconBase {...common}>
+          <path d="M4 20c2-6 6-6 8-10" />
+          <path d="M12 10c2 4 6 4 8 10" />
+          <path d="M8 6l8 8" />
+          <path d="M16 6l-8 8" />
+        </IconBase>
+      );
+    case "barber":
+      return (
+        <IconBase {...common}>
+          <path d="M8 3v18" />
+          <path d="M16 3v18" />
+          <path d="M8 7h8" />
+          <path d="M8 11h8" />
+          <path d="M8 15h8" />
+        </IconBase>
+      );
+    case "rental":
+      return (
+        <IconBase {...common}>
+          <path d="M7 17l5-5 5 5" />
+          <path d="M12 12V3" />
+          <path d="M4 21h16" />
+        </IconBase>
+      );
+    case "dealership":
+      return (
+        <IconBase {...common}>
+          <path d="M3 20h18" />
+          <path d="M5 20V8l7-4 7 4v12" />
+          <path d="M9 20v-6h6v6" />
+        </IconBase>
+      );
+    case "market":
+      return (
+        <IconBase {...common}>
+          <path d="M6 6h15l-1.5 8H8L6 6z" />
+          <path d="M6 6l-2-2" />
+          <circle cx="9" cy="18" r="1" />
+          <circle cx="18" cy="18" r="1" />
+        </IconBase>
+      );
+    case "education":
+      return (
+        <IconBase {...common}>
+          <path d="M3 8l9-4 9 4-9 4-9-4z" />
+          <path d="M7 10v6c0 1 5 3 5 3s5-2 5-3v-6" />
+        </IconBase>
+      );
+    case "handyman":
+      return (
+        <IconBase {...common}>
+          <path d="M14 7l3 3" />
+          <path d="M7 14l-3 3" />
+          <path d="M10 10l4 4" />
+          <path d="M9 21l3-3" />
+          <path d="M3 21l6-6" />
+        </IconBase>
+      );
+    case "cleaning":
+      return (
+        <IconBase {...common}>
+          <path d="M7 21h10" />
+          <path d="M9 21V7h6v14" />
+          <path d="M8 7l1-4h6l1 4" />
+        </IconBase>
+      );
+    default:
+      return (
+        <IconBase {...common}>
+          <circle cx="12" cy="12" r="8" />
+        </IconBase>
+      );
+  }
+}
 // ====== HUB MEDIA HELPERS (Fotograf-style) ======
 const IG_W = 1080;
 const IG_H = 1350; // 4:5
@@ -867,22 +997,36 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
 }
 
 function CategoryGrid({ ui, counts, onPickCategory }) {
+  const [cols, setCols] = useState(() => {
+    const w = window.innerWidth;
+    if (w < 768) return 2;        // 📱 Mobile (iPhone / Android)
+    if (w < 1200) return 3;       // 📱 Tablet / küçük web
+    return 4;                     // 🖥️ Desktop
+  });
+
+  useEffect(() => {
+    const onResize = () => {
+      const w = window.innerWidth;
+      setCols(w < 768 ? 2 : w < 1200 ? 3 : 4);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   const items = [
-    { key: "Avukatlar", icon: "⚖️", title: "Avukatlar" },
-    { key: "Doktorlar & Sağlık Hizmetleri", icon: "🩺", title: "Doktorlar & Sağlık Hizmetleri" },
-    { key: "Restoranlar", icon: "🍽️", title: "Restoranlar" },
-    { key: "Emlak Hizmetleri", icon: "🏠", title: "Emlak Hizmetleri" },
-    { key: "Araç Hizmetleri", icon: "🔧", title: "Araç Hizmetleri" },
-
-    { key: "Kuaförler", icon: "✂️", title: "Kuaförler" },
-    { key: "Berberler", icon: "💈", title: "Berberler" },
-    { key: "Araç Kiralama", icon: "🔑", title: "Araç Kiralama" },
-    { key: "Araç Bayileri", icon: "🚗", title: "Araç Bayileri" },
-    { key: "Türk Marketleri", icon: "🛒", title: "Türk Marketleri" },
-
-    { key: "Okullar & Eğitim Hizmetleri", icon: "📘", title: "Okullar & Eğitim Hizmetleri" },
-    { key: "Tamir Ustası / Ev Hizmetleri", icon: "🛠️", title: "Tamir Ustası / Ev Hizmetleri" },
-    { key: "Temizlik Hizmetleri", icon: "✨", title: "Temizlik Hizmetleri" },
+    { key: "Avukatlar", icon: "law", title: "Avukatlar" },
+    { key: "Doktorlar & Sağlık Hizmetleri", icon: "health", title: "Doktorlar & Sağlık Hizmetleri" },
+    { key: "Restoranlar", icon: "restaurant", title: "Restoranlar" },
+    { key: "Emlak Hizmetleri", icon: "realestate", title: "Emlak Hizmetleri" },
+    { key: "Araç Hizmetleri", icon: "autoservice", title: "Araç Hizmetleri" },
+    { key: "Kuaförler", icon: "salon", title: "Kuaförler" },
+    { key: "Berberler", icon: "barber", title: "Berberler" },
+    { key: "Araç Kiralama", icon: "rental", title: "Araç Kiralama" },
+    { key: "Araç Bayileri", icon: "dealership", title: "Araç Bayileri" },
+    { key: "Türk Marketleri", icon: "market", title: "Türk Marketleri" },
+    { key: "Okullar & Eğitim Hizmetleri", icon: "education", title: "Okullar & Eğitim Hizmetleri" },
+    { key: "Tamir Ustası / Ev Hizmetleri", icon: "handyman", title: "Tamir Ustası / Ev Hizmetleri" },
+    { key: "Temizlik Hizmetleri", icon: "cleaning", title: "Temizlik Hizmetleri" },
   ];
 
   return (
@@ -890,7 +1034,7 @@ function CategoryGrid({ ui, counts, onPickCategory }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
           gap: 18,
         }}
       >
@@ -911,7 +1055,9 @@ function CategoryGrid({ ui, counts, onPickCategory }) {
               boxShadow: `0 30px 90px ${ui.glow}`,
             }}
           >
-            <div style={{ fontSize: 28 }}>{it.icon}</div>
+            <div style={{ width: 28, height: 28, display: "grid", placeItems: "center" }}>
+              <CatIcon name={it.icon} size={28} color={ui.text} />
+            </div>
             <div>
               <div style={{ fontWeight: 950, fontSize: 16 }}>{it.title}</div>
               <div style={{ color: ui.muted, fontSize: 13, marginTop: 6 }}>
