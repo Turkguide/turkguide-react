@@ -3342,7 +3342,7 @@ return (
             <Card ui={ui}>
               <div style={{ fontSize: 18, fontWeight: 950 }}>HUB</div>
               <div style={{ color: ui.muted, marginTop: 6 }}>
-                Amerika’yı ziyaret edenlerin deneyimleri + geleceklerin soru/cevap alanı (demo).
+                İçerik paylaşın, yorum yapın, bağlantıda kalın.
               </div>
 
               <div style={{ marginTop: 12 }}>
@@ -3412,18 +3412,6 @@ return (
    </button>
  </div>
 
- {/* ✅ seçilen medya bilgisi (butonsuz) */}
- <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-   {hubMedia ? (
-     <Chip ui={ui} title={hubMedia.originalName || ""}>
-       {hubMedia.kind === "video"
-         ? `Video • ${Math.round((hubMedia.duration || 0) * 10) / 10}s`
-         : "Fotoğraf • 4:5"}
-     </Chip>
-   ) : (
-     <span style={{ color: ui.muted2, fontSize: 12 }}>Foto: 4:5 • Video: max 60s / 2K</span>
-   )}
- </div>
 
   {/* Preview */}
   {hubMedia ? (
