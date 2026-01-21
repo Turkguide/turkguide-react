@@ -111,59 +111,56 @@ function ensureSeed() {
     lsSet(KEY.ADMIN_CONFIG, { admins: DEFAULT_ADMINS });
   }
 
-  const biz = lsGet(KEY.BIZ, null);
-  if (!biz || !Array.isArray(biz) || biz.length === 0) {
-    lsSet(KEY.BIZ, [
-      {
-        id: uid(),
-        name: "Secer Auto",
-        ownerUsername: "sadullah",
-        category: "Araç Bayileri",
-        plan: "Onaylı İşletme",
-        status: "approved",
-        address: "Los Angeles, CA",
-        phone: "+1 310 555 0101",
-        city: "Los Angeles, California",
-        desc: "Araç alım-satım • Finans & sigorta yönlendirme • Güvenilir süreç",
-        avatar: "",
-        createdAt: now(),
-        approvedAt: now(),
-        approvedBy: "sadullah",
-      },
-      {
-        id: uid(),
-        name: "Turkish Market LA",
-        ownerUsername: "vicdan",
-        category: "Türk Marketleri",
-        plan: "Onaylı İşletme",
-        status: "approved",
-        address: "Los Angeles, CA",
-        phone: "+1 213 555 0199",
-        city: "Los Angeles, California",
-        desc: "Türk ürünleri • Taze ürün • Haftalık indirimler",
-        avatar: "",
-        createdAt: now(),
-        approvedAt: now(),
-        approvedBy: "vicdan",
-      },
-      {
-        id: uid(),
-        name: "AydinStay",
-        ownerUsername: "secer",
-        category: "Konaklama",
-        plan: "Onaylı İşletme+",
-        status: "approved",
-        address: "West Hollywood, CA",
-        phone: "+1 424 555 0133",
-        city: "Los Angeles, California",
-        desc: "Kısa dönem konaklama • Temiz ve güvenilir • Türkçe iletişim",
-        avatar: "",
-        createdAt: now(),
-        approvedAt: now(),
-        approvedBy: "sadullah",
-      },
-    ]);
-  }
+ const biz = lsGet(KEY.BIZ, null);
+if (!biz || !Array.isArray(biz) || biz.length === 0) {
+  lsSet(KEY.BIZ, [
+    {
+      id: uid(),
+      name: "Secer Auto",
+      ownerUsername: "sadullah",
+      category: "Araç Bayileri",
+      status: "approved",
+      address: "Los Angeles, CA",
+      phone: "+1 310 555 0101",
+      city: "Los Angeles, California",
+      desc: "Araç alım-satım • Finans & sigorta yönlendirme • Güvenilir süreç",
+      avatar: "",
+      createdAt: now(),
+      approvedAt: now(),
+      approvedBy: "sadullah",
+    },
+    {
+      id: uid(),
+      name: "Turkish Market LA",
+      ownerUsername: "vicdan",
+      category: "Türk Marketleri",
+      status: "approved",
+      address: "Los Angeles, CA",
+      phone: "+1 213 555 0199",
+      city: "Los Angeles, California",
+      desc: "Türk ürünleri • Taze ürün • Haftalık indirimler",
+      avatar: "",
+      createdAt: now(),
+      approvedAt: now(),
+      approvedBy: "vicdan",
+    },
+    {
+      id: uid(),
+      name: "AydinStay",
+      ownerUsername: "secer",
+      category: "Konaklama",
+      status: "approved",
+      address: "West Hollywood, CA",
+      phone: "+1 424 555 0133",
+      city: "Los Angeles, California",
+      desc: "Kısa dönem konaklama • Temiz ve güvenilir • Türkçe iletişim",
+      avatar: "",
+      createdAt: now(),
+      approvedAt: now(),
+      approvedBy: "sadullah",
+    },
+  ]);
+}
 
   if (!lsGet(KEY.BIZ_APPS, null)) lsSet(KEY.BIZ_APPS, []);
   if (!lsGet(KEY.POSTS, null)) lsSet(KEY.POSTS, []);
@@ -2073,50 +2070,59 @@ function submitBizApplication(data) {
   const phoneLocal = String(data?.phoneLocal || "").trim();
   const phone = String(data?.phone || "").trim() || [phoneDial, phoneLocal].filter(Boolean).join(" ").trim();
 
-  // Basic validation
-  if (!name || !category) {
-    alert("Lütfen işletme adı ve kategori doldur.");
-    return;
-  }
+  // ✅ ZORUNLU ALAN VALIDATION (evrensel)
+if (!name) {
+  alert("İşletme adı zorunludur.");
+  return;
+}
 
-  if (!country || !cityOnly || !zip || !address1) {
-    alert("Lütfen adres bilgilerini eksiksiz girin (Ülke / Şehir / ZIP / Adres).");
-    return;
-  }
+if (!address1) {
+  alert("Adres bilgisi zorunludur.");
+  return;
+}
 
-  if (!phone) {
-    alert("Lütfen telefon numarası girin.");
-    return;
-  }
+if (!zip || !/^\d{4,10}$/.test(zip)) {
+  alert("Geçerli bir ZIP / posta kodu girin.");
+  return;
+}
 
-    setBizApps((prev) => [
-    {
-      id: uid(),
-      createdAt: now(),
-      status: "pending",
-      applicant: user.username,
-      ownerUsername: user.username,
-      name,
-      category,
-      desc,
-      country,
-      state,
-      zip,
-      apt,
-      address1,
-      address: [address1, apt ? `Apt ${apt}` : "", cityOnly, state, zip, country].filter(Boolean).join(", "),
-      city,
-      phoneDial,
-      phoneLocal,
-      phone,
-      plan: String(data?.plan || "business").trim(),
-      avatar: String(data?.avatar || "").trim() || "",
-    },
-    ...prev,
-  ]);
+if (!phone || phone.replace(/\D/g, "").length < 7) {
+  alert("Geçerli bir telefon numarası girin.");
+  return;
+}
 
-  alert("✅ Başvurunuz alındı. İncelendikten sonra işletmeler listesinde görünecek.");
-  setShowBizApply(false);
+if (!category) {
+  alert("Lütfen bir işletme kategorisi seçin.");
+  return;
+}
+
+setBizApps((prev) => [
+  {
+    id: uid(),
+    createdAt: now(),
+    status: "pending",
+    applicant: user.username,
+    ownerUsername: user.username,
+    name,
+    category,
+    desc,
+    country,
+    state,
+    zip,
+    apt,
+    address1,
+    address: [address1, apt ? `Apt ${apt}` : "", cityOnly, state, zip, country].filter(Boolean).join(", "),
+    city,
+    phoneDial,
+    phoneLocal,
+    phone,
+    avatar: String(data?.avatar || "").trim() || "",
+  },
+  ...prev,
+]);
+
+alert("✅ Başvurunuz alındı. İncelendikten sonra işletmeler listesinde görünecek.");
+setShowBizApply(false);
 }
 
 function adminApprove(app) {
@@ -2130,7 +2136,6 @@ function adminApprove(app) {
     address: app.address || app.city,
     phone: app.phone || "",
     category: app.category,
-    plan: app.plan || "Onaylı İşletme",
     desc: app.desc || "",
     avatar: app.avatar || "",
     ownerUsername: app.ownerUsername || app.applicant || "",
@@ -3161,86 +3166,91 @@ return (
   <BizCta ui={ui} onClick={openBizApply} block />
 </div>
 
-        {filteredBiz.length === 0 ? (
+       {filteredBiz.length === 0 ? (
   <div style={{ color: ui.muted, padding: 10 }}>Bu filtrede işletme yok.</div>
 ) : (
   <div style={{ display: "grid", gap: 12 }}>
     {filteredBiz.map((b) => {
-      const badge =
-        (b.plan || "").toLowerCase() === "verified"
-          ? "Onaylı İşletme"
-          : "İşletme";
-
+      // ✅ sadece admin onayı (status) bazlı rozet
+      const badge = b?.status === "approved" ? "Onaylı İşletme" : "İşletme";
       const canEditAvatar = canEditBizAvatar(b);
 
-              return (
-                <div
-                  key={b.id}
-                  style={{
-                    border: `1px solid ${ui.border}`,
-                    background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                    borderRadius: 18,
-                    padding: 16,
-                    boxShadow: `0 18px 40px ${ui.glow}`,
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                      <div onClick={() => openProfileBiz(b.id)} style={{ cursor: "pointer" }}>
-                        <Avatar ui={ui} src={b.avatar} size={54} label={b.name} />
-                      </div>
+      return (
+        <div
+          key={b.id}
+          style={{
+            border: `1px solid ${ui.border}`,
+            background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+            borderRadius: 18,
+            padding: 16,
+            boxShadow: `0 18px 40px ${ui.glow}`,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div onClick={() => openProfileBiz(b.id)} style={{ cursor: "pointer" }}>
+                <Avatar ui={ui} src={b.avatar} size={54} label={b.name} />
+              </div>
 
-                      <div>
-                        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                          <div
-                            style={{ fontSize: 18, fontWeight: 950, cursor: "pointer" }}
-                            onClick={() => openProfileBiz(b.id)}
-                          >
-                            {b.name}
-                          </div>
-                          <Chip ui={ui}>{badge}</Chip>
-                          {apptsForBiz.get(b.id) ? <Chip ui={ui}>🗓️ {apptsForBiz.get(b.id)} yeni talep</Chip> : null}
-                        </div>
-
-                        <div style={{ marginTop: 6, color: ui.muted }}>
-                          📍 {b.address || b.city || "-"}
-                        </div>
-
-                        <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>
-                          Sahibi:{" "}
-                          <span
-                            style={{ cursor: "pointer", textDecoration: "underline" }}
-                            onClick={() => openProfileByUsername(b.ownerUsername || "-")}
-                          >
-                            @{b.ownerUsername || "-"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {canEditAvatar ? (
-                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                        <BizAvatarInput onBase64={(b64) => setBizAvatar(b.id, b64)} />
-                        <Button ui={ui} variant="blue" onClick={() => bizAvatarPicker.pick()}>
-                          🖼️ İşletme Foto
-                        </Button>
-                      </div>
-                    ) : null}
+              <div>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <div
+                    style={{ fontSize: 18, fontWeight: 950, cursor: "pointer" }}
+                    onClick={() => openProfileBiz(b.id)}
+                  >
+                    {b.name}
                   </div>
-
-                  {b.desc ? <div style={{ marginTop: 12, color: ui.muted }}>{b.desc}</div> : null}
-
-                  <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <Button ui={ui} variant="ok" onClick={() => openAppointment(b.id)}>🗓️ Randevu Al</Button>
-                    <Button ui={ui} onClick={() => openDirections(b.address || b.city || "")}>🧭 Yol Tarifi</Button>
-                    <Button ui={ui} onClick={() => openCall(b.phone)}>📞 Ara</Button>
-                    <Button ui={ui} variant="solidBlue" onClick={() => openDmToBiz(b.id)}>💬 Mesaj Gönder</Button>
-                  </div>
+                  <Chip ui={ui}>{badge}</Chip>
+                  {apptsForBiz.get(b.id) ? <Chip ui={ui}>🗓️ {apptsForBiz.get(b.id)} yeni talep</Chip> : null}
                 </div>
-              );
-            })}
+
+                <div style={{ marginTop: 6, color: ui.muted }}>
+                  📍 {b.address || b.city || "-"}
+                </div>
+
+                <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>
+                  Sahibi:{" "}
+                  <span
+                    style={{ cursor: "pointer", textDecoration: "underline" }}
+                    onClick={() => openProfileByUsername(b.ownerUsername || "")}
+                  >
+                    @{b.ownerUsername || "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {canEditAvatar ? (
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <BizAvatarInput onBase64={(b64) => setBizAvatar(b.id, b64)} />
+                <Button ui={ui} variant="blue" onClick={() => bizAvatarPicker.pick()}>
+                  🖼️ İşletme Foto
+                </Button>
+              </div>
+            ) : null}
           </div>
-        )}
+
+          {b.desc ? <div style={{ marginTop: 12, color: ui.muted }}>{b.desc}</div> : null}
+
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Button ui={ui} variant="ok" onClick={() => openAppointment(b.id)}>
+              🗓️ Randevu Al
+            </Button>
+            <Button ui={ui} onClick={() => openDirections(b.address || b.city || "")}>
+              🧭 Yol Tarifi
+            </Button>
+            <Button ui={ui} onClick={() => openCall(b.phone)}>
+              📞 Ara
+            </Button>
+            <Button ui={ui} variant="solidBlue" onClick={() => openDmToBiz(b.id)}>
+              💬 Mesaj Gönder
+            </Button>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
       </div>
     )}
   </>
@@ -3749,7 +3759,7 @@ return (
                         <div>
                           <div style={{ fontSize: 16, fontWeight: 950 }}>{a.name}</div>
                           <div style={{ color: ui.muted, marginTop: 4 }}>
-                            {a.city} • {a.category} • Plan: {a.plan || "Onaylı İşletme"} • Başvuran: @{a.applicant}
+                            {a.city} • {a.category} • Durum: Beklemede • Başvuran: @{a.applicant}
                           </div>
                           <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>{fmt(a.createdAt)}</div>
                         </div>
@@ -3776,7 +3786,7 @@ return (
                       <div>
                         <div style={{ fontWeight: 950 }}>{b.name}</div>
                         <div style={{ color: ui.muted, fontSize: 13 }}>
-                          {b.category} • {b.plan} • owner: @{b.ownerUsername || "-"}
+                          {b.category} • owner: @{b.ownerUsername || "-"}
                         </div>
                       </div>
                     </div>
@@ -4410,24 +4420,6 @@ return (
         </div>
       </div>
 
-      {/* satış/upgrade çağrışımı yok) */}
-<div>
-  <div style={{ color: ui.muted, fontWeight: 900, fontSize: 12, marginBottom: 6 }}>
-    Plan
-  </div>
-
-  <select
-    value={editBizCtx.plan || "Onaylı İşletme"}
-    onChange={(e) => setEditBizCtx((p) => ({ ...p, plan: e.target.value }))}
-    style={inputStyle(ui)}
-  >
-    <option value="Onaylı İşletme">Onaylı İşletme</option>
-  </select>
-
-  <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>
-    Şimdilik tek plan aktif.
-  </div>
-</div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div>
@@ -4681,7 +4673,7 @@ return (
                 <div>
                   <div style={{ fontWeight: 950 }}>{b.name}</div>
                   <div style={{ color: ui.muted, fontSize: 13 }}>
-                    {b.category} • {b.plan}
+                    {b.category}
                   </div>
                 </div>
               </div>
@@ -4697,7 +4689,7 @@ return (
         <div>
           <div style={{ fontSize: 18, fontWeight: 950 }}>{profileData.biz.name}</div>
           <div style={{ color: ui.muted, marginTop: 4 }}>
-            {profileData.biz.category} • {profileData.biz.plan}
+            {profileData.biz.category}
           </div>
           <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
             Onay: {fmt(profileData.biz.approvedAt)} • by @{profileData.biz.approvedBy}
@@ -4735,6 +4727,7 @@ return (
 =========================== */
 
 function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
+  const [submitted, setSubmitted] = useState(false);
   const [name, setName] = useState("");
 
   // Address pieces
@@ -4816,17 +4809,24 @@ useEffect(() => {
       return;
     }
 
-    const phone = `${String(phoneCode || "").trim()} ${String(phoneNumber || "").trim()}`.trim();
+    const dial = String(phoneCode || "").trim();
+    const local = String(phoneNumber || "").trim();
+    const phone = [dial, local].filter(Boolean).join(" ").trim();
 
     onSubmit({
       name: String(name || "").trim(),
-      address: String(address || "").trim(),
+      address1: String(address || "").trim(),
+      address: String(address || "").trim(), // geriye dönük uyumluluk için kalsın
       apt: String(apt || "").trim(),
       zip: String(zip || "").trim(),
       city: String(city || "").trim(),
       state: String(state || "").trim(),
       country: String(country || "").trim(),
+
+      phoneDial: dial,
+      phoneLocal: local,
       phone,
+
       category: String(category || "").trim(),
       desc: String(desc || "").trim(),
     });
