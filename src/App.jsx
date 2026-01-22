@@ -1226,6 +1226,8 @@ useEffect(() => {
   const [biz, setBiz] = useState([]);
   const [bizApps, setBizApps] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [showLikedBy, setShowLikedBy] = useState(false);
+const [likedByPost, setLikedByPost] = useState(null);
   // 🧪 DEBUG: posts state gerçekten güncelleniyor mu?
   useEffect(() => {
     try {
@@ -1372,6 +1374,82 @@ function deletePost(postId) {
   const [showDm, setShowDm] = useState(false);
   const [dmTarget, setDmTarget] = useState(null);
   const [dmText, setDmText] = useState("");
+
+  {/* LIKED BY MODAL */}
+<Modal
+  ui={ui}
+  open={showLikedBy}
+  title="Kimler Beğendi"
+  onClose={() => {
+    setShowLikedBy(false);
+    setLikedByPost(null);
+  }}
+  width={520}
+>
+  <div style={{ display: "grid", gap: 10 }}>
+    {!likedByPost ? (
+      <div style={{ color: ui.muted }}>Post seçilmedi.</div>
+    ) : (
+      <>
+        <div style={{ color: ui.muted2, fontSize: 12 }}>
+          @{hubPostAuthor(likedByPost)} • {fmt(likedByPost.createdAt)}
+        </div>
+
+        {Array.isArray(likedByPost.likedBy) && likedByPost.likedBy.length > 0 ? (
+          <div style={{ display: "grid", gap: 8 }}>
+            {likedByPost.likedBy
+              .slice()
+              .reverse()
+              .map((uname, idx) => (
+                <div
+                  key={`${uname}-${idx}`}
+                  onClick={() => {
+                    setShowLikedBy(false);
+                    setLikedByPost(null);
+                    openProfileByUsername(uname);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: `1px solid ${ui.border}`,
+                    background:
+                      ui.mode === "light"
+                        ? "rgba(0,0,0,0.02)"
+                        : "rgba(255,255,255,0.03)",
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                  title="Profile git"
+                >
+                  <Avatar ui={ui} src={""} size={28} label={uname} />
+                  <div style={{ fontWeight: 900, fontSize: 13, color: ui.text }}>
+                    @{uname}
+                  </div>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <div style={{ color: ui.muted }}>Henüz beğeni yok.</div>
+        )}
+      </>
+    )}
+
+    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+      <Button
+        ui={ui}
+        onClick={() => {
+          setShowLikedBy(false);
+          setLikedByPost(null);
+        }}
+      >
+        Kapat
+      </Button>
+    </div>
+  </div>
+</Modal>
 
   // Appointment modal
   const [showAppt, setShowAppt] = useState(false);
@@ -4265,11 +4343,41 @@ return (
     }}
     title="Beğen"
   >
-    <span style={{ fontSize: 16 }}>♡</span>
-    <span style={{ fontSize: 13 }}>Beğen</span>
-    <span style={{ fontSize: 13, opacity: 0.6 }}>
-      {p.likes || 0}
-    </span>
+   {(() => {
+  const me = normalizeUsername(user?.username);
+  const hasLiked = (p.likedBy || []).some(
+    (u) => normalizeUsername(u) === me
+  );
+
+  return (
+    <>
+      <span style={{ fontSize: 16 }}>
+        {hasLiked ? "❤️" : "♡"}
+      </span>
+
+      <span style={{ fontSize: 13 }}>
+        Beğen
+      </span>
+
+      <span
+        onClick={(e) => {
+          e.stopPropagation();
+          setLikedByPost(p);
+          setShowLikedBy(true);
+        }}
+        style={{
+          fontSize: 13,
+          opacity: 0.6,
+          cursor: "pointer",
+          textDecoration: "underline",
+        }}
+        title="Kimler beğendi?"
+      >
+        {p.likes || 0}
+      </span>
+    </>
+  );
+})()}
   </button>
 
   {/* 💬 Yorum */}
