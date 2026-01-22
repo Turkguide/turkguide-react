@@ -2071,6 +2071,7 @@ const { error } = await supabase.auth.signInWithOAuth({
   }
 }
 
+
 function openProfileByUsername(username) {
   const uname = resolveUsernameAlias(String(username || "").trim());
 
@@ -2092,6 +2093,21 @@ function openProfileByUsername(username) {
   }
 
   setProfileOpen(true);
+}
+
+function avatarByUsername(username) {
+  const raw = String(username || "").trim();
+  const uname = resolveUsernameAlias(raw);
+  const key = normalizeUsername(uname);
+
+  // 1) current authed user
+  if (user && normalizeUsername(user.username) === key) {
+    return String(user.avatar || "");
+  }
+
+  // 2) local users[]
+  const found = (users || []).find((x) => normalizeUsername(x?.username) === key);
+  return String(found?.avatar || "");
 }
 
 function openProfileBiz(bizId) {
