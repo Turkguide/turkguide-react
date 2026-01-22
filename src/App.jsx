@@ -2650,6 +2650,51 @@ async function hubComment(postId) {
   }
 }
 
+async function deleteHubComment(postId, commentId) {
+  if (!requireAuth()) return;
+
+  const target = (posts || []).find((p) => p.id === postId);
+  if (!target) return;
+
+  const currentComments = Array.isArray(target.comments) ? target.comments : [];
+  const nextComments = currentComments.filter((c) => String(c.id) !== String(commentId));
+
+  // 1️⃣ Optimistic UI (hemen kaldır)
+  setPosts((prev) =>
+    (prev || []).map((p) =>
+      p.id === postId ? { ...p, comments: nextComments } : p
+    )
+  );
+
+  // (menü açıksa kapat)
+  try {
+    setCommentMenuOpenKey(null);
+  } catch (_) {}
+
+  // 2️⃣ DB’ye yaz
+  try {
+    const { error } = await supabase
+      .from("hub_posts")
+      .update({ comments: nextComments })
+      .eq("id", postId)
+      .select(); // ✅ RLS/returning için
+
+    if (error) throw error;
+
+    // garanti: DB'den tazele
+    await fetchHubPosts();
+  } catch (e) {
+    console.error("deleteHubComment DB error:", e);
+
+    // ❌ hata olursa geri al
+    setPosts((prev) =>
+      (prev || []).map((p) => (p.id === postId ? target : p))
+    );
+
+    alert("Yorum silinemedi.");
+  }
+}
+
 function openAppointment(bizId) {
   if (!requireAuth()) return;
   setApptBizId(bizId);
@@ -4445,54 +4490,247 @@ return (
   {(p.comments || [])
     .slice()
     .reverse()
-    .map((c) => (
-      <div
-        key={c.id}
-        style={{
-          padding: 10,
-          borderRadius: 14,
-          border: `1px solid ${ui.border}`,
-          background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
-        }}
-      >
+    .map((c) => {
+      const key = `${p.id}:${c.id}`;
+      const isOwner =
+        !!user &&
+        normalizeUsername(user.username) === normalizeUsername(c.byUsername);
+      const menuOpen = commentMenuOpenKey === key;
+      const isEditing = editingCommentKey === key;
+
+      return (
         <div
+          key={c.id}
           style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
+            padding: 10,
+            borderRadius: 14,
+            border: `1px solid ${ui.border}`,
+            background:
+              ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
           }}
         >
-          <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>
-            @{c.byUsername}
-          </Chip>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>
+              @{c.byUsername}
+            </Chip>
 
-          <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
+            <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
 
-          {user &&
-          normalizeUsername(user.username) === normalizeUsername(c.byUsername) ? (
-            <button
-              type="button"
-              onClick={() => deleteHubComment(p.id, c.id)}
-              style={{
-                border: "none",
-                background: "transparent",
-                color: "#ff4d4f",
-                cursor: "pointer",
-                fontWeight: 700,
-                fontSize: 12,
-                marginLeft: 8,
-              }}
-              title="Yorumu Sil"
-            >
-              Sil
-            </button>
-          ) : null}
+            {isOwner ? (
+              <div
+                style={{
+                  marginLeft: "auto",
+                  position: "relative",
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCommentMenuOpenKey(menuOpen ? null : key);
+                  }}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    fontWeight: 900,
+                    fontSize: 18,
+                    lineHeight: 1,
+                    padding: "2px 6px",
+                    borderRadius: 10,
+                    color:
+                      ui.mode === "light"
+                        ? "rgba(0,0,0,0.55)"
+                        : "rgba(255,255,255,0.65)",
+                  }}
+                  title="Yorum seçenekleri"
+                  aria-label="Yorum seçenekleri"
+                >
+                  ⋯
+                </button>
+
+                {menuOpen ? (
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "100%",
+                      marginTop: 8,
+                      minWidth: 160,
+                      borderRadius: 14,
+                      border: `1px solid ${ui.border}`,
+                      background:
+                        ui.mode === "light"
+                          ? "rgba(255,255,255,0.98)"
+                          : "rgba(10,12,18,0.98)",
+                      boxShadow: "0 18px 60px rgba(0,0,0,0.25)",
+                      padding: 6,
+                      zIndex: 50,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingCommentKey(key);
+                        setEditCommentDraft(String(c.text || ""));
+                        setCommentMenuOpenKey(null);
+                      }}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        padding: "10px 10px",
+                        borderRadius: 12,
+                        fontWeight: 900,
+                        color: ui.text,
+                      }}
+                      title="Yorumu düzenle"
+                    >
+                      ✏️ Düzenle
+                    </button>
+
+                    <div
+                      style={{
+                        height: 1,
+                        background:
+                          ui.mode === "light"
+                            ? "rgba(0,0,0,0.08)"
+                            : "rgba(255,255,255,0.10)",
+                        margin: "4px 6px",
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCommentMenuOpenKey(null);
+                        deleteHubComment(p.id, c.id);
+                      }}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        padding: "10px 10px",
+                        borderRadius: 12,
+                        fontWeight: 900,
+                        color: "#ff4d4f",
+                      }}
+                      title="Yorumu sil"
+                    >
+                      🗑️ Sil
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            {isEditing ? (
+              <div style={{ display: "grid", gap: 8 }}>
+                <textarea
+                  value={editCommentDraft}
+                  onChange={(e) => setEditCommentDraft(e.target.value)}
+                  style={inputStyle(ui, {
+                    minHeight: 70,
+                    borderRadius: 14,
+                    resize: "vertical",
+                    padding: "10px 12px",
+                  })}
+                />
+
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <Button
+                    ui={ui}
+                    onClick={() => {
+                      setEditingCommentKey(null);
+                      setEditCommentDraft("");
+                    }}
+                    style={{ padding: "8px 14px" }}
+                  >
+                    İptal
+                  </Button>
+
+                  <Button
+                    ui={ui}
+                    variant="solidBlue"
+                    onClick={async () => {
+                      const text = String(editCommentDraft || "").trim();
+                      if (!text) return;
+
+                      // Optimistic UI
+                      setPosts((prev) =>
+                        (prev || []).map((pp) =>
+                          pp.id === p.id
+                            ? {
+                                ...pp,
+                                comments: (pp.comments || []).map((cc) =>
+                                  cc.id === c.id
+                                    ? { ...cc, text, editedAt: new Date().toISOString() }
+                                    : cc
+                                ),
+                              }
+                            : pp
+                        )
+                      );
+
+                      setEditingCommentKey(null);
+                      setEditCommentDraft("");
+
+                      try {
+                        const nextComments = (p.comments || []).map((cc) =>
+                          cc.id === c.id
+                            ? { ...cc, text, editedAt: new Date().toISOString() }
+                            : cc
+                        );
+
+                        const { error } = await supabase
+                          .from("hub_posts")
+                          .update({ comments: nextComments })
+                          .eq("id", p.id);
+
+                        if (error) throw error;
+
+                        await fetchHubPosts();
+                      } catch (err) {
+                        console.error("editHubComment error:", err);
+                        alert("Yorum güncellenemedi.");
+                        try {
+                          await fetchHubPosts();
+                        } catch (_) {}
+                      }
+                    }}
+                    style={{ padding: "8px 14px" }}
+                  >
+                    Kaydet
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              c.text
+            )}
+          </div>
         </div>
-
-        <div style={{ marginTop: 8 }}>{c.text}</div>
-      </div>
-    ))}
+      );
+    })}
 </div>
 
 {/* comment input (HER ZAMAN EN ALTA) */}
