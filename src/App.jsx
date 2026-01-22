@@ -1168,13 +1168,7 @@ export default function App() {
 
   // Tabs
   // Tabs
-const [active, setActive] = useState(() => {
-  try {
-    return localStorage.getItem("tg_active_tab_v1") || "biz";
-  } catch (_) {
-    return "biz";
-  }
-});
+const [active, setActive] = useState("biz");
 
 // 🧪 DEBUG: active değişimini takip et
 useEffect(() => {
