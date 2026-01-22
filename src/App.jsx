@@ -4533,9 +4533,19 @@ return (
               flexWrap: "wrap",
             }}
           >
-            <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>
-              @{c.byUsername}
-            </Chip>
+           <div
+  onClick={() => openProfileByUsername(c.byUsername)}
+  style={{
+    fontWeight: 900,
+    fontSize: 13,
+    color: ui.text,
+    cursor: "pointer",
+    userSelect: "none",
+  }}
+  title="Profile git"
+>
+  @{c.byUsername}
+</div>
 
             <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
 
