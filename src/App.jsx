@@ -1167,12 +1167,24 @@ export default function App() {
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
 
   // Tabs
-  // Tabs
-const [active, setActive] = useState("biz");
+const [active, setActive] = useState(() => {
+  try {
+    return localStorage.getItem("tg_active_tab_v1") || "biz";
+  } catch (_) {
+    return "biz";
+  }
+});
 
-// 🧪 DEBUG: active değişimini takip et
+// 🧪 DEBUG
 useEffect(() => {
   console.log("🧪 ACTIVE CHANGED ->", active);
+}, [active]);
+
+// ✅ KALDIĞI YERİ HATIRLA
+useEffect(() => {
+  try {
+    localStorage.setItem("tg_active_tab_v1", active);
+  } catch (_) {}
 }, [active]);
 
 // ✅ active tab'i kalıcı kaydet (refresh fix)
