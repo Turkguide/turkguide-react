@@ -4445,24 +4445,6 @@ return (
 
                       <Divider ui={ui} />
 
-                      {/* comment input */}
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <input
-                          placeholder={user ? "Yorum yaz..." : "Yorum için giriş yap"}
-                          value={commentDraft[p.id] || ""}
-                          onChange={(e) =>
-                            setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))
-                          }
-                          onFocus={() => {
-                            if (!user) setShowAuth(true);
-                          }}
-                          style={inputStyle(ui, { padding: "10px 12px" })}
-                        />
-                        <Button ui={ui} variant="solidBlue" onClick={() => hubComment(p.id)}>
-                          Gönder
-                        </Button>
-                      </div>
-
                       {/* comments */}
                       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                         {(p.comments || [])
@@ -4492,7 +4474,9 @@ return (
                                 <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>
                                   @{c.byUsername}
                                 </Chip>
-                                <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
+                                <span style={{ color: ui.muted2, fontSize: 12 }}>
+                                  {fmt(c.createdAt)}
+                                </span>
                                 {user ? (
                                   <Button
                                     ui={ui}
@@ -4511,6 +4495,24 @@ return (
                               <div style={{ marginTop: 8 }}>{c.text}</div>
                             </div>
                           ))}
+                      </div>
+
+                      {/* comment input (HER ZAMAN EN ALTA) */}
+                      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                        <input
+                          placeholder={user ? "Yorum yaz..." : "Yorum için giriş yap"}
+                          value={commentDraft[p.id] || ""}
+                          onChange={(e) =>
+                            setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))
+                          }
+                          onFocus={() => {
+                            if (!user) setShowAuth(true);
+                          }}
+                          style={inputStyle(ui, { padding: "10px 12px" })}
+                        />
+                        <Button ui={ui} variant="solidBlue" onClick={() => hubComment(p.id)}>
+                          Gönder
+                        </Button>
                       </div>
                     </div>
                   </Card>
