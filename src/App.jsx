@@ -1228,6 +1228,14 @@ useEffect(() => {
   const [posts, setPosts] = useState([]);
   const [showLikedBy, setShowLikedBy] = useState(false);
 const [likedByPost, setLikedByPost] = useState(null);
+// 💬 Yorum menüsü (⋯)
+const [commentMenuOpenKey, setCommentMenuOpenKey] = useState(null); 
+// örnek: "postId:commentId"
+
+// ✏️ Yorum düzenleme
+const [editingCommentKey, setEditingCommentKey] = useState(null);
+const [editCommentDraft, setEditCommentDraft] = useState("");
+
   // 🧪 DEBUG: posts state gerçekten güncelleniyor mu?
   useEffect(() => {
     try {
@@ -1278,6 +1286,8 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
   // HUB
   const [composer, setComposer] = useState("");
   const [commentDraft, setCommentDraft] = useState({});
+  const [commentMenu, setCommentMenu] = useState(null); 
+// { postId, commentId } veya null
   const [hubMedia, setHubMedia] = useState(null);
 
   // HUB comment input refs ("Yorum" tıklayınca input'a focus)
@@ -4347,9 +4357,7 @@ return (
       background: "transparent",
       padding: 0,
       cursor: "pointer",
-      color: ui.mode === "light"
-        ? "rgba(0,0,0,0.55)"
-        : "rgba(255,255,255,0.65)",
+      color: ui.mode === "light" ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
       fontWeight: 700,
       display: "inline-flex",
       alignItems: "center",
@@ -4357,40 +4365,33 @@ return (
     }}
     title="Beğen"
   >
-   {(() => {
-  const me = normalizeUsername(user?.username);
-  const hasLiked = (p.likedBy || []).some(
-    (u) => normalizeUsername(u) === me
-  );
+    {(() => {
+      const me = normalizeUsername(user?.username);
+      const hasLiked = (p.likedBy || []).some((u) => normalizeUsername(u) === me);
 
-  return (
-    <>
-      <span style={{ fontSize: 16 }}>
-        {hasLiked ? "❤️" : "♡"}
-      </span>
+      return (
+        <>
+          <span style={{ fontSize: 16 }}>{hasLiked ? "❤️" : "♡"}</span>
+          <span style={{ fontSize: 13 }}>Beğen</span>
 
-      <span style={{ fontSize: 13 }}>
-        Beğen
-      </span>
-
-      <span
-  onClick={(e) => {
-    e.stopPropagation();
-    setLikedByPost(p);
-    setShowLikedBy(true);
-  }}
-  style={{
-    fontSize: 13,
-    opacity: 0.6,
-    cursor: "pointer",
-  }}
-  title="Kimler beğendi"
->
-  {p.likes || 0}
-</span>
-    </>
-  );
-})()}
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              setLikedByPost(p);
+              setShowLikedBy(true);
+            }}
+            style={{
+              fontSize: 13,
+              opacity: 0.6,
+              cursor: "pointer",
+            }}
+            title="Kimler beğendi"
+          >
+            {p.likes || 0}
+          </span>
+        </>
+      );
+    })()}
   </button>
 
   {/* 💬 Yorum */}
@@ -4402,9 +4403,7 @@ return (
       background: "transparent",
       padding: 0,
       cursor: "pointer",
-      color: ui.mode === "light"
-        ? "rgba(0,0,0,0.55)"
-        : "rgba(255,255,255,0.65)",
+      color: ui.mode === "light" ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
       fontWeight: 700,
       display: "inline-flex",
       alignItems: "center",
@@ -4414,9 +4413,7 @@ return (
   >
     <span style={{ fontSize: 16 }}>💬</span>
     <span style={{ fontSize: 13 }}>Yorum</span>
-    <span style={{ fontSize: 13, opacity: 0.6 }}>
-      {(p.comments || []).length}
-    </span>
+    <span style={{ fontSize: 13, opacity: 0.6 }}>{(p.comments || []).length}</span>
   </button>
 
   {/* 🌀 HUB’la */}
@@ -4428,9 +4425,7 @@ return (
       background: "transparent",
       padding: 0,
       cursor: "pointer",
-      color: ui.mode === "light"
-        ? "rgba(0,0,0,0.55)"
-        : "rgba(255,255,255,0.65)",
+      color: ui.mode === "light" ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
       fontWeight: 700,
       display: "inline-flex",
       alignItems: "center",
@@ -4443,83 +4438,78 @@ return (
   </button>
 </div>
 
-                      <Divider ui={ui} />
+<Divider ui={ui} />
 
-                      {/* comments */}
-                      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                        {(p.comments || [])
-                          .slice()
-                          .reverse()
-                          .map((c) => (
-                            <div
-                              key={c.id}
-                              style={{
-                                padding: 10,
-                                borderRadius: 14,
-                                border: `1px solid ${ui.border}`,
-                                background:
-                                  ui.mode === "light"
-                                    ? "rgba(0,0,0,0.03)"
-                                    : "rgba(255,255,255,0.03)",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  gap: 10,
-                                  alignItems: "center",
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>
-  @{c.byUsername}
-</Chip>
+{/* comments */}
+<div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+  {(p.comments || [])
+    .slice()
+    .reverse()
+    .map((c) => (
+      <div
+        key={c.id}
+        style={{
+          padding: 10,
+          borderRadius: 14,
+          border: `1px solid ${ui.border}`,
+          background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>
+            @{c.byUsername}
+          </Chip>
 
-<span style={{ color: ui.muted2, fontSize: 12 }}>
-  {fmt(c.createdAt)}
-</span>
+          <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
 
-{user &&
- normalizeUsername(user.username) === normalizeUsername(c.byUsername) && (
-  <button
-    onClick={() => deleteHubComment(p.id, c.id)}
-    style={{
-      border: "none",
-      background: "transparent",
-      color: "#ff4d4f",
-      cursor: "pointer",
-      fontWeight: 700,
-      fontSize: 12,
-      marginLeft: 8,
+          {user &&
+          normalizeUsername(user.username) === normalizeUsername(c.byUsername) ? (
+            <button
+              type="button"
+              onClick={() => deleteHubComment(p.id, c.id)}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: "#ff4d4f",
+                cursor: "pointer",
+                fontWeight: 700,
+                fontSize: 12,
+                marginLeft: 8,
+              }}
+              title="Yorumu Sil"
+            >
+              Sil
+            </button>
+          ) : null}
+        </div>
+
+        <div style={{ marginTop: 8 }}>{c.text}</div>
+      </div>
+    ))}
+</div>
+
+{/* comment input (HER ZAMAN EN ALTA) */}
+<div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+  <input
+    placeholder={user ? "Yorum yaz..." : "Yorum için giriş yap"}
+    value={commentDraft[p.id] || ""}
+    onChange={(e) => setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))}
+    onFocus={() => {
+      if (!user) setShowAuth(true);
     }}
-    title="Yorumu Sil"
-  >
-    Sil
-  </button>
-)}
-                              </div>
-                              <div style={{ marginTop: 8 }}>{c.text}</div>
-                            </div>
-                          ))}
-                      </div>
-
-                      {/* comment input (HER ZAMAN EN ALTA) */}
-                      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                        <input
-                          placeholder={user ? "Yorum yaz..." : "Yorum için giriş yap"}
-                          value={commentDraft[p.id] || ""}
-                          onChange={(e) =>
-                            setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))
-                          }
-                          onFocus={() => {
-                            if (!user) setShowAuth(true);
-                          }}
-                          style={inputStyle(ui, { padding: "10px 12px" })}
-                        />
-                        <Button ui={ui} variant="solidBlue" onClick={() => hubComment(p.id)}>
-                          Gönder
-                        </Button>
-                      </div>
+    style={inputStyle(ui, { padding: "10px 12px" })}
+  />
+  <Button ui={ui} variant="solidBlue" onClick={() => hubComment(p.id)}>
+    Gönder
+  </Button>
+</div>
                     </div>
                   </Card>
                 ))}
