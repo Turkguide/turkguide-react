@@ -2331,7 +2331,8 @@ async function fetchHubPosts() {
       content: r.content || "",
       media: r.media || null,
       likes: r.likes || 0,
-      comments: r.comments || [],
+likedBy: Array.isArray(r.liked_by) ? r.liked_by : Array.isArray(r.likedBy) ? r.likedBy : [],
+comments: r.comments || [],
     }));
 
     setPosts(mapped);
@@ -2435,7 +2436,34 @@ async function hubShare() {
 
 function hubLike(postId) {
   if (!requireAuth()) return;
-  setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p)));
+
+  const me = normalizeUsername(user?.username);
+  if (!me) return;
+
+  setPosts((prev) =>
+    (prev || []).map((p) => {
+      if (p.id !== postId) return p;
+
+      const likedBy = Array.isArray(p.likedBy) ? p.likedBy : [];
+      const hasLiked = likedBy.some((u) => normalizeUsername(u) === me);
+
+      if (hasLiked) {
+        // unlike
+        return {
+          ...p,
+          likes: Math.max(0, (p.likes || 0) - 1),
+          likedBy: likedBy.filter((u) => normalizeUsername(u) !== me),
+        };
+      }
+
+      // like
+      return {
+        ...p,
+        likes: (p.likes || 0) + 1,
+        likedBy: [...likedBy, user.username],
+      };
+    })
+  );
 }
 
 async function hubComment(postId) {
