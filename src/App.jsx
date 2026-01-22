@@ -2519,8 +2519,13 @@ async function hubShare() {
 async function hubLike(postId) {
   if (!requireAuth()) return;
 
-  const me = normalizeUsername(user?.username);
-  if (!me) return;
+  // 🔒 Mobilde auth gecikmesine karşı net kontrol
+  if (!user || !user.username) {
+    alert("Oturum bulunamadı, lütfen tekrar giriş yapın.");
+    return;
+  }
+
+  const me = normalizeUsername(user.username);
 
   const target = (posts || []).find((p) => p.id === postId);
   if (!target) return;
@@ -2537,7 +2542,7 @@ async function hubLike(postId) {
     Number(target.likes || 0) + (hasLiked ? -1 : 1)
   );
 
-  // 1️⃣ Optimistic UI
+  // 1️⃣ OPTIMISTIC UI (anında göster)
   setPosts((prev) =>
     (prev || []).map((p) =>
       p.id === postId
@@ -2546,7 +2551,7 @@ async function hubLike(postId) {
     )
   );
 
-  // 2️⃣ DB’ye kalıcı yaz
+  // 2️⃣ SUPABASE'E KALICI YAZ
   try {
     const { error } = await supabase
       .from("hub_posts")
@@ -2554,16 +2559,14 @@ async function hubLike(postId) {
         likes: nextLikes,
         liked_by: nextLikedBy,
       })
-      .eq("id", postId);
+      .eq("id", postId)
+      .select(); // ⚠️ MOBİL İÇİN KRİTİK
 
     if (error) throw error;
-
-    // ✅ KRİTİK: DB’den tekrar çek (mobil/web farkını bitirir)
-    await fetchHubPosts();
   } catch (e) {
     console.error("❌ hubLike DB error:", e);
 
-    // geri al
+    // ❌ DB başarısızsa UI geri al
     setPosts((prev) =>
       (prev || []).map((p) =>
         p.id === postId ? target : p
