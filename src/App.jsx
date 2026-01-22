@@ -4477,20 +4477,6 @@ return (
                                 <span style={{ color: ui.muted2, fontSize: 12 }}>
                                   {fmt(c.createdAt)}
                                 </span>
-                                {user ? (
-                                  <Button
-                                    ui={ui}
-                                    variant="blue"
-                                    onClick={() => openDmToUser(c.byUsername)}
-                                    style={{
-                                      padding: "6px 12px",
-                                      borderRadius: 999,
-                                      fontWeight: 900,
-                                    }}
-                                  >
-                                    Mesaj
-                                  </Button>
-                                ) : null}
                               </div>
                               <div style={{ marginTop: 8 }}>{c.text}</div>
                             </div>
