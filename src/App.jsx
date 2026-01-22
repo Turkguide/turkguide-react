@@ -73,7 +73,7 @@ function ensureSeed() {
         username: "secer",
         email: "secer@example.com",
         providers: { apple: { sub: "apple_seed_secer" } },
-        tier: "verified",
+        tier: "Onaylı",
         xp: 12000,
         createdAt: now(),
         avatar: "",
@@ -83,7 +83,7 @@ function ensureSeed() {
         username: "vicdan",
         email: "vicdan@example.com",
         providers: { google: { sub: "google_seed_vicdan" } },
-        tier: "verified",
+        tier: "Onaylı",
         xp: 9000,
         createdAt: now(),
         avatar: "",
@@ -93,7 +93,7 @@ function ensureSeed() {
         username: "turkguide",
         email: "admin@turkguide.app",
         providers: { email: true },
-        tier: "verified",
+        tier: "Onaylı",
         xp: 15000,
         createdAt: now(),
         avatar: "",
@@ -1694,7 +1694,7 @@ if (code) {
       email: session.user.email,
       username: md.username ?? prev?.username ?? null,
       avatar: md.avatar ?? prev?.avatar ?? "",
-      Tier: md.Tier ?? prev?.Tier ?? "Verified",
+      Tier: md.Tier ?? prev?.Tier ?? "Onaylı",
       XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
       createdAt: md.createdAt ?? prev?.createdAt ?? null,
     }));
@@ -1711,7 +1711,7 @@ if (code) {
   // ✅ Boot + Local State + Supabase Auth Restore + Auth Listener
 useEffect(() => {
   let alive = true;
-  let subscription = null;
+  let authSub = null;
 
   // 🧹 DEV ortamında eski seed/login kalıntılarını 1 kere temizle
   if (import.meta.env.DEV && !localStorage.getItem("tg_clean_v1")) {
@@ -1792,7 +1792,7 @@ useEffect(() => {
         }
       });
 
-      subscription = subData?.subscription || null;
+      authSub = subData?.subscription || null;
     } catch (e) {
       console.error("💥 restore/auth crash:", e);
       setUser(null);
@@ -1806,7 +1806,7 @@ useEffect(() => {
   return () => {
     alive = false;
     try {
-      subscription?.unsubscribe?.();
+      authSub?.unsubscribe?.();
     } catch (_) {}
   };
 }, []);
@@ -4823,7 +4823,7 @@ return (
                     <div>
                       <div style={{ fontSize: 18, fontWeight: 950 }}>@{user.username}</div>
                       <div style={{ color: ui.muted, marginTop: 4 }}>
-                        Üyelik: {user.tier ?? user.Tier ?? "Onaylı işletme"} • XP: {user.xp ?? user.XP ?? 0}
+                        Hesap Durumu: {user.tier ?? user.Tier ?? "Onaylı işletme"} • XP: {user.xp ?? user.XP ?? 0}
                       </div>
                       <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
                         Kayıt: {fmt(user.createdAt || new Date().toISOString())}
@@ -5083,8 +5083,8 @@ return (
                           <Chip ui={ui} onClick={() => openProfileByUsername(u.username)}>
                             @{u.username}
                           </Chip>
-                          <span style={{ color: ui.muted }}>Tier: {u.Tier || "Onaylı İşletme"}</span>
-                          <span style={{ color: ui.muted }}>XP: {u.xp || 0}</span>
+                          <span style={{ color: ui.muted }}>Durum: {u.Tier || "Onaylı"}</span>
+<span style={{ color: ui.muted }}>Katkı: {u.xp || 0}</span>
                         </div>
                         <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(u.createdAt)}</div>
                       </div>
@@ -5919,11 +5919,8 @@ return (
         <div>
           <div style={{ fontSize: 18, fontWeight: 950 }}>@{profileData.user.username}</div>
           <div style={{ color: ui.muted, marginTop: 4 }}>
-  Profil Durumu:{" "}
-  <b style={{ color: ui.text }}>
-    VERIFIED
-  </b>
-  {" • "}XP: {profileData.user.xp || 0}
+  Hesap Durumu: <b style={{ color: ui.text }}>Onaylı</b>
+{" • "}Katkı Puanı: {profileData.user.xp || 0}
 </div>
           <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
             Kayıt: {fmt(profileData.user.createdAt)}
