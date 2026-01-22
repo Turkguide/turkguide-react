@@ -4472,11 +4472,31 @@ return (
                                 }}
                               >
                                 <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>
-                                  @{c.byUsername}
-                                </Chip>
-                                <span style={{ color: ui.muted2, fontSize: 12 }}>
-                                  {fmt(c.createdAt)}
-                                </span>
+  @{c.byUsername}
+</Chip>
+
+<span style={{ color: ui.muted2, fontSize: 12 }}>
+  {fmt(c.createdAt)}
+</span>
+
+{user &&
+ normalizeUsername(user.username) === normalizeUsername(c.byUsername) && (
+  <button
+    onClick={() => deleteHubComment(p.id, c.id)}
+    style={{
+      border: "none",
+      background: "transparent",
+      color: "#ff4d4f",
+      cursor: "pointer",
+      fontWeight: 700,
+      fontSize: 12,
+      marginLeft: 8,
+    }}
+    title="Yorumu Sil"
+  >
+    Sil
+  </button>
+)}
                               </div>
                               <div style={{ marginTop: 8 }}>{c.text}</div>
                             </div>
