@@ -4360,21 +4360,20 @@ return (
       </span>
 
       <span
-        onClick={(e) => {
-          e.stopPropagation();
-          setLikedByPost(p);
-          setShowLikedBy(true);
-        }}
-        style={{
-          fontSize: 13,
-          opacity: 0.6,
-          cursor: "pointer",
-          textDecoration: "underline",
-        }}
-        title="Kimler beğendi?"
-      >
-        {p.likes || 0}
-      </span>
+  onClick={(e) => {
+    e.stopPropagation();
+    setLikedByPost(p);
+    setShowLikedBy(true);
+  }}
+  style={{
+    fontSize: 13,
+    opacity: 0.6,
+    cursor: "pointer",
+  }}
+  title="Kimler beğendi"
+>
+  {p.likes || 0}
+</span>
     </>
   );
 })()}
