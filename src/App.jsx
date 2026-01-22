@@ -413,7 +413,7 @@ function Avatar({ ui, src, size = 44, label }) {
       style={{
         width: size,
         height: size,
-        borderRadius: Math.max(12, Math.floor(size / 3)),
+        borderRadius: 999, // ✅ tam yuvarlak avatar
         border: `1px solid ${ui.border}`,
         background: bg,
         overflow: "hidden",
@@ -1277,6 +1277,21 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
   const [composer, setComposer] = useState("");
   const [commentDraft, setCommentDraft] = useState({});
   const [hubMedia, setHubMedia] = useState(null);
+
+  // HUB comment input refs ("Yorum" tıklayınca input'a focus)
+const commentInputRefs = useRef({});
+
+function focusHubComment(postId) {
+  const el = commentInputRefs.current?.[postId];
+  try {
+    el?.focus?.();
+  } catch (_) {}
+}
+
+// HUB repost (şimdilik placeholder)
+function hubRepost(postId) {
+  alert("🌀 HUB’la yakında geliyor");
+}
 
   // HUB edit/delete
 const [editingPostId, setEditingPostId] = useState(null);
@@ -3694,19 +3709,36 @@ return (
           {b.desc ? <div style={{ marginTop: 12, color: ui.muted }}>{b.desc}</div> : null}
 
           <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button ui={ui} variant="ok" onClick={() => openAppointment(b.id)}>
-              🗓️ Randevu Al
-            </Button>
-            <Button ui={ui} onClick={() => openDirections(b.address || b.city || "")}>
-              🧭 Yol Tarifi
-            </Button>
-            <Button ui={ui} onClick={() => openCall(b.phone)}>
-              📞 Ara
-            </Button>
-            <Button ui={ui} variant="solidBlue" onClick={() => openDmToBiz(b.id)}>
-              💬 Mesaj Gönder
-            </Button>
-          </div>
+  <Button
+    ui={ui}
+    variant="ok"
+    onClick={() => openAppointment(b.id)}
+    style={{ background: "transparent", boxShadow: "none" }}
+  >
+    🗓️ Randevu Al
+  </Button>
+  <Button ui={ui} onClick={() => openDirections(b.address || b.city || "")} style={{ background: "transparent", boxShadow: "none" }}>
+    🧭 Yol Tarifi
+  </Button>
+  <Button ui={ui} onClick={() => openCall(b.phone)} style={{ background: "transparent", boxShadow: "none" }}>
+    📞 Ara
+  </Button>
+  <Button
+    ui={ui}
+    variant="blue"
+    onClick={() => openDmToBiz(b.id)}
+    style={{
+      background: "transparent",
+      border: "none",
+      boxShadow: "none",
+      padding: "8px 12px",
+      fontWeight: 900,
+      color: ui.text,
+    }}
+  >
+    💬 Mesaj Gönder
+  </Button>
+</div>
         </div>
       );
     })}
@@ -3915,9 +3947,29 @@ return (
                           alignItems: "center",
                         }}
                       >
-                        <Chip ui={ui} onClick={() => openProfileByUsername(hubPostAuthor(p))}>
-                          @{hubPostAuthor(p)}
-                        </Chip>
+                        <div
+  onClick={() => openProfileByUsername(hubPostAuthor(p))}
+  style={{
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    cursor: "pointer",
+    userSelect: "none",
+  }}
+>
+  <Avatar ui={ui} src={p.byAvatar || ""} size={28} label={hubPostAuthor(p)} />
+
+  <span
+    style={{
+      fontSize: 13,
+      fontWeight: 700, // ✅ daha ince / zarif
+      color: ui.mode === "light" ? "rgba(0,0,0,0.62)" : "rgba(255,255,255,0.70)",
+      letterSpacing: 0.1,
+    }}
+  >
+    @{hubPostAuthor(p)}
+  </span>
+</div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(p.createdAt)}</span>
@@ -4133,14 +4185,90 @@ return (
                         </div>
                       ) : null}
 
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-                        <Button ui={ui} onClick={() => hubLike(p.id)}>
-                          Like ({p.likes || 0})
-                        </Button>
-                        <Button ui={ui} variant="solidBlue" onClick={() => openDmToUser(hubPostAuthor(p))}>
-                          💬 Mesaj
-                        </Button>
-                      </div>
+                      <div
+  style={{
+    display: "flex",
+    gap: 18,
+    alignItems: "center",
+    marginTop: 12,
+    flexWrap: "wrap",
+  }}
+>
+  {/* ♡ Beğen */}
+  <button
+    type="button"
+    onClick={() => hubLike(p.id)}
+    style={{
+      border: "none",
+      background: "transparent",
+      padding: 0,
+      cursor: "pointer",
+      color: ui.mode === "light"
+        ? "rgba(0,0,0,0.55)"
+        : "rgba(255,255,255,0.65)",
+      fontWeight: 700,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+    }}
+    title="Beğen"
+  >
+    <span style={{ fontSize: 16 }}>♡</span>
+    <span style={{ fontSize: 13 }}>Beğen</span>
+    <span style={{ fontSize: 13, opacity: 0.6 }}>
+      {p.likes || 0}
+    </span>
+  </button>
+
+  {/* 💬 Yorum */}
+  <button
+    type="button"
+    onClick={() => focusHubComment(p.id)}
+    style={{
+      border: "none",
+      background: "transparent",
+      padding: 0,
+      cursor: "pointer",
+      color: ui.mode === "light"
+        ? "rgba(0,0,0,0.55)"
+        : "rgba(255,255,255,0.65)",
+      fontWeight: 700,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+    }}
+    title="Yorum"
+  >
+    <span style={{ fontSize: 16 }}>💬</span>
+    <span style={{ fontSize: 13 }}>Yorum</span>
+    <span style={{ fontSize: 13, opacity: 0.6 }}>
+      {(p.comments || []).length}
+    </span>
+  </button>
+
+  {/* 🌀 HUB’la */}
+  <button
+    type="button"
+    onClick={() => hubRepost(p.id)}
+    style={{
+      border: "none",
+      background: "transparent",
+      padding: 0,
+      cursor: "pointer",
+      color: ui.mode === "light"
+        ? "rgba(0,0,0,0.55)"
+        : "rgba(255,255,255,0.65)",
+      fontWeight: 700,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+    }}
+    title="HUB’la"
+  >
+    <span style={{ fontSize: 16 }}>🌀</span>
+    <span style={{ fontSize: 13 }}>HUB’la</span>
+  </button>
+</div>
 
                       <Divider ui={ui} />
 
@@ -5344,23 +5472,43 @@ return (
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        {normalizeUsername(user?.username) === normalizeUsername(profileData.user.username) ? (
-          <Button
-            ui={ui}
-            variant="solidBlue"
-            onClick={() => {
-              setShowEditUser(true);
-              setEditUserCtx(profileData.user);
-            }}
-          >
-            ✏️ Profili Düzenle
-          </Button>
-        ) : (
-          <Button ui={ui} variant="solidBlue" onClick={() => openDmToUser(profileData.user.username)}>
-            💬 Mesaj Gönder
-          </Button>
-        )}
-      </div>
+  {normalizeUsername(user?.username) === normalizeUsername(profileData.user.username) ? (
+    <Button
+      ui={ui}
+      variant="blue"
+      onClick={() => {
+        setShowEditUser(true);
+        setEditUserCtx(profileData.user);
+      }}
+      style={{
+        background: "transparent",
+        border: "none",
+        boxShadow: "none",
+        padding: "8px 12px",
+        fontWeight: 900,
+        color: ui.text,
+      }}
+    >
+      ✏️ Profili Düzenle
+    </Button>
+  ) : (
+    <Button
+      ui={ui}
+      variant="blue"
+      onClick={() => openDmToUser(profileData.user.username)}
+      style={{
+        background: "transparent",
+        border: "none",
+        boxShadow: "none",
+        padding: "8px 12px",
+        fontWeight: 900,
+        color: ui.text,
+      }}
+    >
+      💬 Mesaj Gönder
+    </Button>
+  )}
+</div>
 
       <Divider ui={ui} />
 
@@ -5412,21 +5560,87 @@ return (
 
       <div style={{ color: ui.muted }}>📍 {profileData.biz.address || profileData.biz.city}</div>
       <div style={{ color: ui.muted }}>📞 {profileData.biz.phone || "-"}</div>
-      <div style={{ color: ui.muted2 }}>Owner: @{profileData.biz.ownerUsername || "-"}</div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Button ui={ui} variant="ok" onClick={() => openAppointment(profileData.biz.id)}>
-          🗓️ Randevu Al
-        </Button>
-        <Button ui={ui} onClick={() => openDirections(profileData.biz.address || profileData.biz.city || "")}>
-          🧭 Yol Tarifi
-        </Button>
-        <Button ui={ui} onClick={() => openCall(profileData.biz.phone)}>
-          📞 Ara
-        </Button>
-        <Button ui={ui} variant="solidBlue" onClick={() => openDmToBiz(profileData.biz.id)}>
-          💬 Mesaj
-        </Button>
+      <div style={{ color: ui.muted2 }}>
+        Sahibi:{" "}
+        <span
+          style={{ cursor: "pointer", textDecoration: "underline" }}
+          onClick={() => openProfileByUsername(profileData.biz.ownerUsername || "")}
+        >
+          @{profileData.biz.ownerUsername || "-"}
+        </span>
+      </div>
+
+      {/* actions — daha bütünleşik / çerçevesiz */}
+      <div
+        style={{
+          display: "flex",
+          gap: 14,
+          flexWrap: "wrap",
+          alignItems: "center",
+          marginTop: 2,
+        }}
+      >
+        {(() => {
+          const act = {
+            border: "none",
+            background: "transparent",
+            padding: 0,
+            cursor: "pointer",
+            color: ui.mode === "light" ? "rgba(0,0,0,0.62)" : "rgba(255,255,255,0.72)",
+            fontWeight: 850,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+          };
+
+          const icon = {
+            width: 26,
+            height: 26,
+            borderRadius: 999,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: ui.mode === "light" ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)",
+            border: `1px solid ${ui.border}`,
+            lineHeight: 1,
+            fontSize: 14,
+          };
+
+          return (
+            <>
+              <button type="button" style={act} onClick={() => openAppointment(profileData.biz.id)} title="Randevu Al">
+                <span style={icon}>🗓️</span>
+                <span style={{ fontSize: 13 }}>Randevu Al</span>
+              </button>
+
+              <button
+                type="button"
+                style={act}
+                onClick={() => openDirections(profileData.biz.address || profileData.biz.city || "")}
+                title="Yol Tarifi"
+              >
+                <span style={icon}>🧭</span>
+                <span style={{ fontSize: 13 }}>Yol Tarifi</span>
+              </button>
+
+              <button type="button" style={act} onClick={() => openCall(profileData.biz.phone)} title="Ara">
+                <span style={icon}>📞</span>
+                <span style={{ fontSize: 13 }}>Ara</span>
+              </button>
+
+              <button
+                type="button"
+                style={{ ...act, color: ui.blue }}
+                onClick={() => openDmToBiz(profileData.biz.id)}
+                title="Mesaj"
+              >
+                <span style={icon}>💬</span>
+                <span style={{ fontSize: 13 }}>Mesaj</span>
+              </button>
+            </>
+          );
+        })()}
       </div>
     </div>
   )}
