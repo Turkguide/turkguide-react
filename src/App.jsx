@@ -5510,7 +5510,7 @@ return (
           <div style={{ fontSize: 13, color: ui.muted }}>
             Profil Durumu:{" "}
             <b style={{ color: ui.text }}>
-              {(editUserCtx.tier || "Verified").toUpperCase()}
+              {(editUserCtx.tier || "Onaylı Kullanıcı").toUpperCase()}
             </b>
           </div>
         </div>
@@ -5625,23 +5625,15 @@ return (
         />
       </div>
 
-      {/* ✅ HESAP DURUMU */}
+     {/* ✅ HESAP DURUMU */}
 <div>
   <div style={{ fontWeight: 950, fontSize: 14, marginBottom: 6 }}>
     Hesap Durumu
   </div>
 
-  {/* 🔒 Kullanıcıya satın alma / değiştirme hissi vermesin diye select KALDIRILDI */}
+  {/* Onaylı İşletme */}
   <div style={{ fontSize: 13, color: ui.muted }}>
-    {((editUserCtx.tier || "Onaylı İşletme").toLowerCase() === "verified") ? (
-      <>
-        Doğrulanmış Profil
-      </>
-    ) : (
-      <>
-        Verified
-      </>
-    )}
+    Onaylı İşletme
   </div>
 </div>
 
