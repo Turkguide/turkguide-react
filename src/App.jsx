@@ -2324,16 +2324,18 @@ async function fetchHubPosts() {
     console.log("🟣 fetchHubPosts: ok rows=", (data || []).length, "first=", (data || [])[0]);
 
     const mapped = (data || []).map((r) => ({
-      id: r.id,
-      createdAt: new Date(r.created_at).getTime(),
-      byType: "user",
-      byUsername: r.username || r.by_username || r.bu_username || "",
-      content: r.content || "",
-      media: r.media || null,
-      likes: r.likes || 0,
-likedBy: Array.isArray(r.liked_by) ? r.liked_by : Array.isArray(r.likedBy) ? r.likedBy : [],
-comments: r.comments || [],
-    }));
+  id: r.id,
+  createdAt: new Date(r.created_at).getTime(),
+  byType: "user",
+  byUsername: r.username || r.by_username || r.bu_username || "",
+  content: r.content || "",
+  media: r.media || null,
+
+  likes: r.likes || 0,
+  likedBy: Array.isArray(r.liked_by) ? r.liked_by : [],
+
+  comments: r.comments || [],
+}));
 
     setPosts(mapped);
     console.log("🟣 fetchHubPosts: setPosts mapped len=", mapped.length);
@@ -2434,36 +2436,58 @@ async function hubShare() {
   } catch (_) {}
 }
 
-function hubLike(postId) {
+async function hubLike(postId) {
   if (!requireAuth()) return;
 
   const me = normalizeUsername(user?.username);
   if (!me) return;
 
-  setPosts((prev) =>
-    (prev || []).map((p) => {
-      if (p.id !== postId) return p;
+  // mevcut postu bul
+  const target = (posts || []).find((p) => p.id === postId);
+  if (!target) return;
 
-      const likedBy = Array.isArray(p.likedBy) ? p.likedBy : [];
-      const hasLiked = likedBy.some((u) => normalizeUsername(u) === me);
+  const likedBy = Array.isArray(target.likedBy) ? target.likedBy : [];
+  const hasLiked = likedBy.some((u) => normalizeUsername(u) === me);
 
-      if (hasLiked) {
-        // unlike
-        return {
-          ...p,
-          likes: Math.max(0, (p.likes || 0) - 1),
-          likedBy: likedBy.filter((u) => normalizeUsername(u) !== me),
-        };
-      }
+  const nextLikedBy = hasLiked
+    ? likedBy.filter((u) => normalizeUsername(u) !== me)
+    : [...likedBy, user.username];
 
-      // like
-      return {
-        ...p,
-        likes: (p.likes || 0) + 1,
-        likedBy: [...likedBy, user.username],
-      };
-    })
+  const nextLikes = Math.max(
+    0,
+    Number(target.likes || 0) + (hasLiked ? -1 : 1)
   );
+
+  // 1️⃣ Optimistic UI (anında ekranda değişsin)
+  setPosts((prev) =>
+    (prev || []).map((p) =>
+      p.id === postId
+        ? { ...p, likes: nextLikes, likedBy: nextLikedBy }
+        : p
+    )
+  );
+
+  // 2️⃣ Supabase’e kalıcı yaz
+  try {
+    const { error } = await supabase
+      .from("hub_posts")
+      .update({
+        likes: nextLikes,
+        liked_by: nextLikedBy,
+      })
+      .eq("id", postId);
+
+    if (error) throw error;
+  } catch (e) {
+    console.error("hubLike DB error:", e);
+
+    // hata olursa DB'den tekrar çekip düzelt
+    try {
+      await fetchHubPosts();
+    } catch (_) {}
+
+    alert("Beğeni kaydedilemedi.");
+  }
 }
 
 async function hubComment(postId) {
