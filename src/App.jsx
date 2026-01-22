@@ -2415,17 +2415,19 @@ async function fetchHubPosts() {
   comments: r.comments || [],
 }));
 
-    setPosts(mapped);
-    console.log("🟣 fetchHubPosts: setPosts mapped len=", mapped.length);
-  } catch (e) {
-    console.error("fetchHubPosts error:", e);
-    console.log("🟣 fetchHubPosts: catch raw=", e);
-    // UI'de de görünür olsun (RLS/policy vs. anında yakalamak için)
-    try {
-      const msg = e?.message || e?.error_description || JSON.stringify(e);
-      alert("HUB postları çekilemedi: " + msg);
-    } catch (_) {}
-  }
+console.log("🧪 mapped[0] likes/likedBy =", mapped?.[0]?.likes, mapped?.[0]?.likedBy);
+
+setPosts(mapped);
+console.log("🟣 fetchHubPosts: setPosts mapped len=", mapped.length);
+} catch (e) {
+  console.error("fetchHubPosts error:", e);
+  console.log("🟣 fetchHubPosts: catch raw=", e);
+  // UI'de de görünür olsun (RLS/policy vs. anında yakalamak için)
+  try {
+    const msg = e?.message || e?.error_description || JSON.stringify(e);
+    alert("HUB postları çekilemedi: " + msg);
+  } catch (_) {}
+}
 }
 
 async function hubShare() {
@@ -2520,7 +2522,6 @@ async function hubLike(postId) {
   const me = normalizeUsername(user?.username);
   if (!me) return;
 
-  // mevcut postu bul
   const target = (posts || []).find((p) => p.id === postId);
   if (!target) return;
 
@@ -2536,7 +2537,7 @@ async function hubLike(postId) {
     Number(target.likes || 0) + (hasLiked ? -1 : 1)
   );
 
-  // 1️⃣ Optimistic UI (anında ekranda değişsin)
+  // 1️⃣ Optimistic UI
   setPosts((prev) =>
     (prev || []).map((p) =>
       p.id === postId
@@ -2545,7 +2546,7 @@ async function hubLike(postId) {
     )
   );
 
-  // 2️⃣ Supabase’e kalıcı yaz
+  // 2️⃣ DB’ye kalıcı yaz
   try {
     const { error } = await supabase
       .from("hub_posts")
@@ -2556,13 +2557,18 @@ async function hubLike(postId) {
       .eq("id", postId);
 
     if (error) throw error;
-  } catch (e) {
-    console.error("hubLike DB error:", e);
 
-    // hata olursa DB'den tekrar çekip düzelt
-    try {
-      await fetchHubPosts();
-    } catch (_) {}
+    // ✅ KRİTİK: DB’den tekrar çek (mobil/web farkını bitirir)
+    await fetchHubPosts();
+  } catch (e) {
+    console.error("❌ hubLike DB error:", e);
+
+    // geri al
+    setPosts((prev) =>
+      (prev || []).map((p) =>
+        p.id === postId ? target : p
+      )
+    );
 
     alert("Beğeni kaydedilemedi.");
   }
@@ -2581,7 +2587,7 @@ async function hubComment(postId) {
     text,
   };
 
-  // 1) Optimistic UI update (hemen ekranda göster)
+  // 1️⃣ Optimistic UI
   setPosts((prev) =>
     prev.map((p) =>
       p.id === postId
@@ -2592,10 +2598,13 @@ async function hubComment(postId) {
 
   setCommentDraft((d) => ({ ...d, [postId]: "" }));
 
-  // 2) Supabase'e kalıcı olarak yaz
+  // 2️⃣ DB’ye yaz
   try {
     const target = posts.find((p) => p.id === postId);
-    const currentComments = Array.isArray(target?.comments) ? target.comments : [];
+    const currentComments = Array.isArray(target?.comments)
+      ? target.comments
+      : [];
+
     const nextComments = [...currentComments, newComment];
 
     const { error } = await supabase
@@ -2605,18 +2614,20 @@ async function hubComment(postId) {
 
     if (error) throw error;
 
-    // garanti olsun diye tekrar DB'den çek
+    // ✅ DB’den tekrar çek (zaten doğruydu)
     await fetchHubPosts();
   } catch (e) {
     console.error("hubComment DB error:", e);
 
-    // DB başarısızsa optimistic yorumu geri al
+    // geri al
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId
           ? {
               ...p,
-              comments: (p.comments || []).filter((c) => c.id !== newComment.id),
+              comments: (p.comments || []).filter(
+                (c) => c.id !== newComment.id
+              ),
             }
           : p
       )
