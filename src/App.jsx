@@ -4533,19 +4533,38 @@ return (
               flexWrap: "wrap",
             }}
           >
-           <div
-  onClick={() => openProfileByUsername(c.byUsername)}
-  style={{
-    fontWeight: 900,
-    fontSize: 13,
-    color: ui.text,
-    cursor: "pointer",
-    userSelect: "none",
-  }}
-  title="Profile git"
->
-  @{c.byUsername}
-</div>
+            {(() => {
+              const commenter = (users || []).find(
+                (u) => normalizeUsername(u.username) === normalizeUsername(c.byUsername)
+              );
+              const avatarSrc = commenter?.avatar || "";
+
+              return (
+                <div
+                  onClick={() => openProfileByUsername(c.byUsername)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                  title="Profile git"
+                >
+                  <Avatar ui={ui} src={avatarSrc} size={28} label={c.byUsername} />
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: ui.mode === "light" ? "rgba(0,0,0,0.62)" : "rgba(255,255,255,0.70)",
+                      letterSpacing: 0.1,
+                    }}
+                  >
+                    @{c.byUsername}
+                  </span>
+                </div>
+              );
+            })()}
 
             <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
 
