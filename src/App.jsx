@@ -2830,6 +2830,12 @@ async function saveEditUser() {
         XP: Number(u.XP ?? old.XP ?? 0),
         createdAt: u.createdAt ?? old.createdAt ?? new Date().toISOString(),
         email: u.email ?? old.email ?? "",
+
+        // ✅ extra profile fields
+        age: u.age ?? old.age ?? "",
+        city: u.city ?? old.city ?? "",
+        state: u.state ?? old.state ?? "",
+        bio: u.bio ?? old.bio ?? "",
       };
       return copy;
     }
@@ -2843,6 +2849,12 @@ async function saveEditUser() {
         XP: Number(u.XP || 0),
         avatar: u.avatar || "",
         createdAt: u.createdAt || new Date().toISOString(),
+
+        // ✅ extra profile fields
+        age: u.age || "",
+        city: u.city || "",
+        state: u.state || "",
+        bio: u.bio || "",
       },
       ...prev,
     ];
@@ -2859,6 +2871,10 @@ async function saveEditUser() {
       avatar: u.avatar ?? p?.avatar ?? "",
       Tier: u.Tier ?? p?.Tier ?? "Onaylı İşletme",
       XP: Number(u.XP ?? p?.XP ?? 0),
+      age: u.age ?? p?.age ?? "",
+      city: u.city ?? p?.city ?? "",
+      state: u.state ?? p?.state ?? "",
+      bio: u.bio ?? p?.bio ?? "",
     }));
   }
 
@@ -2899,6 +2915,12 @@ if (supabase?.auth) {
       avatar: avatarStr ? avatarStr : null,
       tier: u.Tier || "Onaylı İşletme",
       xp: Number(u.XP || 0),
+
+      // ✅ extra profile fields
+      age: u.age || "",
+      city: u.city || "",
+      state: u.state || "",
+      bio: u.bio || "",
     };
 
     console.log("🧪 updateUser payload:", {
@@ -4878,6 +4900,26 @@ return (
                       <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
                         Kayıt: {fmt(user.createdAt || new Date().toISOString())}
                       </div>
+                      {/* Ek profil alanları (boşsa gösterme) */}
+                      {(() => {
+                        const ageVal = user?.age;
+                        const cityVal = String(user?.city || "").trim();
+                        const stateVal = String(user?.state || "").trim();
+                        const bioVal = String(user?.bio || "").trim();
+                        const loc = [cityVal, stateVal].filter(Boolean).join(", ");
+
+                        return (
+                          <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
+                            {ageVal ? <div style={{ color: ui.muted, fontSize: 13 }}>Yaş: {ageVal}</div> : null}
+                            {loc ? <div style={{ color: ui.muted, fontSize: 13 }}>Konum: {loc}</div> : null}
+                            {bioVal ? (
+                              <div style={{ color: ui.muted, fontSize: 13, whiteSpace: "pre-wrap" }}>
+                                {bioVal}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -4895,8 +4937,12 @@ return (
                         setEditUserCtx({
                           ...user,
                           xp: user.xp ?? user.XP ?? 0,
-                          tier: user.tier ?? user.Tier ?? "Onaylı İşletme",
+                          tier: user.tier ?? user.Tier ?? "Onaylı Kullanıcı",
                           createdAt: user.createdAt || new Date().toISOString(),
+                          age: user.age ?? "",
+city: user.city ?? "",
+state: user.state ?? "",
+bio: user.bio ?? "",
                         });
                       }}
                       style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
@@ -5677,6 +5723,50 @@ return (
           style={inputStyle(ui)}
         />
       </div>
+
+      {/* AGE */}
+<div>
+  <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Yaş</div>
+  <input
+    value={String(editUserCtx.age || "")}
+    onChange={(e) => setEditUserCtx((p) => ({ ...p, age: e.target.value }))}
+    placeholder="Örn: 28"
+    style={inputStyle(ui)}
+  />
+</div>
+
+{/* CITY */}
+<div>
+  <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Şehir</div>
+  <input
+    value={String(editUserCtx.city || "")}
+    onChange={(e) => setEditUserCtx((p) => ({ ...p, city: e.target.value }))}
+    placeholder="Örn: Los Angeles"
+    style={inputStyle(ui)}
+  />
+</div>
+
+{/* STATE */}
+<div>
+  <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Eyalet</div>
+  <input
+    value={String(editUserCtx.state || "")}
+    onChange={(e) => setEditUserCtx((p) => ({ ...p, state: e.target.value }))}
+    placeholder="Örn: CA"
+    style={inputStyle(ui)}
+  />
+</div>
+
+{/* BIO */}
+<div>
+  <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Bio</div>
+  <textarea
+    value={String(editUserCtx.bio || "")}
+    onChange={(e) => setEditUserCtx((p) => ({ ...p, bio: e.target.value }))}
+    placeholder="Kendini kısaca tanıt…"
+    style={inputStyle(ui, { minHeight: 110, resize: "vertical" })}
+  />
+</div>
 
      {/* ✅ HESAP DURUMU */}
 <div>
