@@ -5655,11 +5655,6 @@ bio: user.bio ?? "",
           <div style={{ fontSize: 13, fontWeight: 900, color: ui.blue }}>
             XP: {editUserCtx.xp ?? 0}
           </div>
-
-          <div style={{ fontSize: 13, color: ui.muted }}>
-            Profil Durumu:{" "}
-            <b style={{ color: ui.text }}>Onaylı Profil</b>
-          </div>
         </div>
       </div>
 
