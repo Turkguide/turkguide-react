@@ -2909,19 +2909,19 @@ if (supabase?.auth) {
       // yine de denemeye devam ediyoruz (istersen burada return yapabiliriz)
     }
 
-    const payload = {
-      username,
-      // boş string ise null gönder
-      avatar: avatarStr ? avatarStr : null,
-      tier: u.Tier || "Onaylı İşletme",
-      xp: Number(u.XP || 0),
+   const payload = {
+  username,
+  // boş string ise null gönder
+  avatar: avatarStr ? avatarStr : null,
+  tier: u.Tier || "Onaylı Kullanıcı",
+  xp: Number(u.XP || 0),
 
-      // ✅ extra profile fields
-      age: u.age || "",
-      city: u.city || "",
-      state: u.state || "",
-      bio: u.bio || "",
-    };
+  // ✅ extra profile fields (boşsa null)
+  age: u.age !== "" && u.age != null ? u.age : null,
+  city: String(u.city || "").trim() || null,
+  state: String(u.state || "").trim() || null,
+  bio: String(u.bio || "").trim() || null,
+};
 
     console.log("🧪 updateUser payload:", {
       ...payload,
