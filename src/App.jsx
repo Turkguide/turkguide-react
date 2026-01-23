@@ -1697,6 +1697,10 @@ if (code) {
       Tier: md.Tier ?? prev?.Tier ?? "Onaylı",
       XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
       createdAt: md.createdAt ?? prev?.createdAt ?? null,
+      age: md.age ?? prev?.age ?? "",
+city: md.city ?? prev?.city ?? "",
+state: md.state ?? prev?.state ?? "",
+bio: md.bio ?? prev?.bio ?? "",
     }));
   }
 }
@@ -1766,6 +1770,10 @@ useEffect(() => {
           Tier: md.Tier ?? prev?.Tier ?? "Onaylı İşletme",
           XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
           createdAt: md.createdAt ?? prev?.createdAt ?? null,
+          age: md.age ?? prev?.age ?? "",
+city: md.city ?? prev?.city ?? "",
+state: md.state ?? prev?.state ?? "",
+bio: md.bio ?? prev?.bio ?? "",
         }));
       } else {
         setUser(null);
@@ -1786,6 +1794,10 @@ useEffect(() => {
             Tier: md.Tier ?? prev?.Tier ?? "Onaylı İşletme",
             XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
             createdAt: md.createdAt ?? prev?.createdAt ?? null,
+            age: md.age ?? prev?.age ?? "",
+            city: md.city ?? prev?.city ?? "",
+            state: md.state ?? prev?.state ?? "",
+            bio: md.bio ?? prev?.bio ?? "",
           }));
         } else {
           setUser(null);
