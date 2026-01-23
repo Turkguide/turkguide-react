@@ -4869,32 +4869,10 @@ return (
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 2 }}>
-                    <Button
-                      ui={ui}
-                      onClick={() => {
-                        setShowSettings(true);
-                      }}
-                      title="Ayarlar"
-                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-                    >
-                      <SettingsIcon size={18} /> Ayarlar
-                    </Button>
-
-                    <Button
-                      ui={ui}
-                      variant="danger"
-                      onClick={logout}
-                      title="Çıkış Yap"
-                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-                    >
-                      <LogoutIcon size={18} /> Çıkış Yap
-                    </Button>
-                  </div>
 
                   <UserAvatarInput onBase64={(b64) => setMyAvatar(b64)} />
 
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "grid", gap: 10, maxWidth: 340 }}>
                     {/* ✅ Profili Düzenle (self edit) */}
                     <Button
                       ui={ui}
@@ -4908,8 +4886,14 @@ return (
                           tier: user.tier ?? user.Tier ?? "Onaylı İşletme",
                           createdAt: user.createdAt || new Date().toISOString(),
                         });
+                        // ✅ Düzenle’ye basınca fotoğraf seçme de otomatik açılsın
+                        setTimeout(() => {
+                          try {
+                            userAvatarPicker.pick();
+                          } catch (_) {}
+                        }, 50);
                       }}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
                       title="Profilini düzenle"
                     >
                       <IconBase size={18}>
@@ -4918,21 +4902,6 @@ return (
                         <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z" />
                       </IconBase>
                       Profili Düzenle
-                    </Button>
-
-                    {/* ✅ Profil Fotoğrafı (emoji yok) */}
-                    <Button
-                      ui={ui}
-                      onClick={() => userAvatarPicker.pick()}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-                      title="Profil fotoğrafını değiştir"
-                    >
-                      <IconBase size={18}>
-                        {/* camera icon */}
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                        <circle cx="12" cy="13" r="4" />
-                      </IconBase>
-                      Profil Fotoğrafı
                     </Button>
 
                     {/* Profil görünümü (modal) */}
@@ -4946,7 +4915,7 @@ return (
                         });
                         setProfileOpen(true);
                       }}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
                       title="Profilini görüntüle"
                     >
                       <IconBase size={18}>
@@ -4955,6 +4924,25 @@ return (
                         <path d="M4 20a8 8 0 0 1 16 0" />
                       </IconBase>
                       Profil Görünümü
+                    </Button>
+
+                    <Button
+                      ui={ui}
+                      onClick={() => setShowSettings(true)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
+                      title="Ayarlar"
+                    >
+                      <SettingsIcon size={18} /> Ayarlar
+                    </Button>
+
+                    <Button
+                      ui={ui}
+                      variant="danger"
+                      onClick={logout}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
+                      title="Çıkış Yap"
+                    >
+                      <LogoutIcon size={18} /> Çıkış Yap
                     </Button>
                   </div>
                 </div>
