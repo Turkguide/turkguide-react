@@ -363,9 +363,19 @@ function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999 }
         position: "fixed",
         inset: 0,
         background: "rgba(0,0,0,0.55)",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
+
+        // ✅ Mobile keyboard + small screens: keep modal top-visible and scrollable
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+
+        padding: "16px",
+        paddingTop: "calc(16px + env(safe-area-inset-top))",
+        paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+
         zIndex,
       }}
       onMouseDown={onClose}
@@ -373,20 +383,40 @@ function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999 }
       <div
         style={{
           width: `min(${width}px, 100%)`,
+
+          // ✅ Use dynamic viewport height so iOS keyboard doesn't hide the bottom
+          maxHeight: "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+
           borderRadius: 22,
           border: `1px solid ${ui.border}`,
           background: ui.mode === "light" ? "rgba(255,255,255,0.98)" : "rgba(10,12,18,0.96)",
           boxShadow: "0 40px 120px rgba(0,0,0,0.35)",
+
+          // ✅ Make inner content scroll, not the whole dialog jumping
+          display: "flex",
+          flexDirection: "column",
+
           padding: 16,
           color: ui.text,
         }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flex: "0 0 auto" }}>
           <div style={{ fontSize: 16, fontWeight: 950 }}>{title}</div>
           <Button ui={ui} onClick={onClose}>Kapat</Button>
         </div>
-        <div style={{ marginTop: 12 }}>{children}</div>
+
+        <div
+          style={{
+            marginTop: 12,
+            flex: "1 1 auto",
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
+            paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
+          }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
