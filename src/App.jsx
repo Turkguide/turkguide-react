@@ -1902,14 +1902,14 @@ async function loginNow(provider = "email", mode = "login") {
         return;
       }
 
-     const { data, error } = await supabase.auth.signUp({
-  email,
-  password: pass,
-  options: {
-    data: { username },
-    emailRedirectTo: "https://www.turkguide.net/auth/callback",
-  },
-});
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: pass,
+        options: {
+          data: { username },
+          emailRedirectTo: "https://www.turkguide.net/auth/callback",
+        },
+      });
 
       if (error) {
         console.error("❌ signUp error:", error);
@@ -1922,6 +1922,10 @@ async function loginNow(provider = "email", mode = "login") {
       // Confirm email açıksa: session null gelir, bu normal
       if (!data?.session) {
         alert("Kayıt alındı. Email doğrulama linki gönderildi. Linke tıklayıp doğrula.");
+        // ✅ Kayıt sonrası ana sayfa: İşletmeler
+        setActive("biz");
+        try { localStorage.setItem("tg_active_tab_v1", "biz"); } catch (_) {}
+        setShowAuth(true); // doğrulama için modal açık kalsın
       } else {
         alert("Kayıt alındı ve giriş yapıldı.");
         setUser({
@@ -1930,12 +1934,14 @@ async function loginNow(provider = "email", mode = "login") {
           username: data.user.user_metadata?.username || null,
           Tier: "Onaylı İşletme",
         });
+        // ✅ Login olduysa da ana sayfa: İşletmeler
+        setActive("biz");
+        try { localStorage.setItem("tg_active_tab_v1", "biz"); } catch (_) {}
         setShowAuth(false);
       }
 
       setAuthPassword("");
       setShowRegister(false);
-      setShowAuth(true);
       return;
     }
 
@@ -1960,18 +1966,22 @@ async function loginNow(provider = "email", mode = "login") {
       console.log("✅ login ok:", data);
 
       setUser({
-  id: data.user.id,
-  email: data.user.email,
-  username:
-    data.user.user_metadata?.username ??
-    (data.user.email ? data.user.email.split("@")[0] : null),
-  Tier:
-    data.user.user_metadata?.tier ??
-    data.user.user_metadata?.Tier ??
-    "Onaylı İşletme",
-  XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
-  avatar: data.user.user_metadata?.avatar ?? "",
-});
+        id: data.user.id,
+        email: data.user.email,
+        username:
+          data.user.user_metadata?.username ??
+          (data.user.email ? data.user.email.split("@")[0] : null),
+        Tier:
+          data.user.user_metadata?.tier ??
+          data.user.user_metadata?.Tier ??
+          "Onaylı İşletme",
+        XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
+        avatar: data.user.user_metadata?.avatar ?? "",
+      });
+
+      // ✅ Login sonrası ana sayfa: İşletmeler
+      setActive("biz");
+      try { localStorage.setItem("tg_active_tab_v1", "biz"); } catch (_) {}
 
       setShowAuth(false);
       setAuthEmail("");
@@ -5509,9 +5519,7 @@ return (
 
           <div style={{ fontSize: 13, color: ui.muted }}>
             Profil Durumu:{" "}
-            <b style={{ color: ui.text }}>
-              {(editUserCtx.tier || "Onaylı Kullanıcı").toUpperCase()}
-            </b>
+            <b style={{ color: ui.text }}>Onaylı Profil</b>
           </div>
         </div>
       </div>
