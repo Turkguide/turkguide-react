@@ -1797,13 +1797,13 @@ useEffect(() => {
           email: session.user.email,
           username: md.username ?? prev?.username ?? null,
           avatar: md.avatar ?? prev?.avatar ?? "",
-          Tier: md.Tier ?? prev?.Tier ?? "Onaylı İşletme",
-          XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
+          Tier: md.tier ?? md.Tier ?? prev?.Tier ?? null,
+          XP: Number(md.xp ?? md.XP ?? prev?.XP ?? 0),
           createdAt: md.createdAt ?? prev?.createdAt ?? null,
           age: md.age ?? prev?.age ?? "",
-city: md.city ?? prev?.city ?? "",
-state: md.state ?? prev?.state ?? "",
-bio: md.bio ?? prev?.bio ?? "",
+          city: md.city ?? prev?.city ?? "",
+          state: md.state ?? prev?.state ?? "",
+          bio: md.bio ?? prev?.bio ?? "",
         }));
       } else {
         setUser(null);
@@ -1821,8 +1821,8 @@ bio: md.bio ?? prev?.bio ?? "",
             email: s.user.email,
             username: md.username ?? prev?.username ?? null,
             avatar: md.avatar ?? prev?.avatar ?? "",
-            Tier: md.Tier ?? prev?.Tier ?? "Onaylı İşletme",
-            XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
+            Tier: md.tier ?? md.Tier ?? prev?.Tier ?? null,
+            XP: Number(md.xp ?? md.XP ?? prev?.XP ?? 0),
             createdAt: md.createdAt ?? prev?.createdAt ?? null,
             age: md.age ?? prev?.age ?? "",
             city: md.city ?? prev?.city ?? "",
@@ -1974,7 +1974,18 @@ async function loginNow(provider = "email", mode = "login") {
           id: data.user.id,
           email: data.user.email,
           username: data.user.user_metadata?.username || null,
-          Tier: "Onaylı İşletme",
+          // ✅ Tier default göstermeyelim: sadece metadata varsa dolsun
+          Tier:
+            data.user.user_metadata?.tier ??
+            data.user.user_metadata?.Tier ??
+            null,
+          XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
+          avatar: data.user.user_metadata?.avatar ?? "",
+          createdAt: data.user.user_metadata?.createdAt ?? null,
+          age: data.user.user_metadata?.age ?? "",
+          city: data.user.user_metadata?.city ?? "",
+          state: data.user.user_metadata?.state ?? "",
+          bio: data.user.user_metadata?.bio ?? "",
         });
         // ✅ Login olduysa da ana sayfa: İşletmeler
         setActive("biz");
@@ -2013,12 +2024,20 @@ async function loginNow(provider = "email", mode = "login") {
         username:
           data.user.user_metadata?.username ??
           (data.user.email ? data.user.email.split("@")[0] : null),
+
+        // ✅ Tier default göstermeyelim: sadece metadata varsa dolsun
         Tier:
           data.user.user_metadata?.tier ??
           data.user.user_metadata?.Tier ??
-          "Onaylı İşletme",
+          null,
+
         XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
         avatar: data.user.user_metadata?.avatar ?? "",
+        createdAt: data.user.user_metadata?.createdAt ?? null,
+        age: data.user.user_metadata?.age ?? "",
+        city: data.user.user_metadata?.city ?? "",
+        state: data.user.user_metadata?.state ?? "",
+        bio: data.user.user_metadata?.bio ?? "",
       });
 
       // ✅ Login sonrası ana sayfa: İşletmeler
@@ -2856,7 +2875,7 @@ async function saveEditUser() {
         ...u,
         username,
         avatar: u.avatar ?? old.avatar ?? "",
-        Tier: u.Tier ?? old.Tier ?? "Onaylı İşletme",
+        Tier: u.Tier ?? old.Tier ?? null,
         XP: Number(u.XP ?? old.XP ?? 0),
         createdAt: u.createdAt ?? old.createdAt ?? new Date().toISOString(),
         email: u.email ?? old.email ?? "",
@@ -2875,7 +2894,7 @@ async function saveEditUser() {
         id: u.id,
         email: u.email || "",
         username,
-        Tier: u.Tier || "Onaylı İşletme",
+        Tier: u.Tier ?? null,
         XP: Number(u.XP || 0),
         avatar: u.avatar || "",
         createdAt: u.createdAt || new Date().toISOString(),
@@ -2899,7 +2918,7 @@ async function saveEditUser() {
       email: me.email,
       username,
       avatar: u.avatar ?? p?.avatar ?? "",
-      Tier: u.Tier ?? p?.Tier ?? "Onaylı İşletme",
+      Tier: u.Tier ?? p?.Tier ?? null,
       XP: Number(u.XP ?? p?.XP ?? 0),
       age: u.age ?? p?.age ?? "",
       city: u.city ?? p?.city ?? "",
@@ -3163,16 +3182,19 @@ async function setMyAvatar(base64) {
     const idx = prev.findIndex((x) => x.id === user.id);
     if (idx >= 0) {
       const copy = [...prev];
-      copy[idx] = { ...copy[idx], avatar: base64, username: updated.username };
+      copy[idx] = {
+        ...copy[idx],
+        avatar: base64,
+        username: updated.username,
+      };
       return copy;
     }
+
     return [
       {
         id: user.id,
         username: updated.username,
         email: user.email,
-        tier: user.Tier || "Onaylı İşletme",
-        xp: user.xp || 0,
         avatar: base64,
         createdAt: user.createdAt || new Date().toISOString(),
       },
@@ -3185,7 +3207,6 @@ async function setMyAvatar(base64) {
       data: {
         username: updated.username || null,
         avatar: base64 || null,
-        tier: updated.Tier || "Onaylı İşletme",
         xp: Number(updated.XP || 0),
       },
     });
@@ -3969,8 +3990,7 @@ return (
 ) : (
   <div style={{ display: "grid", gap: 12 }}>
     {filteredBiz.map((b) => {
-      // ✅ sadece admin onayı (status) bazlı rozet
-      const badge = b?.status === "approved" ? "Onaylı İşletme" : "İşletme";
+      const badge = null;
       const canEditAvatar = canEditBizAvatar(b);
 
       return (
@@ -3998,7 +4018,7 @@ return (
                   >
                     {b.name}
                   </div>
-                  <Chip ui={ui}>{badge}</Chip>
+                  {badge ? <Chip ui={ui}>{badge}</Chip> : null}
                   {apptsForBiz.get(b.id) ? <Chip ui={ui}>🗓️ {apptsForBiz.get(b.id)} yeni talep</Chip> : null}
                 </div>
 
@@ -5796,17 +5816,6 @@ bio: user.bio ?? "",
   />
 </div>
 
-     {/* ✅ HESAP DURUMU */}
-<div>
-  <div style={{ fontWeight: 950, fontSize: 14, marginBottom: 6 }}>
-    Hesap Durumu
-  </div>
-
-  {/* Onaylı İşletme */}
-  <div style={{ fontSize: 13, color: ui.muted }}>
-    Onaylı İşletme
-  </div>
-</div>
 
       {/* AKSİYONLAR */}
       <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
