@@ -2954,16 +2954,68 @@ if (supabase?.auth) {
 
     // 2) HUB post + yorumlarda byUsername güncelle
     setPosts((prev) =>
-      prev.map((p) => ({
-        ...p,
-        byUsername:
-          normalizeUsername(p.byUsername) === normalizeUsername(oldU) ? newUsername : p.byUsername,
-        comments: (p.comments || []).map((c) => ({
-          ...c,
+      (prev || []).map((p) => {
+        // posts: support both `byUsername` (new) and `by` (legacy)
+        const pByUsername = p?.byUsername;
+        const pByLegacy = p?.by;
+
+        const nextP = {
+          ...p,
           byUsername:
-            normalizeUsername(c.byUsername) === normalizeUsername(oldU) ? newUsername : c.byUsername,
-        })),
-      }))
+            pByUsername != null && normalizeUsername(pByUsername) === normalizeUsername(oldU)
+              ? newUsername
+              : pByUsername,
+          by:
+            pByLegacy != null && normalizeUsername(pByLegacy) === normalizeUsername(oldU)
+              ? newUsername
+              : pByLegacy,
+        };
+
+        const nextComments = Array.isArray(p?.comments)
+          ? (p.comments || []).map((c) => {
+              const cByUsername = c?.byUsername;
+              const cByLegacy = c?.by;
+
+              const nextC = {
+                ...c,
+                byUsername:
+                  cByUsername != null && normalizeUsername(cByUsername) === normalizeUsername(oldU)
+                    ? newUsername
+                    : cByUsername,
+                by:
+                  cByLegacy != null && normalizeUsername(cByLegacy) === normalizeUsername(oldU)
+                    ? newUsername
+                    : cByLegacy,
+              };
+
+              // replies: also support both fields
+              if (Array.isArray(c?.replies)) {
+                nextC.replies = (c.replies || []).map((r) => {
+                  const rByUsername = r?.byUsername;
+                  const rByLegacy = r?.by;
+                  return {
+                    ...r,
+                    byUsername:
+                      rByUsername != null && normalizeUsername(rByUsername) === normalizeUsername(oldU)
+                        ? newUsername
+                        : rByUsername,
+                    by:
+                      rByLegacy != null && normalizeUsername(rByLegacy) === normalizeUsername(oldU)
+                        ? newUsername
+                        : rByLegacy,
+                  };
+                });
+              }
+
+              return nextC;
+            })
+          : p?.comments;
+
+        return {
+          ...nextP,
+          comments: nextComments,
+        };
+      })
     );
 
     // 3) DM'lerde from/toUsername güncelle
@@ -3676,20 +3728,6 @@ return (
                   </button>
                 )}
 
-                {isAuthed ? (
-                  <button
-                    type="button"
-                    aria-label="Ayarlar"
-                    title="Ayarlar"
-                    onClick={() => {
-                      closeTopOverlays();
-                      setShowSettings(true);
-                    }}
-                    style={iconBtnStyle}
-                  >
-                    <SettingsIcon size={22} />
-                  </button>
-                ) : null}
 
                 {isAuthed ? (
                   <>
@@ -3746,16 +3784,6 @@ return (
                       </IconBase>
                     </button>
 
-                    {/* Çıkış */}
-                    <button
-                      type="button"
-                      aria-label="Çıkış Yap"
-                      title="Çıkış Yap"
-                      onClick={logout}
-                      style={iconBtnStyle}
-                    >
-                      <LogoutIcon size={22} />
-                    </button>
                   </>
                 ) : null}
 
@@ -4839,6 +4867,29 @@ return (
                         Kayıt: {fmt(user.createdAt || new Date().toISOString())}
                       </div>
                     </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 2 }}>
+                    <Button
+                      ui={ui}
+                      onClick={() => {
+                        setShowSettings(true);
+                      }}
+                      title="Ayarlar"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                    >
+                      <SettingsIcon size={18} /> Ayarlar
+                    </Button>
+
+                    <Button
+                      ui={ui}
+                      variant="danger"
+                      onClick={logout}
+                      title="Çıkış Yap"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                    >
+                      <LogoutIcon size={18} /> Çıkış Yap
+                    </Button>
                   </div>
 
                   <UserAvatarInput onBase64={(b64) => setMyAvatar(b64)} />
