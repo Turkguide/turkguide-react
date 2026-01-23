@@ -2896,32 +2896,31 @@ if (supabase?.auth) {
       return;
     }
 
-    const avatarStr = typeof u.avatar === "string" ? u.avatar : "";
-    const avatarLen = avatarStr.length;
+   const avatarStr = typeof u.avatar === "string" ? u.avatar : "";
+   const avatarLen = avatarStr.length;
 
-    // ⚠️ Base64 çok büyükse Supabase metadata patlayabilir
-    if (avatarLen > 120000) {
-      alert(
-        "Profil fotoğrafı çok büyük görünüyor (base64 length: " +
-          avatarLen +
-          "). Bu yüzden kaydetme hata veriyor olabilir. Birazdan storage çözümüne geçeceğiz."
-      );
-      // yine de denemeye devam ediyoruz (istersen burada return yapabiliriz)
-    }
+   // ⚠️ Base64 çok büyükse Supabase metadata patlayabilir
+   if (avatarLen > 120000) {
+     alert(
+       "Profil fotoğrafı çok büyük görünüyor (base64 length: " +
+         avatarLen +
+         "). Bu yüzden kaydetme hata veriyor olabilir. Birazdan storage çözümüne geçeceğiz."
+     );
+     // yine de denemeye devam ediyoruz (istersen burada return yapabiliriz)
+   }
 
    const payload = {
-  username,
-  // boş string ise null gönder
-  avatar: avatarStr ? avatarStr : null,
-  tier: u.Tier || "Onaylı Kullanıcı",
-  xp: Number(u.XP || 0),
+     username,
+     // boş string ise null gönder
+     avatar: avatarStr ? avatarStr : null,
+     xp: Number(u.XP || 0),
 
-  // ✅ extra profile fields (boşsa null)
-  age: u.age !== "" && u.age != null ? u.age : null,
-  city: String(u.city || "").trim() || null,
-  state: String(u.state || "").trim() || null,
-  bio: String(u.bio || "").trim() || null,
-};
+     // ✅ extra profile fields (boşsa null)
+     age: u.age !== "" && u.age != null ? u.age : null,
+     city: String(u.city || "").trim() || null,
+     state: String(u.state || "").trim() || null,
+     bio: String(u.bio || "").trim() || null,
+   };
 
     console.log("🧪 updateUser payload:", {
       ...payload,
@@ -4895,8 +4894,8 @@ return (
                     <div>
                       <div style={{ fontSize: 18, fontWeight: 950 }}>@{user.username}</div>
                       <div style={{ color: ui.muted, marginTop: 4 }}>
-                        Hesap Durumu: {user.tier ?? user.Tier ?? "Onaylı işletme"} • XP: {user.xp ?? user.XP ?? 0}
-                      </div>
+  XP: {user.xp ?? user.XP ?? 0}
+</div>
                       <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
                         Kayıt: {fmt(user.createdAt || new Date().toISOString())}
                       </div>
@@ -4937,7 +4936,6 @@ return (
                         setEditUserCtx({
                           ...user,
                           xp: user.xp ?? user.XP ?? 0,
-                          tier: user.tier ?? user.Tier ?? "Onaylı Kullanıcı",
                           createdAt: user.createdAt || new Date().toISOString(),
                           age: user.age ?? "",
 city: user.city ?? "",
