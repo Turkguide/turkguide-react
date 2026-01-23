@@ -4886,12 +4886,6 @@ return (
                           tier: user.tier ?? user.Tier ?? "Onaylı İşletme",
                           createdAt: user.createdAt || new Date().toISOString(),
                         });
-                        // ✅ Düzenle’ye basınca fotoğraf seçme de otomatik açılsın
-                        setTimeout(() => {
-                          try {
-                            userAvatarPicker.pick();
-                          } catch (_) {}
-                        }, 50);
                       }}
                       style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
                       title="Profilini düzenle"
