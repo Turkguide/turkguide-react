@@ -1440,7 +1440,7 @@ function deletePost(postId) {
                   }}
                   title="Profile git"
                 >
-                  <Avatar ui={ui} src={""} size={28} label={uname} />
+                  <Avatar ui={ui} src={avatarByUsername(uname)} size={28} label={uname} />
                   <div style={{ fontWeight: 900, fontSize: 13, color: ui.text }}>
                     @{uname}
                   </div>
@@ -4188,7 +4188,7 @@ return (
     userSelect: "none",
   }}
 >
-  <Avatar ui={ui} src={p.byAvatar || ""} size={28} label={hubPostAuthor(p)} />
+  <Avatar ui={ui} src={avatarByUsername(hubPostAuthor(p))} size={28} label={hubPostAuthor(p)} />
 
   <span
     style={{
