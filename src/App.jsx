@@ -2325,27 +2325,43 @@ const { error } = await supabase.auth.signInWithOAuth({
 }
 
 
-function openProfileByUsername(username) {
-  const uname = resolveUsernameAlias(String(username || "").trim());
+async function openProfileByUsername(username) {
+  const raw = String(username || "").trim();
+  const uname = resolveUsernameAlias(raw);
+  const key = normalizeUsername(uname);
+
+  if (!key) {
+    setProfileTarget({ type: "user", userId: null, username: raw || uname });
+    setProfileOpen(true);
+    return;
+  }
 
   // ✅ 1) Önce current user match (en sağlamı)
-  if (user && normalizeUsername(user.username) === normalizeUsername(uname)) {
+  if (user && normalizeUsername(user.username) === key) {
     setProfileTarget({ type: "user", userId: user.id, username: user.username });
     setProfileOpen(true);
     return;
   }
 
   // ✅ 2) users[] içinden id çöz (username değişse bile sağlam kalsın)
-  const found = users.find((x) => normalizeUsername(x.username) === normalizeUsername(uname));
+  const found = (users || []).find((x) => normalizeUsername(x?.username) === key);
 
   if (found?.id) {
     setProfileTarget({ type: "user", userId: found.id, username: found.username });
-  } else {
-    // id bulamazsak yine username ile aç (fallback)
-    setProfileTarget({ type: "user", userId: null, username: uname });
+    setProfileOpen(true);
+    return;
   }
 
+  // ✅ 3) Local'de yoksa: public.profiles'tan çekmeyi dene (profil bulunamadı fix)
+  // UI hemen açılsın, veri gelince cache sayesinde re-render olacak
+  setProfileTarget({ type: "user", userId: null, username: uname });
   setProfileOpen(true);
+
+  try {
+    await fetchPublicProfileToCache(key);
+  } catch (_) {
+    // ignore
+  }
 }
 
 // ✅ Public avatar resolver (reads from auth user -> local users[] -> cached public.profiles)
@@ -2353,6 +2369,50 @@ function openProfileByUsername(username) {
 // and cache them so the UI re-renders when the avatar arrives.
 const [profileAvatarCache, setProfileAvatarCache] = useState({});
 const inFlightAvatarFetch = useRef({});
+
+// ✅ Public profile cache (id/username/avatar/fields) — profile modal can use this when users[] doesn't have the user
+const [publicProfileCache, setPublicProfileCache] = useState({});
+const inFlightPublicProfileFetch = useRef({});
+
+async function fetchPublicProfileToCache(usernameKey) {
+  if (!usernameKey) return;
+  if (inFlightPublicProfileFetch.current[usernameKey]) return;
+  inFlightPublicProfileFetch.current[usernameKey] = true;
+
+  try {
+    if (!supabase?.from) return;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username, avatar, age, city, state, bio")
+      .eq("username", usernameKey)
+      .maybeSingle();
+
+    if (error) return;
+
+    const row = data || null;
+    if (!row) return;
+
+    const mapped = {
+      id: row.id || null,
+      username: row.username || usernameKey,
+      avatar: String(row.avatar || ""),
+      age: row.age ?? "",
+      city: row.city ?? "",
+      state: row.state ?? "",
+      bio: row.bio ?? "",
+    };
+
+    setPublicProfileCache((prev) => {
+      const prevRow = prev?.[usernameKey];
+      // don't re-render if unchanged
+      if (prevRow && String(prevRow.avatar || "") === String(mapped.avatar || "")) return prev;
+      return { ...(prev || {}), [usernameKey]: mapped };
+    });
+  } finally {
+    inFlightPublicProfileFetch.current[usernameKey] = false;
+  }
+}
 
 async function fetchAvatarToCache(usernameKey) {
   if (!usernameKey) return;
@@ -2405,7 +2465,7 @@ function avatarByUsername(username) {
 
   // 4) not found -> fetch in background, return empty for now
   fetchAvatarToCache(key);
-  return undefined;
+  return "";
 }
 
 function openProfileBiz(bizId) {
@@ -3813,6 +3873,17 @@ const profileData = useMemo(() => {
       u = users.find((x) => normalizeUsername(x.username) === normalizeUsername(targetUname));
     }
 
+    // ✅ Fallback: users[]'ta yoksa public.profiles cache'ten dene
+    if (!u) {
+      const key = normalizeUsername(targetUname);
+      const cached = key ? publicProfileCache?.[key] : null;
+      if (cached) u = cached;
+      else {
+        // arka planda çek, UI tekrar render olunca profil dolacak
+        if (key) fetchPublicProfileToCache(key);
+      }
+    }
+
     if (!u) return null;
 
     const owned = biz.filter(
@@ -3849,7 +3920,7 @@ const profileData = useMemo(() => {
   }
 
   return null;
-}, [profileTarget, users, biz, user]);
+}, [profileTarget, users, biz, user, publicProfileCache]);
 
 
     {/* === PROFILE MODAL === */}
