@@ -3184,6 +3184,72 @@ if (supabase?.auth) {
     }
 
     console.log("✅ updateUser OK");
+
+    // 🔁 Supabase başarılı → local state'i GARANTİ senkronla
+setUsers((prev) =>
+  (prev || []).map((x) =>
+    String(x?.id) === String(u?.id)
+      ? {
+          ...x,
+          username,
+          avatar: avatarStr || x.avatar || "",
+          XP: Number(u?.XP ?? x?.XP ?? 0),
+          age: u?.age ?? x?.age ?? "",
+          city: u?.city ?? x?.city ?? "",
+          state: u?.state ?? x?.state ?? "",
+          bio: u?.bio ?? x?.bio ?? "",
+        }
+      : x
+  )
+);
+
+// 👤 kendi hesabıysa user state’i de güncelle
+if (user && String(user.id) === String(u.id)) {
+  setUser((p) => ({
+    ...(p || {}),
+    username,
+    avatar: avatarStr || p?.avatar || "",
+    XP: Number(u?.XP ?? p?.XP ?? 0),
+    age: u?.age ?? p?.age ?? "",
+    city: u?.city ?? p?.city ?? "",
+    state: u?.state ?? p?.state ?? "",
+    bio: u?.bio ?? p?.bio ?? "",
+  }));
+}
+
+    // ✅ Supabase kaydı başarılıysa: local listeleri tekrar garanti senkronla (özellikle avatar/age/city/state/bio)
+    try {
+      setUsers((prev) =>
+        (prev || []).map((x) =>
+          String(x?.id) === String(u?.id)
+            ? {
+                ...x,
+                username,
+                avatar: avatarStr ? avatarStr : (x?.avatar || ""),
+                XP: Number(u?.XP ?? x?.XP ?? 0),
+                age: u?.age ?? x?.age ?? "",
+                city: u?.city ?? x?.city ?? "",
+                state: u?.state ?? x?.state ?? "",
+                bio: u?.bio ?? x?.bio ?? "",
+              }
+            : x
+        )
+      );
+
+      // kendi hesabıysa user state'i de güncelle
+      if (user && String(user?.id) === String(u?.id)) {
+        setUser((p) => ({
+          ...(p || {}),
+          username,
+          avatar: avatarStr ? avatarStr : (p?.avatar || ""),
+          XP: Number(u?.XP ?? p?.XP ?? 0),
+          age: u?.age ?? p?.age ?? "",
+          city: u?.city ?? p?.city ?? "",
+          state: u?.state ?? p?.state ?? "",
+          bio: u?.bio ?? p?.bio ?? "",
+        }));
+      }
+    } catch (_) {}
   } catch (e) {
     console.error("💥 updateUser crash FULL:", e);
     alert("updateUser crash: " + (e?.message || JSON.stringify(e)));
