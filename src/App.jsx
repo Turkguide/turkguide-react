@@ -3192,7 +3192,7 @@ setUsers((prev) =>
       ? {
           ...x,
           username,
-          avatar: avatarStr || x.avatar || "",
+          avatar: x.avatar || "",
           XP: Number(u?.XP ?? x?.XP ?? 0),
           age: u?.age ?? x?.age ?? "",
           city: u?.city ?? x?.city ?? "",
@@ -3206,15 +3206,15 @@ setUsers((prev) =>
 // 👤 kendi hesabıysa user state’i de güncelle
 if (user && String(user.id) === String(u.id)) {
   setUser((p) => ({
-    ...(p || {}),
-    username,
-    avatar: avatarStr || p?.avatar || "",
-    XP: Number(u?.XP ?? p?.XP ?? 0),
-    age: u?.age ?? p?.age ?? "",
-    city: u?.city ?? p?.city ?? "",
-    state: u?.state ?? p?.state ?? "",
-    bio: u?.bio ?? p?.bio ?? "",
-  }));
+  ...(p || {}),
+  username,
+  avatar: p?.avatar || "",
+  XP: Number(u?.XP ?? p?.XP ?? 0),
+  age: u?.age ?? p?.age ?? "",
+  city: u?.city ?? p?.city ?? "",
+  state: u?.state ?? p?.state ?? "",
+  bio: u?.bio ?? p?.bio ?? "",
+}));
 }
 
     // ✅ Supabase kaydı başarılıysa: local listeleri tekrar garanti senkronla (özellikle avatar/age/city/state/bio)
