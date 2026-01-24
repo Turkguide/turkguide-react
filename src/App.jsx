@@ -1490,6 +1490,7 @@ function deletePost(postId) {
     </div>
   </div>
 </Modal>
+
   {/* PROFILE MODAL */}
   <Modal
     ui={ui}
@@ -1520,7 +1521,13 @@ function deletePost(postId) {
 
         // 3) Fallback: username match
         const byU = (users || []).find((x) => normalizeUsername(x?.username) === key);
-        return byU || null;
+        if (byU) return byU;
+
+        // 4) Fallback: public profile cache (Supabase)
+        const pub = publicProfileCache?.[key];
+        if (pub) return pub;
+
+        return null;
       })();
 
       const viewedAge = viewedUser?.age;
@@ -1537,7 +1544,7 @@ function deletePost(postId) {
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             <Avatar
               ui={ui}
-              src={viewedUser?.avatar}
+              src={viewedUser?.avatar || avatarByUsername(profileTarget?.username)}
               size={60}
               label={viewedUser?.username || profileTarget?.username}
             />
