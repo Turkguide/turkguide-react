@@ -1535,12 +1535,12 @@ function deletePost(postId) {
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-           <Avatar
-  ui={ui}
-  src={avatarByUsername(viewedUser?.username || profileTarget?.username)}
-  size={60}
-  label={viewedUser?.username || profileTarget?.username}
-/>
+            <Avatar
+              ui={ui}
+              src={viewedUser?.avatar}
+              size={60}
+              label={viewedUser?.username || profileTarget?.username}
+            />
             {/* Profile summary/info block */}
             <div style={{ display: "grid", gap: 4 }}>
               <div style={{ fontSize: 18, fontWeight: 950 }}>@{viewedUser?.username || profileTarget?.username}</div>
@@ -1916,27 +1916,24 @@ useEffect(() => {
 
       const session = data?.session;
       if (session?.user) {
-  const md = session.user.user_metadata || {};
-
-  setUser((prev) => ({
-    ...(prev || {}),
-    id: session.user.id,
-    email: session.user.email,
-    username: md.username ?? prev?.username ?? null,
-    avatar: md.avatar ?? prev?.avatar ?? "",
-    Tier: md.tier ?? md.Tier ?? prev?.Tier ?? null,
-    XP: Number(md.xp ?? md.XP ?? prev?.XP ?? 0),
-    createdAt: md.createdAt ?? prev?.createdAt ?? null,
-    age: md.age ?? prev?.age ?? "",
-    city: md.city ?? prev?.city ?? "",
-    state: md.state ?? prev?.state ?? "",
-    bio: md.bio ?? prev?.bio ?? "",
-  }));
-
-  await ensureMyPublicProfileRow(session.user);
-} else {
-  setUser(null);
-}
+        const md = session.user.user_metadata || {};
+        setUser((prev) => ({
+          ...(prev || {}),
+          id: session.user.id,
+          email: session.user.email,
+          username: md.username ?? prev?.username ?? null,
+          avatar: md.avatar ?? prev?.avatar ?? "",
+          Tier: md.tier ?? md.Tier ?? prev?.Tier ?? null,
+          XP: Number(md.xp ?? md.XP ?? prev?.XP ?? 0),
+          createdAt: md.createdAt ?? prev?.createdAt ?? null,
+          age: md.age ?? prev?.age ?? "",
+          city: md.city ?? prev?.city ?? "",
+          state: md.state ?? prev?.state ?? "",
+          bio: md.bio ?? prev?.bio ?? "",
+        }));
+      } else {
+        setUser(null);
+      }
 
       // 2) Auth listener (login/logout/refresh değişimlerinde state güncelle)
       const { data: subData } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -2357,35 +2354,6 @@ function openProfileByUsername(username) {
 const [profileAvatarCache, setProfileAvatarCache] = useState({});
 const inFlightAvatarFetch = useRef({});
 
-async function ensureMyPublicProfileRow(authUser) {
-  try {
-    if (!supabase?.from) return;
-
-    const u = authUser;
-    const md = u?.user_metadata || {};
-
-    const uname = String(md.username || u?.email?.split?.("@")?.[0] || "").trim();
-    const key = normalizeUsername(uname);
-    if (!u?.id || !key) return;
-
-    const row = {
-      id: u.id,
-      username: key,
-      avatar: md.avatar ? String(md.avatar) : null,
-      age: md.age !== "" && md.age != null ? Number(md.age) : null,
-      city: String(md.city || "").trim() || null,
-      state: String(md.state || "").trim() || null,
-      bio: String(md.bio || "").trim() || null,
-    };
-
-    const { error } = await supabase.from("profiles").upsert(row, { onConflict: "id" });
-    if (error) console.warn("⚠️ ensureMyPublicProfileRow upsert error:", error);
-    else console.log("✅ ensureMyPublicProfileRow ok");
-  } catch (e) {
-    console.warn("⚠️ ensureMyPublicProfileRow crash:", e);
-  }
-}
-
 async function fetchAvatarToCache(usernameKey) {
   if (!usernameKey) return;
   if (inFlightAvatarFetch.current[usernameKey]) return;
@@ -2436,8 +2404,8 @@ function avatarByUsername(username) {
   if (cached) return cached;
 
   // 4) not found -> fetch in background, return empty for now
-fetchAvatarToCache(key);
-return "";
+  fetchAvatarToCache(key);
+  return undefined;
 }
 
 function openProfileBiz(bizId) {
