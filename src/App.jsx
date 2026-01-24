@@ -23,7 +23,7 @@ const KEY = {
   SETTINGS: "tg_settings_v6", // mesaj ayarları vs.
 };
 
-const DEFAULT_ADMINS = ["vicdan", "secer", "turkguide"];
+const DEFAULT_ADMINS = ["vicdan", "turkguide"];
 
 function safeParse(raw, fallback) {
   try {
@@ -315,17 +315,18 @@ function Button({ ui, children, onClick, onMouseDown, variant = "default", disab
       : null;
 
   return (
-  <button
-    type={type || "button"}
-    onMouseDown={onMouseDown}
-    onClick={onClick}
-    disabled={disabled}
-    style={{ ...base, ...(v || {}), ...(style || {}) }}
-    title={title}
-  >
-    {children}
-  </button>
-);
+    <button
+      type={type || "button"}
+      onMouseDown={onMouseDown}
+      onClick={onClick}
+      disabled={disabled}
+      style={{ ...base, ...(v || {}), ...(style || {}) }}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
 
 function Chip({ ui, children, active, onClick, style, title }) {
   const clickable = typeof onClick === "function";
@@ -5235,11 +5236,7 @@ bio: user.bio ?? "",
                     <Button
                       ui={ui}
                       variant="danger"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        logout();
-                      }}
+                      onClick={logout}
                       style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
                       title="Çıkış Yap"
                     >
