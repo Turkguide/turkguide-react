@@ -2173,6 +2173,26 @@ async function loginNow(provider = "email", mode = "login") {
 
 // ✅ HARD RESET (logout/delete sonrası her koşulda UI + storage temizle)
 function hardResetToHome() {
+  // ✅ Supabase session tokens can remain if network/signOut fails.
+  // Clear any `sb-*-auth-token` keys so refresh won't restore the session.
+  try {
+    const toRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("sb-") && k.includes("-auth-token")) toRemove.push(k);
+    }
+    toRemove.forEach((k) => localStorage.removeItem(k));
+  } catch (_) {}
+
+  try {
+    const toRemoveS = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k && k.startsWith("sb-") && k.includes("-auth-token")) toRemoveS.push(k);
+    }
+    toRemoveS.forEach((k) => sessionStorage.removeItem(k));
+  } catch (_) {}
+
   try {
     localStorage.removeItem(KEY.USER);
     localStorage.removeItem(KEY.ADMIN_UNLOCK);
@@ -3115,6 +3135,19 @@ if (supabase?.auth) {
      );
      // yine de denemeye devam ediyoruz (istersen burada return yapabiliriz)
    }
+
+   console.log("🧪 saveEditUser debug", {
+  currentId,
+  username,
+  lower,
+  origLower,
+  u_id: u?.id,
+  u_orig: u?._origUsername,
+  users_len: users?.length,
+  possibleClashes: (users || [])
+    .filter((x) => normalizeUsername(x?.username) === lower)
+    .map((x) => ({ id: x?.id, username: x?.username })),
+});
 
    const payload = {
      username,
