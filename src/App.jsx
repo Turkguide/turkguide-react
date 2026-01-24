@@ -73,7 +73,7 @@ function ensureSeed() {
         username: "secer",
         email: "secer@example.com",
         providers: { apple: { sub: "apple_seed_secer" } },
-        tier: "verified",
+        tier: "Onaylı",
         xp: 12000,
         createdAt: now(),
         avatar: "",
@@ -83,7 +83,7 @@ function ensureSeed() {
         username: "vicdan",
         email: "vicdan@example.com",
         providers: { google: { sub: "google_seed_vicdan" } },
-        tier: "verified",
+        tier: "Onaylı",
         xp: 9000,
         createdAt: now(),
         avatar: "",
@@ -93,7 +93,7 @@ function ensureSeed() {
         username: "turkguide",
         email: "admin@turkguide.app",
         providers: { email: true },
-        tier: "verified",
+        tier: "Onaylı",
         xp: 15000,
         createdAt: now(),
         avatar: "",
@@ -363,9 +363,19 @@ function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999 }
         position: "fixed",
         inset: 0,
         background: "rgba(0,0,0,0.55)",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
+
+        // ✅ Mobile keyboard + small screens: keep modal top-visible and scrollable
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+
+        padding: "16px",
+        paddingTop: "calc(16px + env(safe-area-inset-top))",
+        paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+
         zIndex,
       }}
       onMouseDown={onClose}
@@ -373,20 +383,40 @@ function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999 }
       <div
         style={{
           width: `min(${width}px, 100%)`,
+
+          // ✅ Use dynamic viewport height so iOS keyboard doesn't hide the bottom
+          maxHeight: "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+
           borderRadius: 22,
           border: `1px solid ${ui.border}`,
           background: ui.mode === "light" ? "rgba(255,255,255,0.98)" : "rgba(10,12,18,0.96)",
           boxShadow: "0 40px 120px rgba(0,0,0,0.35)",
+
+          // ✅ Make inner content scroll, not the whole dialog jumping
+          display: "flex",
+          flexDirection: "column",
+
           padding: 16,
           color: ui.text,
         }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flex: "0 0 auto" }}>
           <div style={{ fontSize: 16, fontWeight: 950 }}>{title}</div>
           <Button ui={ui} onClick={onClose}>Kapat</Button>
         </div>
-        <div style={{ marginTop: 12 }}>{children}</div>
+
+        <div
+          style={{
+            marginTop: 12,
+            flex: "1 1 auto",
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
+            paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
+          }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -1167,7 +1197,6 @@ export default function App() {
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
 
   // Tabs
-  // Tabs
 const [active, setActive] = useState(() => {
   try {
     return localStorage.getItem("tg_active_tab_v1") || "biz";
@@ -1176,9 +1205,16 @@ const [active, setActive] = useState(() => {
   }
 });
 
-// 🧪 DEBUG: active değişimini takip et
+// 🧪 DEBUG
 useEffect(() => {
   console.log("🧪 ACTIVE CHANGED ->", active);
+}, [active]);
+
+// ✅ KALDIĞI YERİ HATIRLA
+useEffect(() => {
+  try {
+    localStorage.setItem("tg_active_tab_v1", active);
+  } catch (_) {}
 }, [active]);
 
 // ✅ active tab'i kalıcı kaydet (refresh fix)
@@ -1228,6 +1264,14 @@ useEffect(() => {
   const [posts, setPosts] = useState([]);
   const [showLikedBy, setShowLikedBy] = useState(false);
 const [likedByPost, setLikedByPost] = useState(null);
+// 💬 Yorum menüsü (⋯)
+const [commentMenuOpenKey, setCommentMenuOpenKey] = useState(null); 
+// örnek: "postId:commentId"
+
+// ✏️ Yorum düzenleme
+const [editingCommentKey, setEditingCommentKey] = useState(null);
+const [editCommentDraft, setEditCommentDraft] = useState("");
+
   // 🧪 DEBUG: posts state gerçekten güncelleniyor mu?
   useEffect(() => {
     try {
@@ -1278,6 +1322,8 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
   // HUB
   const [composer, setComposer] = useState("");
   const [commentDraft, setCommentDraft] = useState({});
+  const [commentMenu, setCommentMenu] = useState(null); 
+// { postId, commentId } veya null
   const [hubMedia, setHubMedia] = useState(null);
 
   // HUB comment input refs ("Yorum" tıklayınca input'a focus)
@@ -1424,7 +1470,7 @@ function deletePost(postId) {
                   }}
                   title="Profile git"
                 >
-                  <Avatar ui={ui} src={""} size={28} label={uname} />
+                  <Avatar ui={ui} src={avatarByUsername(uname)} size={28} label={uname} />
                   <div style={{ fontWeight: 900, fontSize: 13, color: ui.text }}>
                     @{uname}
                   </div>
@@ -1450,6 +1496,118 @@ function deletePost(postId) {
     </div>
   </div>
 </Modal>
+  {/* PROFILE MODAL */}
+  <Modal
+    ui={ui}
+    open={profileOpen}
+    title="Profil"
+    onClose={() => setProfileOpen(false)}
+    width={500}
+  >
+    {(() => {
+      // --- Target user resolution block (see instructions) ---
+      const viewedUser = (() => {
+        if (!profileTarget || profileTarget.type !== "user") return null;
+
+        const uname = String(profileTarget.username || "").trim();
+        const key = normalizeUsername(uname);
+
+        // 1) If the opened profile is me, use `user` state (it has freshest metadata)
+        if (user && normalizeUsername(user.username) === key) return user;
+
+        // 2) Prefer userId match (username can change)
+        if (profileTarget.userId) {
+          const byId = (users || []).find((x) => String(x?.id || "") === String(profileTarget.userId));
+          if (byId) return byId;
+        }
+
+        // 3) Fallback: username match
+        const byU = (users || []).find((x) => normalizeUsername(x?.username) === key);
+        return byU || null;
+      })();
+
+      const viewedAge = viewedUser?.age;
+      const viewedCity = String(viewedUser?.city || "").trim();
+      const viewedState = String(viewedUser?.state || "").trim();
+      const viewedBio = String(viewedUser?.bio || "").trim();
+      const viewedLoc = [viewedCity, viewedState].filter(Boolean).join(", ");
+
+      // --- END Target user resolution block ---
+
+      // --- Profile modal body ---
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <Avatar
+              ui={ui}
+              src={viewedUser?.avatar}
+              size={60}
+              label={viewedUser?.username || profileTarget?.username}
+            />
+            {/* Profile summary/info block */}
+            <div style={{ display: "grid", gap: 4 }}>
+              <div style={{ fontSize: 18, fontWeight: 950 }}>@{viewedUser?.username || profileTarget?.username}</div>
+
+              {viewedUser?.createdAt ? (
+                <div style={{ color: ui.muted, fontSize: 13 }}>
+                  Kayıt: {fmt(viewedUser.createdAt)}
+                </div>
+              ) : null}
+
+              {/* ✅ Extra profile fields (boşsa gösterme) */}
+              {viewedAge ? <div style={{ color: ui.muted, fontSize: 13 }}>Yaş: {viewedAge}</div> : null}
+              {viewedLoc ? <div style={{ color: ui.muted, fontSize: 13 }}>Konum: {viewedLoc}</div> : null}
+              {viewedBio ? (
+                <div style={{ color: ui.muted, fontSize: 13, whiteSpace: "pre-wrap" }}>
+                  {viewedBio}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {/* Example action: Mesaj Gönder */}
+            {viewedUser && user && normalizeUsername(user.username) !== normalizeUsername(viewedUser.username) && (
+              <Button ui={ui} variant="blue" onClick={() => openDmToUser(viewedUser.username)}>
+                Mesaj Gönder
+              </Button>
+            )}
+          </div>
+          <Divider ui={ui} />
+          {/* Sahip olduğu işletmeler */}
+          <div>
+            <div style={{ fontWeight: 950, marginBottom: 6 }}>Sahip olduğu işletmeler</div>
+            {(biz || [])
+              .filter(
+                (b) =>
+                  b?.ownerUsername &&
+                  viewedUser &&
+                  normalizeUsername(b.ownerUsername) === normalizeUsername(viewedUser.username)
+              )
+              .map((b) => (
+                <div
+                  key={b.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 0",
+                    borderBottom: `1px solid ${ui.border}`,
+                  }}
+                >
+                  <Avatar ui={ui} src={b.avatar} size={32} label={b.name} />
+                  <div>
+                    <div style={{ fontWeight: 900 }}>{b.name}</div>
+                    <div style={{ fontSize: 13, color: ui.muted }}>{b.category}</div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      );
+      // --- END Profile modal body ---
+    })()}
+  </Modal>
 
   // Appointment modal
   const [showAppt, setShowAppt] = useState(false);
@@ -1678,9 +1836,13 @@ if (code) {
       email: session.user.email,
       username: md.username ?? prev?.username ?? null,
       avatar: md.avatar ?? prev?.avatar ?? "",
-      Tier: md.Tier ?? prev?.Tier ?? "Verified",
+      Tier: md.Tier ?? prev?.Tier ?? "Onaylı",
       XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
       createdAt: md.createdAt ?? prev?.createdAt ?? null,
+      age: md.age ?? prev?.age ?? "",
+city: md.city ?? prev?.city ?? "",
+state: md.state ?? prev?.state ?? "",
+bio: md.bio ?? prev?.bio ?? "",
     }));
   }
 }
@@ -1695,7 +1857,7 @@ if (code) {
   // ✅ Boot + Local State + Supabase Auth Restore + Auth Listener
 useEffect(() => {
   let alive = true;
-  let subscription = null;
+  let authSub = null;
 
   // 🧹 DEV ortamında eski seed/login kalıntılarını 1 kere temizle
   if (import.meta.env.DEV && !localStorage.getItem("tg_clean_v1")) {
@@ -1747,9 +1909,13 @@ useEffect(() => {
           email: session.user.email,
           username: md.username ?? prev?.username ?? null,
           avatar: md.avatar ?? prev?.avatar ?? "",
-          Tier: md.Tier ?? prev?.Tier ?? "Onaylı İşletme",
-          XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
+          Tier: md.tier ?? md.Tier ?? prev?.Tier ?? null,
+          XP: Number(md.xp ?? md.XP ?? prev?.XP ?? 0),
           createdAt: md.createdAt ?? prev?.createdAt ?? null,
+          age: md.age ?? prev?.age ?? "",
+          city: md.city ?? prev?.city ?? "",
+          state: md.state ?? prev?.state ?? "",
+          bio: md.bio ?? prev?.bio ?? "",
         }));
       } else {
         setUser(null);
@@ -1767,16 +1933,20 @@ useEffect(() => {
             email: s.user.email,
             username: md.username ?? prev?.username ?? null,
             avatar: md.avatar ?? prev?.avatar ?? "",
-            Tier: md.Tier ?? prev?.Tier ?? "Onaylı İşletme",
-            XP: Number(md.XP ?? md.xp ?? prev?.XP ?? 0),
+            Tier: md.tier ?? md.Tier ?? prev?.Tier ?? null,
+            XP: Number(md.xp ?? md.XP ?? prev?.XP ?? 0),
             createdAt: md.createdAt ?? prev?.createdAt ?? null,
+            age: md.age ?? prev?.age ?? "",
+            city: md.city ?? prev?.city ?? "",
+            state: md.state ?? prev?.state ?? "",
+            bio: md.bio ?? prev?.bio ?? "",
           }));
         } else {
           setUser(null);
         }
       });
 
-      subscription = subData?.subscription || null;
+      authSub = subData?.subscription || null;
     } catch (e) {
       console.error("💥 restore/auth crash:", e);
       setUser(null);
@@ -1790,7 +1960,7 @@ useEffect(() => {
   return () => {
     alive = false;
     try {
-      subscription?.unsubscribe?.();
+      authSub?.unsubscribe?.();
     } catch (_) {}
   };
 }, []);
@@ -1886,14 +2056,14 @@ async function loginNow(provider = "email", mode = "login") {
         return;
       }
 
-     const { data, error } = await supabase.auth.signUp({
-  email,
-  password: pass,
-  options: {
-    data: { username },
-    emailRedirectTo: "https://www.turkguide.net/auth/callback",
-  },
-});
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: pass,
+        options: {
+          data: { username },
+          emailRedirectTo: "https://www.turkguide.net/auth/callback",
+        },
+      });
 
       if (error) {
         console.error("❌ signUp error:", error);
@@ -1906,20 +2076,37 @@ async function loginNow(provider = "email", mode = "login") {
       // Confirm email açıksa: session null gelir, bu normal
       if (!data?.session) {
         alert("Kayıt alındı. Email doğrulama linki gönderildi. Linke tıklayıp doğrula.");
+        // ✅ Kayıt sonrası ana sayfa: İşletmeler
+        setActive("biz");
+        try { localStorage.setItem("tg_active_tab_v1", "biz"); } catch (_) {}
+        setShowAuth(true); // doğrulama için modal açık kalsın
       } else {
         alert("Kayıt alındı ve giriş yapıldı.");
         setUser({
           id: data.user.id,
           email: data.user.email,
           username: data.user.user_metadata?.username || null,
-          Tier: "Onaylı İşletme",
+          // ✅ Tier default göstermeyelim: sadece metadata varsa dolsun
+          Tier:
+            data.user.user_metadata?.tier ??
+            data.user.user_metadata?.Tier ??
+            null,
+          XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
+          avatar: data.user.user_metadata?.avatar ?? "",
+          createdAt: data.user.user_metadata?.createdAt ?? null,
+          age: data.user.user_metadata?.age ?? "",
+          city: data.user.user_metadata?.city ?? "",
+          state: data.user.user_metadata?.state ?? "",
+          bio: data.user.user_metadata?.bio ?? "",
         });
+        // ✅ Login olduysa da ana sayfa: İşletmeler
+        setActive("biz");
+        try { localStorage.setItem("tg_active_tab_v1", "biz"); } catch (_) {}
         setShowAuth(false);
       }
 
       setAuthPassword("");
       setShowRegister(false);
-      setShowAuth(true);
       return;
     }
 
@@ -1944,18 +2131,30 @@ async function loginNow(provider = "email", mode = "login") {
       console.log("✅ login ok:", data);
 
       setUser({
-  id: data.user.id,
-  email: data.user.email,
-  username:
-    data.user.user_metadata?.username ??
-    (data.user.email ? data.user.email.split("@")[0] : null),
-  Tier:
-    data.user.user_metadata?.tier ??
-    data.user.user_metadata?.Tier ??
-    "Onaylı İşletme",
-  XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
-  avatar: data.user.user_metadata?.avatar ?? "",
-});
+        id: data.user.id,
+        email: data.user.email,
+        username:
+          data.user.user_metadata?.username ??
+          (data.user.email ? data.user.email.split("@")[0] : null),
+
+        // ✅ Tier default göstermeyelim: sadece metadata varsa dolsun
+        Tier:
+          data.user.user_metadata?.tier ??
+          data.user.user_metadata?.Tier ??
+          null,
+
+        XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
+        avatar: data.user.user_metadata?.avatar ?? "",
+        createdAt: data.user.user_metadata?.createdAt ?? null,
+        age: data.user.user_metadata?.age ?? "",
+        city: data.user.user_metadata?.city ?? "",
+        state: data.user.user_metadata?.state ?? "",
+        bio: data.user.user_metadata?.bio ?? "",
+      });
+
+      // ✅ Login sonrası ana sayfa: İşletmeler
+      setActive("biz");
+      try { localStorage.setItem("tg_active_tab_v1", "biz"); } catch (_) {}
 
       setShowAuth(false);
       setAuthEmail("");
@@ -2061,6 +2260,7 @@ const { error } = await supabase.auth.signInWithOAuth({
   }
 }
 
+
 function openProfileByUsername(username) {
   const uname = resolveUsernameAlias(String(username || "").trim());
 
@@ -2082,6 +2282,21 @@ function openProfileByUsername(username) {
   }
 
   setProfileOpen(true);
+}
+
+function avatarByUsername(username) {
+  const raw = String(username || "").trim();
+  const uname = resolveUsernameAlias(raw);
+  const key = normalizeUsername(uname);
+
+  // 1) current authed user
+  if (user && normalizeUsername(user.username) === key) {
+    return String(user.avatar || "");
+  }
+
+  // 2) local users[]
+  const found = (users || []).find((x) => normalizeUsername(x?.username) === key);
+  return String(found?.avatar || "");
 }
 
 function openProfileBiz(bizId) {
@@ -2640,6 +2855,51 @@ async function hubComment(postId) {
   }
 }
 
+async function deleteHubComment(postId, commentId) {
+  if (!requireAuth()) return;
+
+  const target = (posts || []).find((p) => p.id === postId);
+  if (!target) return;
+
+  const currentComments = Array.isArray(target.comments) ? target.comments : [];
+  const nextComments = currentComments.filter((c) => String(c.id) !== String(commentId));
+
+  // 1️⃣ Optimistic UI (hemen kaldır)
+  setPosts((prev) =>
+    (prev || []).map((p) =>
+      p.id === postId ? { ...p, comments: nextComments } : p
+    )
+  );
+
+  // (menü açıksa kapat)
+  try {
+    setCommentMenuOpenKey(null);
+  } catch (_) {}
+
+  // 2️⃣ DB’ye yaz
+  try {
+    const { error } = await supabase
+      .from("hub_posts")
+      .update({ comments: nextComments })
+      .eq("id", postId)
+      .select(); // ✅ RLS/returning için
+
+    if (error) throw error;
+
+    // garanti: DB'den tazele
+    await fetchHubPosts();
+  } catch (e) {
+    console.error("deleteHubComment DB error:", e);
+
+    // ❌ hata olursa geri al
+    setPosts((prev) =>
+      (prev || []).map((p) => (p.id === postId ? target : p))
+    );
+
+    alert("Yorum silinemedi.");
+  }
+}
+
 function openAppointment(bizId) {
   if (!requireAuth()) return;
   setApptBizId(bizId);
@@ -2710,11 +2970,17 @@ async function saveEditUser() {
   }
 
   const lower = normalizeUsername(username);
-  const clash = users.find((x) => x.id !== u.id && normalizeUsername(x.username) === lower);
+const origLower = normalizeUsername(u._origUsername || "");
+
+if (lower !== origLower) {
+  const clash = users.find(
+    (x) => x.id !== u.id && normalizeUsername(x.username) === lower
+  );
   if (clash) {
     alert("Bu kullanıcı adı zaten var.");
     return;
   }
+}
 
   // local users[] update (yoksa ekle)
   setUsers((prev) => {
@@ -2727,10 +2993,16 @@ async function saveEditUser() {
         ...u,
         username,
         avatar: u.avatar ?? old.avatar ?? "",
-        Tier: u.Tier ?? old.Tier ?? "Onaylı İşletme",
+        Tier: u.Tier ?? old.Tier ?? null,
         XP: Number(u.XP ?? old.XP ?? 0),
         createdAt: u.createdAt ?? old.createdAt ?? new Date().toISOString(),
         email: u.email ?? old.email ?? "",
+
+        // ✅ extra profile fields
+        age: u.age ?? old.age ?? "",
+        city: u.city ?? old.city ?? "",
+        state: u.state ?? old.state ?? "",
+        bio: u.bio ?? old.bio ?? "",
       };
       return copy;
     }
@@ -2740,10 +3012,16 @@ async function saveEditUser() {
         id: u.id,
         email: u.email || "",
         username,
-        Tier: u.Tier || "Onaylı İşletme",
+        Tier: u.Tier ?? null,
         XP: Number(u.XP || 0),
         avatar: u.avatar || "",
         createdAt: u.createdAt || new Date().toISOString(),
+
+        // ✅ extra profile fields
+        age: u.age || "",
+        city: u.city || "",
+        state: u.state || "",
+        bio: u.bio || "",
       },
       ...prev,
     ];
@@ -2758,8 +3036,12 @@ async function saveEditUser() {
       email: me.email,
       username,
       avatar: u.avatar ?? p?.avatar ?? "",
-      Tier: u.Tier ?? p?.Tier ?? "Onaylı İşletme",
+      Tier: u.Tier ?? p?.Tier ?? null,
       XP: Number(u.XP ?? p?.XP ?? 0),
+      age: u.age ?? p?.age ?? "",
+      city: u.city ?? p?.city ?? "",
+      state: u.state ?? p?.state ?? "",
+      bio: u.bio ?? p?.bio ?? "",
     }));
   }
 
@@ -2781,26 +3063,31 @@ if (supabase?.auth) {
       return;
     }
 
-    const avatarStr = typeof u.avatar === "string" ? u.avatar : "";
-    const avatarLen = avatarStr.length;
+   const avatarStr = typeof u.avatar === "string" ? u.avatar : "";
+   const avatarLen = avatarStr.length;
 
-    // ⚠️ Base64 çok büyükse Supabase metadata patlayabilir
-    if (avatarLen > 120000) {
-      alert(
-        "Profil fotoğrafı çok büyük görünüyor (base64 length: " +
-          avatarLen +
-          "). Bu yüzden kaydetme hata veriyor olabilir. Birazdan storage çözümüne geçeceğiz."
-      );
-      // yine de denemeye devam ediyoruz (istersen burada return yapabiliriz)
-    }
+   // ⚠️ Base64 çok büyükse Supabase metadata patlayabilir
+   if (avatarLen > 120000) {
+     alert(
+       "Profil fotoğrafı çok büyük görünüyor (base64 length: " +
+         avatarLen +
+         "). Bu yüzden kaydetme hata veriyor olabilir. Birazdan storage çözümüne geçeceğiz."
+     );
+     // yine de denemeye devam ediyoruz (istersen burada return yapabiliriz)
+   }
 
-    const payload = {
-      username,
-      // boş string ise null gönder
-      avatar: avatarStr ? avatarStr : null,
-      tier: u.Tier || "Onaylı İşletme",
-      xp: Number(u.XP || 0),
-    };
+   const payload = {
+     username,
+     // boş string ise null gönder
+     avatar: avatarStr ? avatarStr : null,
+     xp: Number(u.XP || 0),
+
+     // ✅ extra profile fields (boşsa null)
+     age: u.age !== "" && u.age != null ? u.age : null,
+     city: String(u.city || "").trim() || null,
+     state: String(u.state || "").trim() || null,
+     bio: String(u.bio || "").trim() || null,
+   };
 
     console.log("🧪 updateUser payload:", {
       ...payload,
@@ -2867,16 +3154,68 @@ if (supabase?.auth) {
 
     // 2) HUB post + yorumlarda byUsername güncelle
     setPosts((prev) =>
-      prev.map((p) => ({
-        ...p,
-        byUsername:
-          normalizeUsername(p.byUsername) === normalizeUsername(oldU) ? newUsername : p.byUsername,
-        comments: (p.comments || []).map((c) => ({
-          ...c,
+      (prev || []).map((p) => {
+        // posts: support both `byUsername` (new) and `by` (legacy)
+        const pByUsername = p?.byUsername;
+        const pByLegacy = p?.by;
+
+        const nextP = {
+          ...p,
           byUsername:
-            normalizeUsername(c.byUsername) === normalizeUsername(oldU) ? newUsername : c.byUsername,
-        })),
-      }))
+            pByUsername != null && normalizeUsername(pByUsername) === normalizeUsername(oldU)
+              ? newUsername
+              : pByUsername,
+          by:
+            pByLegacy != null && normalizeUsername(pByLegacy) === normalizeUsername(oldU)
+              ? newUsername
+              : pByLegacy,
+        };
+
+        const nextComments = Array.isArray(p?.comments)
+          ? (p.comments || []).map((c) => {
+              const cByUsername = c?.byUsername;
+              const cByLegacy = c?.by;
+
+              const nextC = {
+                ...c,
+                byUsername:
+                  cByUsername != null && normalizeUsername(cByUsername) === normalizeUsername(oldU)
+                    ? newUsername
+                    : cByUsername,
+                by:
+                  cByLegacy != null && normalizeUsername(cByLegacy) === normalizeUsername(oldU)
+                    ? newUsername
+                    : cByLegacy,
+              };
+
+              // replies: also support both fields
+              if (Array.isArray(c?.replies)) {
+                nextC.replies = (c.replies || []).map((r) => {
+                  const rByUsername = r?.byUsername;
+                  const rByLegacy = r?.by;
+                  return {
+                    ...r,
+                    byUsername:
+                      rByUsername != null && normalizeUsername(rByUsername) === normalizeUsername(oldU)
+                        ? newUsername
+                        : rByUsername,
+                    by:
+                      rByLegacy != null && normalizeUsername(rByLegacy) === normalizeUsername(oldU)
+                        ? newUsername
+                        : rByLegacy,
+                  };
+                });
+              }
+
+              return nextC;
+            })
+          : p?.comments;
+
+        return {
+          ...nextP,
+          comments: nextComments,
+        };
+      })
     );
 
     // 3) DM'lerde from/toUsername güncelle
@@ -2961,16 +3300,19 @@ async function setMyAvatar(base64) {
     const idx = prev.findIndex((x) => x.id === user.id);
     if (idx >= 0) {
       const copy = [...prev];
-      copy[idx] = { ...copy[idx], avatar: base64, username: updated.username };
+      copy[idx] = {
+        ...copy[idx],
+        avatar: base64,
+        username: updated.username,
+      };
       return copy;
     }
+
     return [
       {
         id: user.id,
         username: updated.username,
         email: user.email,
-        tier: user.Tier || "Onaylı İşletme",
-        xp: user.xp || 0,
         avatar: base64,
         createdAt: user.createdAt || new Date().toISOString(),
       },
@@ -2983,7 +3325,6 @@ async function setMyAvatar(base64) {
       data: {
         username: updated.username || null,
         avatar: base64 || null,
-        tier: updated.Tier || "Onaylı İşletme",
         xp: Number(updated.XP || 0),
       },
     });
@@ -3589,20 +3930,6 @@ return (
                   </button>
                 )}
 
-                {isAuthed ? (
-                  <button
-                    type="button"
-                    aria-label="Ayarlar"
-                    title="Ayarlar"
-                    onClick={() => {
-                      closeTopOverlays();
-                      setShowSettings(true);
-                    }}
-                    style={iconBtnStyle}
-                  >
-                    <SettingsIcon size={22} />
-                  </button>
-                ) : null}
 
                 {isAuthed ? (
                   <>
@@ -3659,16 +3986,6 @@ return (
                       </IconBase>
                     </button>
 
-                    {/* Çıkış */}
-                    <button
-                      type="button"
-                      aria-label="Çıkış Yap"
-                      title="Çıkış Yap"
-                      onClick={logout}
-                      style={iconBtnStyle}
-                    >
-                      <LogoutIcon size={22} />
-                    </button>
                   </>
                 ) : null}
 
@@ -3791,8 +4108,7 @@ return (
 ) : (
   <div style={{ display: "grid", gap: 12 }}>
     {filteredBiz.map((b) => {
-      // ✅ sadece admin onayı (status) bazlı rozet
-      const badge = b?.status === "approved" ? "Onaylı İşletme" : "İşletme";
+      const badge = null;
       const canEditAvatar = canEditBizAvatar(b);
 
       return (
@@ -3820,7 +4136,7 @@ return (
                   >
                     {b.name}
                   </div>
-                  <Chip ui={ui}>{badge}</Chip>
+                  {badge ? <Chip ui={ui}>{badge}</Chip> : null}
                   {apptsForBiz.get(b.id) ? <Chip ui={ui}>🗓️ {apptsForBiz.get(b.id)} yeni talep</Chip> : null}
                 </div>
 
@@ -4101,7 +4417,7 @@ return (
     userSelect: "none",
   }}
 >
-  <Avatar ui={ui} src={p.byAvatar || ""} size={28} label={hubPostAuthor(p)} />
+  <Avatar ui={ui} src={avatarByUsername(hubPostAuthor(p))} size={28} label={hubPostAuthor(p)} />
 
   <span
     style={{
@@ -4347,9 +4663,7 @@ return (
       background: "transparent",
       padding: 0,
       cursor: "pointer",
-      color: ui.mode === "light"
-        ? "rgba(0,0,0,0.55)"
-        : "rgba(255,255,255,0.65)",
+      color: ui.mode === "light" ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
       fontWeight: 700,
       display: "inline-flex",
       alignItems: "center",
@@ -4357,40 +4671,33 @@ return (
     }}
     title="Beğen"
   >
-   {(() => {
-  const me = normalizeUsername(user?.username);
-  const hasLiked = (p.likedBy || []).some(
-    (u) => normalizeUsername(u) === me
-  );
+    {(() => {
+      const me = normalizeUsername(user?.username);
+      const hasLiked = (p.likedBy || []).some((u) => normalizeUsername(u) === me);
 
-  return (
-    <>
-      <span style={{ fontSize: 16 }}>
-        {hasLiked ? "❤️" : "♡"}
-      </span>
+      return (
+        <>
+          <span style={{ fontSize: 16 }}>{hasLiked ? "❤️" : "♡"}</span>
+          <span style={{ fontSize: 13 }}>Beğen</span>
 
-      <span style={{ fontSize: 13 }}>
-        Beğen
-      </span>
-
-      <span
-  onClick={(e) => {
-    e.stopPropagation();
-    setLikedByPost(p);
-    setShowLikedBy(true);
-  }}
-  style={{
-    fontSize: 13,
-    opacity: 0.6,
-    cursor: "pointer",
-  }}
-  title="Kimler beğendi"
->
-  {p.likes || 0}
-</span>
-    </>
-  );
-})()}
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              setLikedByPost(p);
+              setShowLikedBy(true);
+            }}
+            style={{
+              fontSize: 13,
+              opacity: 0.6,
+              cursor: "pointer",
+            }}
+            title="Kimler beğendi"
+          >
+            {p.likes || 0}
+          </span>
+        </>
+      );
+    })()}
   </button>
 
   {/* 💬 Yorum */}
@@ -4402,9 +4709,7 @@ return (
       background: "transparent",
       padding: 0,
       cursor: "pointer",
-      color: ui.mode === "light"
-        ? "rgba(0,0,0,0.55)"
-        : "rgba(255,255,255,0.65)",
+      color: ui.mode === "light" ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
       fontWeight: 700,
       display: "inline-flex",
       alignItems: "center",
@@ -4414,9 +4719,7 @@ return (
   >
     <span style={{ fontSize: 16 }}>💬</span>
     <span style={{ fontSize: 13 }}>Yorum</span>
-    <span style={{ fontSize: 13, opacity: 0.6 }}>
-      {(p.comments || []).length}
-    </span>
+    <span style={{ fontSize: 13, opacity: 0.6 }}>{(p.comments || []).length}</span>
   </button>
 
   {/* 🌀 HUB’la */}
@@ -4428,9 +4731,7 @@ return (
       background: "transparent",
       padding: 0,
       cursor: "pointer",
-      color: ui.mode === "light"
-        ? "rgba(0,0,0,0.55)"
-        : "rgba(255,255,255,0.65)",
+      color: ui.mode === "light" ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
       fontWeight: 700,
       display: "inline-flex",
       alignItems: "center",
@@ -4443,75 +4744,300 @@ return (
   </button>
 </div>
 
-                      <Divider ui={ui} />
+<Divider ui={ui} />
 
-                      {/* comment input */}
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <input
-                          placeholder={user ? "Yorum yaz..." : "Yorum için giriş yap"}
-                          value={commentDraft[p.id] || ""}
-                          onChange={(e) =>
-                            setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))
-                          }
-                          onFocus={() => {
-                            if (!user) setShowAuth(true);
-                          }}
-                          style={inputStyle(ui, { padding: "10px 12px" })}
-                        />
-                        <Button ui={ui} variant="solidBlue" onClick={() => hubComment(p.id)}>
-                          Gönder
-                        </Button>
-                      </div>
+{/* comments */}
+<div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+  {(p.comments || [])
+    .slice()
+    .reverse()
+    .map((c) => {
+      const key = `${p.id}:${c.id}`;
+      const isOwner =
+        !!user &&
+        normalizeUsername(user.username) === normalizeUsername(c.byUsername);
+      const menuOpen = commentMenuOpenKey === key;
+      const isEditing = editingCommentKey === key;
 
-                      {/* comments */}
-                      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                        {(p.comments || [])
-                          .slice()
-                          .reverse()
-                          .map((c) => (
-                            <div
-                              key={c.id}
-                              style={{
-                                padding: 10,
-                                borderRadius: 14,
-                                border: `1px solid ${ui.border}`,
-                                background:
-                                  ui.mode === "light"
-                                    ? "rgba(0,0,0,0.03)"
-                                    : "rgba(255,255,255,0.03)",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  gap: 10,
-                                  alignItems: "center",
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                <Chip ui={ui} onClick={() => openProfileByUsername(c.byUsername)}>
-                                  @{c.byUsername}
-                                </Chip>
-                                <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
-                                {user ? (
-                                  <Button
-                                    ui={ui}
-                                    variant="blue"
-                                    onClick={() => openDmToUser(c.byUsername)}
-                                    style={{
-                                      padding: "6px 12px",
-                                      borderRadius: 999,
-                                      fontWeight: 900,
-                                    }}
-                                  >
-                                    Mesaj
-                                  </Button>
-                                ) : null}
-                              </div>
-                              <div style={{ marginTop: 8 }}>{c.text}</div>
-                            </div>
-                          ))}
-                      </div>
+      return (
+        <div
+          key={c.id}
+          style={{
+            padding: 10,
+            borderRadius: 14,
+            border: `1px solid ${ui.border}`,
+            background:
+              ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            {(() => {
+              const commenter = (users || []).find(
+                (u) => normalizeUsername(u.username) === normalizeUsername(c.byUsername)
+              );
+              const avatarSrc = commenter?.avatar || "";
+
+              return (
+                <div
+                  onClick={() => openProfileByUsername(c.byUsername)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                  title="Profile git"
+                >
+                  <Avatar ui={ui} src={avatarSrc} size={28} label={c.byUsername} />
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: ui.mode === "light" ? "rgba(0,0,0,0.62)" : "rgba(255,255,255,0.70)",
+                      letterSpacing: 0.1,
+                    }}
+                  >
+                    @{c.byUsername}
+                  </span>
+                </div>
+              );
+            })()}
+
+            <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
+
+            {isOwner ? (
+              <div
+                style={{
+                  marginLeft: "auto",
+                  position: "relative",
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCommentMenuOpenKey(menuOpen ? null : key);
+                  }}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    fontWeight: 900,
+                    fontSize: 18,
+                    lineHeight: 1,
+                    padding: "2px 6px",
+                    borderRadius: 10,
+                    color:
+                      ui.mode === "light"
+                        ? "rgba(0,0,0,0.55)"
+                        : "rgba(255,255,255,0.65)",
+                  }}
+                  title="Yorum seçenekleri"
+                  aria-label="Yorum seçenekleri"
+                >
+                  ⋯
+                </button>
+
+                {menuOpen ? (
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "100%",
+                      marginTop: 8,
+                      minWidth: 160,
+                      borderRadius: 14,
+                      border: `1px solid ${ui.border}`,
+                      background:
+                        ui.mode === "light"
+                          ? "rgba(255,255,255,0.98)"
+                          : "rgba(10,12,18,0.98)",
+                      boxShadow: "0 18px 60px rgba(0,0,0,0.25)",
+                      padding: 6,
+                      zIndex: 50,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingCommentKey(key);
+                        setEditCommentDraft(String(c.text || ""));
+                        setCommentMenuOpenKey(null);
+                      }}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        padding: "10px 10px",
+                        borderRadius: 12,
+                        fontWeight: 900,
+                        color: ui.text,
+                      }}
+                      title="Yorumu düzenle"
+                    >
+                      ✏️ Düzenle
+                    </button>
+
+                    <div
+                      style={{
+                        height: 1,
+                        background:
+                          ui.mode === "light"
+                            ? "rgba(0,0,0,0.08)"
+                            : "rgba(255,255,255,0.10)",
+                        margin: "4px 6px",
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCommentMenuOpenKey(null);
+                        deleteHubComment(p.id, c.id);
+                      }}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        padding: "10px 10px",
+                        borderRadius: 12,
+                        fontWeight: 900,
+                        color: "#ff4d4f",
+                      }}
+                      title="Yorumu sil"
+                    >
+                      🗑️ Sil
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            {isEditing ? (
+              <div style={{ display: "grid", gap: 8 }}>
+                <textarea
+                  value={editCommentDraft}
+                  onChange={(e) => setEditCommentDraft(e.target.value)}
+                  style={inputStyle(ui, {
+                    minHeight: 70,
+                    borderRadius: 14,
+                    resize: "vertical",
+                    padding: "10px 12px",
+                  })}
+                />
+
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <Button
+                    ui={ui}
+                    onClick={() => {
+                      setEditingCommentKey(null);
+                      setEditCommentDraft("");
+                    }}
+                    style={{ padding: "8px 14px" }}
+                  >
+                    İptal
+                  </Button>
+
+                  <Button
+                    ui={ui}
+                    variant="solidBlue"
+                    onClick={async () => {
+                      const text = String(editCommentDraft || "").trim();
+                      if (!text) return;
+
+                      // Optimistic UI
+                      setPosts((prev) =>
+                        (prev || []).map((pp) =>
+                          pp.id === p.id
+                            ? {
+                                ...pp,
+                                comments: (pp.comments || []).map((cc) =>
+                                  cc.id === c.id
+                                    ? { ...cc, text, editedAt: new Date().toISOString() }
+                                    : cc
+                                ),
+                              }
+                            : pp
+                        )
+                      );
+
+                      setEditingCommentKey(null);
+                      setEditCommentDraft("");
+
+                      try {
+                        const nextComments = (p.comments || []).map((cc) =>
+                          cc.id === c.id
+                            ? { ...cc, text, editedAt: new Date().toISOString() }
+                            : cc
+                        );
+
+                        const { error } = await supabase
+                          .from("hub_posts")
+                          .update({ comments: nextComments })
+                          .eq("id", p.id);
+
+                        if (error) throw error;
+
+                        await fetchHubPosts();
+                      } catch (err) {
+                        console.error("editHubComment error:", err);
+                        alert("Yorum güncellenemedi.");
+                        try {
+                          await fetchHubPosts();
+                        } catch (_) {}
+                      }
+                    }}
+                    style={{ padding: "8px 14px" }}
+                  >
+                    Kaydet
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              c.text
+            )}
+          </div>
+        </div>
+      );
+    })}
+</div>
+
+{/* comment input (HER ZAMAN EN ALTA) */}
+<div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+  <input
+    placeholder={user ? "Yorum yaz..." : "Yorum için giriş yap"}
+    value={commentDraft[p.id] || ""}
+    onChange={(e) => setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))}
+    onFocus={() => {
+      if (!user) setShowAuth(true);
+    }}
+    style={inputStyle(ui, { padding: "10px 12px" })}
+  />
+  <Button ui={ui} variant="solidBlue" onClick={() => hubComment(p.id)}>
+    Gönder
+  </Button>
+</div>
                     </div>
                   </Card>
                 ))}
@@ -4536,17 +5062,38 @@ return (
                     <div>
                       <div style={{ fontSize: 18, fontWeight: 950 }}>@{user.username}</div>
                       <div style={{ color: ui.muted, marginTop: 4 }}>
-                        Üyelik: {user.tier ?? user.Tier ?? "Onaylı işletme"} • XP: {user.xp ?? user.XP ?? 0}
-                      </div>
+  XP: {user.xp ?? user.XP ?? 0}
+</div>
                       <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
                         Kayıt: {fmt(user.createdAt || new Date().toISOString())}
                       </div>
+                      {/* Ek profil alanları (boşsa gösterme) */}
+                      {(() => {
+                        const ageVal = user?.age;
+                        const cityVal = String(user?.city || "").trim();
+                        const stateVal = String(user?.state || "").trim();
+                        const bioVal = String(user?.bio || "").trim();
+                        const loc = [cityVal, stateVal].filter(Boolean).join(", ");
+
+                        return (
+                          <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
+                            {ageVal ? <div style={{ color: ui.muted, fontSize: 13 }}>Yaş: {ageVal}</div> : null}
+                            {loc ? <div style={{ color: ui.muted, fontSize: 13 }}>Konum: {loc}</div> : null}
+                            {bioVal ? (
+                              <div style={{ color: ui.muted, fontSize: 13, whiteSpace: "pre-wrap" }}>
+                                {bioVal}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
+
                   <UserAvatarInput onBase64={(b64) => setMyAvatar(b64)} />
 
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "grid", gap: 10, maxWidth: 340 }}>
                     {/* ✅ Profili Düzenle (self edit) */}
                     <Button
                       ui={ui}
@@ -4557,11 +5104,14 @@ return (
                         setEditUserCtx({
                           ...user,
                           xp: user.xp ?? user.XP ?? 0,
-                          tier: user.tier ?? user.Tier ?? "Onaylı İşletme",
                           createdAt: user.createdAt || new Date().toISOString(),
+                          age: user.age ?? "",
+city: user.city ?? "",
+state: user.state ?? "",
+bio: user.bio ?? "",
                         });
                       }}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
                       title="Profilini düzenle"
                     >
                       <IconBase size={18}>
@@ -4570,21 +5120,6 @@ return (
                         <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z" />
                       </IconBase>
                       Profili Düzenle
-                    </Button>
-
-                    {/* ✅ Profil Fotoğrafı (emoji yok) */}
-                    <Button
-                      ui={ui}
-                      onClick={() => userAvatarPicker.pick()}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-                      title="Profil fotoğrafını değiştir"
-                    >
-                      <IconBase size={18}>
-                        {/* camera icon */}
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                        <circle cx="12" cy="13" r="4" />
-                      </IconBase>
-                      Profil Fotoğrafı
                     </Button>
 
                     {/* Profil görünümü (modal) */}
@@ -4598,7 +5133,7 @@ return (
                         });
                         setProfileOpen(true);
                       }}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
                       title="Profilini görüntüle"
                     >
                       <IconBase size={18}>
@@ -4607,6 +5142,25 @@ return (
                         <path d="M4 20a8 8 0 0 1 16 0" />
                       </IconBase>
                       Profil Görünümü
+                    </Button>
+
+                    <Button
+                      ui={ui}
+                      onClick={() => setShowSettings(true)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
+                      title="Ayarlar"
+                    >
+                      <SettingsIcon size={18} /> Ayarlar
+                    </Button>
+
+                    <Button
+                      ui={ui}
+                      variant="danger"
+                      onClick={logout}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
+                      title="Çıkış Yap"
+                    >
+                      <LogoutIcon size={18} /> Çıkış Yap
                     </Button>
                   </div>
                 </div>
@@ -4796,8 +5350,8 @@ return (
                           <Chip ui={ui} onClick={() => openProfileByUsername(u.username)}>
                             @{u.username}
                           </Chip>
-                          <span style={{ color: ui.muted }}>Tier: {u.Tier || "Onaylı İşletme"}</span>
-                          <span style={{ color: ui.muted }}>XP: {u.xp || 0}</span>
+                          <span style={{ color: ui.muted }}>Durum: {u.Tier || "Onaylı"}</span>
+<span style={{ color: ui.muted }}>Katkı: {u.xp || 0}</span>
                         </div>
                         <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(u.createdAt)}</div>
                       </div>
@@ -5219,13 +5773,6 @@ return (
           <div style={{ fontSize: 13, fontWeight: 900, color: ui.blue }}>
             XP: {editUserCtx.xp ?? 0}
           </div>
-
-          <div style={{ fontSize: 13, color: ui.muted }}>
-            Profil Durumu:{" "}
-            <b style={{ color: ui.text }}>
-              {(editUserCtx.tier || "Verified").toUpperCase()}
-            </b>
-          </div>
         </div>
       </div>
 
@@ -5338,25 +5885,50 @@ return (
         />
       </div>
 
-      {/* ✅ HESAP DURUMU */}
+      {/* AGE */}
 <div>
-  <div style={{ fontWeight: 950, fontSize: 14, marginBottom: 6 }}>
-    Hesap Durumu
-  </div>
-
-  {/* 🔒 Kullanıcıya satın alma / değiştirme hissi vermesin diye select KALDIRILDI */}
-  <div style={{ fontSize: 13, color: ui.muted }}>
-    {((editUserCtx.tier || "Onaylı İşletme").toLowerCase() === "verified") ? (
-      <>
-        Doğrulanmış Profil
-      </>
-    ) : (
-      <>
-        Verified
-      </>
-    )}
-  </div>
+  <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Yaş</div>
+  <input
+    value={String(editUserCtx.age || "")}
+    onChange={(e) => setEditUserCtx((p) => ({ ...p, age: e.target.value }))}
+    placeholder="Örn: 28"
+    style={inputStyle(ui)}
+  />
 </div>
+
+{/* CITY */}
+<div>
+  <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Şehir</div>
+  <input
+    value={String(editUserCtx.city || "")}
+    onChange={(e) => setEditUserCtx((p) => ({ ...p, city: e.target.value }))}
+    placeholder="Örn: Los Angeles"
+    style={inputStyle(ui)}
+  />
+</div>
+
+{/* STATE */}
+<div>
+  <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Eyalet</div>
+  <input
+    value={String(editUserCtx.state || "")}
+    onChange={(e) => setEditUserCtx((p) => ({ ...p, state: e.target.value }))}
+    placeholder="Örn: CA"
+    style={inputStyle(ui)}
+  />
+</div>
+
+{/* BIO */}
+<div>
+  <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Bio</div>
+  <textarea
+    value={String(editUserCtx.bio || "")}
+    onChange={(e) => setEditUserCtx((p) => ({ ...p, bio: e.target.value }))}
+    placeholder="Kendini kısaca tanıt…"
+    style={inputStyle(ui, { minHeight: 110, resize: "vertical" })}
+  />
+</div>
+
 
       {/* AKSİYONLAR */}
       <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
@@ -5632,11 +6204,8 @@ return (
         <div>
           <div style={{ fontSize: 18, fontWeight: 950 }}>@{profileData.user.username}</div>
           <div style={{ color: ui.muted, marginTop: 4 }}>
-  Profil Durumu:{" "}
-  <b style={{ color: ui.text }}>
-    VERIFIED
-  </b>
-  {" • "}XP: {profileData.user.xp || 0}
+  Hesap Durumu: <b style={{ color: ui.text }}>Onaylı</b>
+{" • "}Katkı Puanı: {profileData.user.xp || 0}
 </div>
           <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
             Kayıt: {fmt(profileData.user.createdAt)}
