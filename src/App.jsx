@@ -70,16 +70,6 @@ function ensureSeed() {
     lsSet(KEY.USERS, [
       {
         id: uid(),
-        username: "secer",
-        email: "secer@example.com",
-        providers: { apple: { sub: "apple_seed_secer" } },
-        tier: "Onaylı",
-        xp: 12000,
-        createdAt: now(),
-        avatar: "",
-      },
-      {
-        id: uid(),
         username: "vicdan",
         email: "vicdan@example.com",
         providers: { google: { sub: "google_seed_vicdan" } },
@@ -111,21 +101,6 @@ function ensureSeed() {
     lsSet(KEY.BIZ, [
       {
         id: uid(),
-        name: "Secer Auto",
-        ownerUsername: "secer",
-        category: "Araç Bayileri",
-        status: "approved",
-        address: "Los Angeles, CA",
-        phone: "+1 310 555 0101",
-        city: "Los Angeles, California",
-        desc: "Araç alım-satım • Finans & sigorta yönlendirme • Güvenilir süreç",
-        avatar: "",
-        createdAt: now(),
-        approvedAt: now(),
-        approvedBy: "secer",
-      },
-      {
-        id: uid(),
         name: "Turkish Market LA",
         ownerUsername: "vicdan",
         category: "Türk Marketleri",
@@ -138,21 +113,6 @@ function ensureSeed() {
         createdAt: now(),
         approvedAt: now(),
         approvedBy: "vicdan",
-      },
-      {
-        id: uid(),
-        name: "AydinStay",
-        ownerUsername: "secer",
-        category: "Konaklama",
-        status: "approved",
-        address: "West Hollywood, CA",
-        phone: "+1 424 555 0133",
-        city: "Los Angeles, California",
-        desc: "Kısa dönem konaklama • Temiz ve güvenilir • Türkçe iletişim",
-        avatar: "",
-        createdAt: now(),
-        approvedAt: now(),
-        approvedBy: "secer",
       },
     ]);
   }
