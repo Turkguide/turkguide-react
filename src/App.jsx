@@ -288,7 +288,7 @@ function Card({ ui, children, style }) {
   );
 }
 
-function Button({ ui, children, onClick, variant = "default", disabled, style, title, type }) {
+function Button({ ui, children, onClick, onMouseDown, variant = "default", disabled, style, title, type }) {
   const base = {
     padding: "10px 16px",
     borderRadius: 999,
@@ -315,11 +315,17 @@ function Button({ ui, children, onClick, variant = "default", disabled, style, t
       : null;
 
   return (
-    <button type={type || "button"} onClick={onClick} disabled={disabled} style={{ ...base, ...(v || {}), ...(style || {}) }} title={title}>
-      {children}
-    </button>
-  );
-}
+  <button
+    type={type || "button"}
+    onMouseDown={onMouseDown}
+    onClick={onClick}
+    disabled={disabled}
+    style={{ ...base, ...(v || {}), ...(style || {}) }}
+    title={title}
+  >
+    {children}
+  </button>
+);
 
 function Chip({ ui, children, active, onClick, style, title }) {
   const clickable = typeof onClick === "function";
@@ -5229,7 +5235,11 @@ bio: user.bio ?? "",
                     <Button
                       ui={ui}
                       variant="danger"
-                      onClick={logout}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        logout();
+                      }}
                       style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center", width: "100%" }}
                       title="Çıkış Yap"
                     >
