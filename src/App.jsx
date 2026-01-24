@@ -1916,27 +1916,26 @@ useEffect(() => {
 
       const session = data?.session;
       if (session?.user) {
-  const md = session.user.user_metadata || {};
+        const md = session.user.user_metadata || {};
+        setUser((prev) => ({
+          ...(prev || {}),
+          id: session.user.id,
+          email: session.user.email,
+          username: md.username ?? prev?.username ?? null,
+          avatar: md.avatar ?? prev?.avatar ?? "",
+          Tier: md.tier ?? md.Tier ?? prev?.Tier ?? null,
+          XP: Number(md.xp ?? md.XP ?? prev?.XP ?? 0),
+          createdAt: md.createdAt ?? prev?.createdAt ?? null,
+          age: md.age ?? prev?.age ?? "",
+          city: md.city ?? prev?.city ?? "",
+          state: md.state ?? prev?.state ?? "",
+          bio: md.bio ?? prev?.bio ?? "",
+        }));
 
-  setUser((prev) => ({
-    ...(prev || {}),
-    id: session.user.id,
-    email: session.user.email,
-    username: md.username ?? prev?.username ?? null,
-    avatar: md.avatar ?? prev?.avatar ?? "",
-    Tier: md.tier ?? md.Tier ?? prev?.Tier ?? null,
-    XP: Number(md.xp ?? md.XP ?? prev?.XP ?? 0),
-    createdAt: md.createdAt ?? prev?.createdAt ?? null,
-    age: md.age ?? prev?.age ?? "",
-    city: md.city ?? prev?.city ?? "",
-    state: md.state ?? prev?.state ?? "",
-    bio: md.bio ?? prev?.bio ?? "",
-  }));
-
-  await ensureMyPublicProfileRow(session.user);
-} else {
-  setUser(null);
-}
+        await ensureMyPublicProfileRow(session.user);
+      } else {
+        setUser(null);
+      }
 
       // 2) Auth listener (login/logout/refresh değişimlerinde state güncelle)
       const { data: subData } = supabase.auth.onAuthStateChange((_event, s) => {
