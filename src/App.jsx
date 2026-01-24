@@ -1415,203 +1415,15 @@ function deletePost(postId) {
   const [dmTarget, setDmTarget] = useState(null);
   const [dmText, setDmText] = useState("");
 
-  {/* LIKED BY MODAL */}
-<Modal
-  ui={ui}
-  open={showLikedBy}
-  title="Kimler Beğendi"
-  onClose={() => {
-    setShowLikedBy(false);
-    setLikedByPost(null);
-  }}
-  width={520}
->
-  <div style={{ display: "grid", gap: 10 }}>
-    {!likedByPost ? (
-      <div style={{ color: ui.muted }}>Post seçilmedi.</div>
-    ) : (
-      <>
-        <div style={{ color: ui.muted2, fontSize: 12 }}>
-          @{hubPostAuthor(likedByPost)} • {fmt(likedByPost.createdAt)}
-        </div>
+  // ✅ Public avatar resolver (reads from auth user -> local users[] -> cached public.profiles)
+  // NOTE: Must be sync because it is used inside render. We fetch missing avatars in the background
+  // and cache them so the UI re-renders when the avatar arrives.
+  const [profileAvatarCache, setProfileAvatarCache] = useState({});
+  const inFlightAvatarFetch = useRef({});
 
-        {Array.isArray(likedByPost.likedBy) && likedByPost.likedBy.length > 0 ? (
-          <div style={{ display: "grid", gap: 8 }}>
-            {likedByPost.likedBy
-              .slice()
-              .reverse()
-              .map((uname, idx) => (
-                <div
-                  key={`${uname}-${idx}`}
-                  onClick={() => {
-                    setShowLikedBy(false);
-                    setLikedByPost(null);
-                    openProfileByUsername(uname);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 12px",
-                    borderRadius: 14,
-                    border: `1px solid ${ui.border}`,
-                    background:
-                      ui.mode === "light"
-                        ? "rgba(0,0,0,0.02)"
-                        : "rgba(255,255,255,0.03)",
-                    cursor: "pointer",
-                    userSelect: "none",
-                  }}
-                  title="Profile git"
-                >
-                  <Avatar ui={ui} src={avatarByUsername(uname)} size={28} label={uname} />
-                  <div style={{ fontWeight: 900, fontSize: 13, color: ui.text }}>
-                    @{uname}
-                  </div>
-                </div>
-              ))}
-          </div>
-        ) : (
-          <div style={{ color: ui.muted }}>Henüz beğeni yok.</div>
-        )}
-      </>
-    )}
-
-    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
-      <Button
-        ui={ui}
-        onClick={() => {
-          setShowLikedBy(false);
-          setLikedByPost(null);
-        }}
-      >
-        Kapat
-      </Button>
-    </div>
-  </div>
-</Modal>
-
-  {/* PROFILE MODAL */}
-  <Modal
-    ui={ui}
-    open={profileOpen}
-    title="Profil"
-    onClose={() => setProfileOpen(false)}
-    onBack={() => setProfileOpen(false)}
-    showBack
-    width={500}
-    iconClose
-  >
-    {(() => {
-      // --- Target user resolution block (see instructions) ---
-      const viewedUser = (() => {
-        if (!profileTarget || profileTarget.type !== "user") return null;
-
-        const uname = String(profileTarget.username || "").trim();
-        const key = normalizeUsername(uname);
-
-        // 1) If the opened profile is me, use `user` state (it has freshest metadata)
-        if (user && normalizeUsername(user.username) === key) return user;
-
-        // 2) Prefer userId match (username can change)
-        if (profileTarget.userId) {
-          const byId = (users || []).find((x) => String(x?.id || "") === String(profileTarget.userId));
-          if (byId) return byId;
-        }
-
-        // 3) Fallback: username match
-        const byU = (users || []).find((x) => normalizeUsername(x?.username) === key);
-        if (byU) return byU;
-
-        // 4) Fallback: public profile cache (Supabase)
-        const pub = publicProfileCache?.[key];
-        if (pub) return pub;
-
-        return null;
-      })();
-
-      const viewedAge = viewedUser?.age;
-      const viewedCity = String(viewedUser?.city || "").trim();
-      const viewedState = String(viewedUser?.state || "").trim();
-      const viewedBio = String(viewedUser?.bio || "").trim();
-      const viewedLoc = [viewedCity, viewedState].filter(Boolean).join(", ");
-
-      // --- END Target user resolution block ---
-
-      // --- Profile modal body ---
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <Avatar
-              ui={ui}
-              src={viewedUser?.avatar || avatarByUsername(profileTarget?.username)}
-              size={60}
-              label={viewedUser?.username || profileTarget?.username}
-            />
-            {/* Profile summary/info block */}
-            <div style={{ display: "grid", gap: 4 }}>
-              <div style={{ fontSize: 18, fontWeight: 950 }}>@{viewedUser?.username || profileTarget?.username}</div>
-
-              {viewedUser?.createdAt ? (
-                <div style={{ color: ui.muted, fontSize: 13 }}>
-                  Kayıt: {fmt(viewedUser.createdAt)}
-                </div>
-              ) : null}
-
-              {/* ✅ Extra profile fields (boşsa gösterme) */}
-              {viewedAge ? <div style={{ color: ui.muted, fontSize: 13 }}>Yaş: {viewedAge}</div> : null}
-              {viewedLoc ? <div style={{ color: ui.muted, fontSize: 13 }}>Konum: {viewedLoc}</div> : null}
-              {viewedBio ? (
-                <div style={{ color: ui.muted, fontSize: 13, whiteSpace: "pre-wrap" }}>
-                  {viewedBio}
-                </div>
-              ) : null}
-            </div>
-          </div>
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {/* Example action: Mesaj Gönder */}
-            {viewedUser && user && normalizeUsername(user.username) !== normalizeUsername(viewedUser.username) && (
-              <Button ui={ui} variant="blue" onClick={() => openDmToUser(viewedUser.username)}>
-                Mesaj Gönder
-              </Button>
-            )}
-          </div>
-          <Divider ui={ui} />
-          {/* Sahip olduğu işletmeler */}
-          <div>
-            <div style={{ fontWeight: 950, marginBottom: 6 }}>Sahip olduğu işletmeler</div>
-            {(biz || [])
-              .filter(
-                (b) =>
-                  b?.ownerUsername &&
-                  viewedUser &&
-                  normalizeUsername(b.ownerUsername) === normalizeUsername(viewedUser.username)
-              )
-              .map((b) => (
-                <div
-                  key={b.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 0",
-                    borderBottom: `1px solid ${ui.border}`,
-                  }}
-                >
-                  <Avatar ui={ui} src={b.avatar} size={32} label={b.name} />
-                  <div>
-                    <div style={{ fontWeight: 900 }}>{b.name}</div>
-                    <div style={{ fontSize: 13, color: ui.muted }}>{b.category}</div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      );
-      // --- END Profile modal body ---
-    })()}
-  </Modal>
+  // ✅ Public profile cache (id/username/avatar/fields) — profile modal can use this when users[] doesn't have the user
+  const [publicProfileCache, setPublicProfileCache] = useState({});
+  const inFlightPublicProfileFetch = useRef({});
 
   // Appointment modal
   const [showAppt, setShowAppt] = useState(false);
@@ -2371,15 +2183,6 @@ async function openProfileByUsername(username) {
   }
 }
 
-// ✅ Public avatar resolver (reads from auth user -> local users[] -> cached public.profiles)
-// NOTE: Must be sync because it is used inside render. We fetch missing avatars in the background
-// and cache them so the UI re-renders when the avatar arrives.
-const [profileAvatarCache, setProfileAvatarCache] = useState({});
-const inFlightAvatarFetch = useRef({});
-
-// ✅ Public profile cache (id/username/avatar/fields) — profile modal can use this when users[] doesn't have the user
-const [publicProfileCache, setPublicProfileCache] = useState({});
-const inFlightPublicProfileFetch = useRef({});
 
 async function fetchPublicProfileToCache(usernameKey) {
   if (!usernameKey) return;
@@ -7229,3 +7032,200 @@ useEffect(() => {
     </div>
   );
 }
+    {/* LIKED BY MODAL */}
+    <Modal
+      ui={ui}
+      open={showLikedBy}
+      title="Kimler Beğendi"
+      onClose={() => {
+        setShowLikedBy(false);
+        setLikedByPost(null);
+      }}
+      width={520}
+    >
+      <div style={{ display: "grid", gap: 10 }}>
+        {!likedByPost ? (
+          <div style={{ color: ui.muted }}>Post seçilmedi.</div>
+        ) : (
+          <>
+            <div style={{ color: ui.muted2, fontSize: 12 }}>
+              @{hubPostAuthor(likedByPost)} • {fmt(likedByPost.createdAt)}
+            </div>
+
+            {Array.isArray(likedByPost.likedBy) && likedByPost.likedBy.length > 0 ? (
+              <div style={{ display: "grid", gap: 8 }}>
+                {likedByPost.likedBy
+                  .slice()
+                  .reverse()
+                  .map((uname, idx) => (
+                    <div
+                      key={`${uname}-${idx}`}
+                      onClick={() => {
+                        setShowLikedBy(false);
+                        setLikedByPost(null);
+                        openProfileByUsername(uname);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "10px 12px",
+                        borderRadius: 14,
+                        border: `1px solid ${ui.border}`,
+                        background:
+                          ui.mode === "light"
+                            ? "rgba(0,0,0,0.02)"
+                            : "rgba(255,255,255,0.03)",
+                        cursor: "pointer",
+                        userSelect: "none",
+                      }}
+                      title="Profile git"
+                    >
+                      <Avatar ui={ui} src={avatarByUsername(uname)} size={28} label={uname} />
+                      <div style={{ fontWeight: 900, fontSize: 13, color: ui.text }}>
+                        @{uname}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div style={{ color: ui.muted }}>Henüz beğeni yok.</div>
+            )}
+          </>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+          <Button
+            ui={ui}
+            onClick={() => {
+              setShowLikedBy(false);
+              setLikedByPost(null);
+            }}
+          >
+            Kapat
+          </Button>
+        </div>
+      </div>
+    </Modal>
+
+    {/* PROFILE MODAL */}
+    <Modal
+      ui={ui}
+      open={profileOpen}
+      title="Profil"
+      onClose={() => setProfileOpen(false)}
+      onBack={() => setProfileOpen(false)}
+      showBack
+      width={500}
+      iconClose
+    >
+      {(() => {
+        // --- Target user resolution block (see instructions) ---
+        const viewedUser = (() => {
+          if (!profileTarget || profileTarget.type !== "user") return null;
+
+          const uname = String(profileTarget.username || "").trim();
+          const key = normalizeUsername(uname);
+
+          // 1) If the opened profile is me, use `user` state (it has freshest metadata)
+          if (user && normalizeUsername(user.username) === key) return user;
+
+          // 2) Prefer userId match (username can change)
+          if (profileTarget.userId) {
+            const byId = (users || []).find((x) => String(x?.id || "") === String(profileTarget.userId));
+            if (byId) return byId;
+          }
+
+          // 3) Fallback: username match
+          const byU = (users || []).find((x) => normalizeUsername(x?.username) === key);
+          if (byU) return byU;
+
+          // 4) Fallback: public profile cache (Supabase)
+          const pub = publicProfileCache?.[key];
+          if (pub) return pub;
+
+          return null;
+        })();
+
+        const viewedAge = viewedUser?.age;
+        const viewedCity = String(viewedUser?.city || "").trim();
+        const viewedState = String(viewedUser?.state || "").trim();
+        const viewedBio = String(viewedUser?.bio || "").trim();
+        const viewedLoc = [viewedCity, viewedState].filter(Boolean).join(", ");
+
+        // --- END Target user resolution block ---
+
+        // --- Profile modal body ---
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+              <Avatar
+                ui={ui}
+                src={viewedUser?.avatar || avatarByUsername(profileTarget?.username)}
+                size={60}
+                label={viewedUser?.username || profileTarget?.username}
+              />
+              {/* Profile summary/info block */}
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ fontSize: 18, fontWeight: 950 }}>@{viewedUser?.username || profileTarget?.username}</div>
+
+                {viewedUser?.createdAt ? (
+                  <div style={{ color: ui.muted, fontSize: 13 }}>
+                    Kayıt: {fmt(viewedUser.createdAt)}
+                  </div>
+                ) : null}
+
+                {/* ✅ Extra profile fields (boşsa gösterme) */}
+                {viewedAge ? <div style={{ color: ui.muted, fontSize: 13 }}>Yaş: {viewedAge}</div> : null}
+                {viewedLoc ? <div style={{ color: ui.muted, fontSize: 13 }}>Konum: {viewedLoc}</div> : null}
+                {viewedBio ? (
+                  <div style={{ color: ui.muted, fontSize: 13, whiteSpace: "pre-wrap" }}>
+                    {viewedBio}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {/* Example action: Mesaj Gönder */}
+              {viewedUser && user && normalizeUsername(user.username) !== normalizeUsername(viewedUser.username) && (
+                <Button ui={ui} variant="blue" onClick={() => openDmToUser(viewedUser.username)}>
+                  Mesaj Gönder
+                </Button>
+              )}
+            </div>
+            <Divider ui={ui} />
+            {/* Sahip olduğu işletmeler */}
+            <div>
+              <div style={{ fontWeight: 950, marginBottom: 6 }}>Sahip olduğu işletmeler</div>
+              {(biz || [])
+                .filter(
+                  (b) =>
+                    b?.ownerUsername &&
+                    viewedUser &&
+                    normalizeUsername(b.ownerUsername) === normalizeUsername(viewedUser.username)
+                )
+                .map((b) => (
+                  <div
+                    key={b.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "8px 0",
+                      borderBottom: `1px solid ${ui.border}`,
+                    }}
+                  >
+                    <Avatar ui={ui} src={b.avatar} size={32} label={b.name} />
+                    <div>
+                      <div style={{ fontWeight: 900 }}>{b.name}</div>
+                      <div style={{ fontSize: 13, color: ui.muted }}>{b.category}</div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        );
+        // --- END Profile modal body ---
+      })()}
+    </Modal>
