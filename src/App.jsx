@@ -321,7 +321,7 @@ function Chip({ ui, children, active, onClick, style, title }) {
   );
 }
 
-function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999, iconClose = false }) {
+function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999, iconClose = false, showBack = false, onBack }) {
   if (!open) return null;
 
   return (
@@ -330,19 +330,14 @@ function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999, 
         position: "fixed",
         inset: 0,
         background: "rgba(0,0,0,0.55)",
-
-        // ✅ Mobile keyboard + small screens: keep modal top-visible and scrollable
         display: "flex",
         alignItems: "flex-start",
         justifyContent: "center",
-
         padding: "16px",
         paddingTop: "calc(16px + env(safe-area-inset-top))",
         paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
-
         overflowY: "auto",
         WebkitOverflowScrolling: "touch",
-
         zIndex,
       }}
       onMouseDown={onClose}
@@ -350,26 +345,44 @@ function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999, 
       <div
         style={{
           width: `min(${width}px, 100%)`,
-
-          // ✅ Use dynamic viewport height so iOS keyboard doesn't hide the bottom
           maxHeight: "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
-
           borderRadius: 22,
           border: `1px solid ${ui.border}`,
           background: ui.mode === "light" ? "rgba(255,255,255,0.98)" : "rgba(10,12,18,0.96)",
           boxShadow: "0 40px 120px rgba(0,0,0,0.35)",
-
-          // ✅ Make inner content scroll, not the whole dialog jumping
           display: "flex",
           flexDirection: "column",
-
           padding: 16,
           color: ui.text,
         }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flex: "0 0 auto" }}>
-          <div style={{ fontSize: 16, fontWeight: 950 }}>{title}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            {showBack ? (
+              <Button
+                ui={ui}
+                onClick={() => (typeof onBack === "function" ? onBack() : onClose?.())}
+                title="Geri"
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 14,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <IconBase size={18}>
+                  <path d="M15 18l-6-6 6-6" />
+                </IconBase>
+              </Button>
+            ) : null}
+
+            <div style={{ fontSize: 16, fontWeight: 950, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {title}
+            </div>
+          </div>
+
           <Button
             ui={ui}
             onClick={onClose}
@@ -1483,6 +1496,8 @@ function deletePost(postId) {
     open={profileOpen}
     title="Profil"
     onClose={() => setProfileOpen(false)}
+    onBack={() => setProfileOpen(false)}
+    showBack
     width={500}
     iconClose
   >
