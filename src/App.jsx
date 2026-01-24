@@ -321,7 +321,7 @@ function Chip({ ui, children, active, onClick, style, title }) {
   );
 }
 
-function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999 }) {
+function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999, iconClose = false }) {
   if (!open) return null;
 
   return (
@@ -370,7 +370,21 @@ function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999 }
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flex: "0 0 auto" }}>
           <div style={{ fontSize: 16, fontWeight: 950 }}>{title}</div>
-          <Button ui={ui} onClick={onClose}>Kapat</Button>
+          <Button
+            ui={ui}
+            onClick={onClose}
+            title="Kapat"
+            style={{ padding: "10px 12px", borderRadius: 14, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {iconClose ? (
+              <IconBase size={18}>
+                <path d="M18 6L6 18" />
+                <path d="M6 6l12 12" />
+              </IconBase>
+            ) : (
+              "Kapat"
+            )}
+          </Button>
         </div>
 
         <div
@@ -1470,6 +1484,7 @@ function deletePost(postId) {
     title="Profil"
     onClose={() => setProfileOpen(false)}
     width={500}
+    iconClose
   >
     {(() => {
       // --- Target user resolution block (see instructions) ---
@@ -3614,7 +3629,7 @@ function markThreadRead(target) {
 const profileData = useMemo(() => {
   if (!profileTarget) return null;
 
-  // 👤 USER PROFİLİ
+// 👤 USER PROFİLİ
   if (profileTarget.type === "user") {
     // ✅ Kendi profilim: local users[] yerine auth user state'ini kullan
     if (user && normalizeUsername(user.username) === normalizeUsername(profileTarget.username)) {
@@ -3634,17 +3649,17 @@ const profileData = useMemo(() => {
     }
 
     // 👥 Başka kullanıcı (local users[]'tan)
-const targetUname = resolveUsernameAlias(profileTarget.username);
+    const targetUname = resolveUsernameAlias(profileTarget.username);
 
-// 1) Eğer userId geldiyse önce id ile bul (en sağlamı)
-let u = profileTarget.userId ? users.find((x) => String(x.id) === String(profileTarget.userId)) : null;
+    // 1) Eğer userId geldiyse önce id ile bul (en sağlamı)
+    let u = profileTarget.userId ? users.find((x) => String(x.id) === String(profileTarget.userId)) : null;
 
-// 2) Bulunamazsa username (alias çözülmüş) ile dene
-if (!u) {
-  u = users.find((x) => normalizeUsername(x.username) === normalizeUsername(targetUname));
-}
+    // 2) Bulunamazsa username (alias çözülmüş) ile dene
+    if (!u) {
+      u = users.find((x) => normalizeUsername(x.username) === normalizeUsername(targetUname));
+    }
 
-if (!u) return null;
+    if (!u) return null;
 
     const owned = biz.filter(
       (b) => normalizeUsername(b.ownerUsername) === normalizeUsername(u.username) && b.status === "approved"
@@ -3654,33 +3669,275 @@ if (!u) return null;
   }
 
   // 🏢 BİZ PROFİLİ
-if (profileTarget.type === "biz") {
-  const b = biz.find((x) => x.id === profileTarget.bizId);
-  if (!b) return null;
+  if (profileTarget.type === "biz") {
+    const b = biz.find((x) => x.id === profileTarget.bizId);
+    if (!b) return null;
 
-  const resolvedOwner = resolveUsernameAlias(b.ownerUsername);
+    const resolvedOwner = resolveUsernameAlias(b.ownerUsername);
 
-  const ownerFromAuth =
-    user && normalizeUsername(user.username) === normalizeUsername(resolvedOwner)
-      ? user
-      : null;
+    const ownerFromAuth =
+      user && normalizeUsername(user.username) === normalizeUsername(resolvedOwner)
+        ? user
+        : null;
 
-  const ownerFromLocal = users.find(
-    (x) => normalizeUsername(x.username) === normalizeUsername(resolvedOwner)
-  );
+    const ownerFromLocal = users.find(
+      (x) => normalizeUsername(x.username) === normalizeUsername(resolvedOwner)
+    );
 
-  return {
-    type: "biz",
-    biz: {
-      ...b,
-      ownerUsername: resolvedOwner,
-    },
-    owner: ownerFromAuth || ownerFromLocal || null,
-  };
-}
+    return {
+      type: "biz",
+      biz: {
+        ...b,
+        ownerUsername: resolvedOwner,
+      },
+      owner: ownerFromAuth || ownerFromLocal || null,
+    };
+  }
 
-return null;
+  return null;
 }, [profileTarget, users, biz, user]);
+    {/* === PROFILE MODAL === */}
+    {profileOpen && (
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 1000,
+          background: "rgba(0,0,0,0.34)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+        onClick={() => {
+          setProfileOpen(false);
+          setProfileTarget(null);
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            minWidth: 320,
+            maxWidth: 420,
+            width: "90vw",
+            background: ui.panel,
+            borderRadius: 18,
+            boxShadow: `0 18px 40px ${ui.glow}`,
+            border: `1px solid ${ui.border}`,
+            padding: 0,
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          {/* Modal Header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "10px 18px 10px 8px",
+              borderBottom: `1px solid ${ui.border}`,
+              minHeight: 48,
+              gap: 8,
+            }}
+          >
+            {/* Left: Back button */}
+            <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center" }}>
+              <button
+                type="button"
+                aria-label="Geri"
+                title="Geri"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={() => {
+                  setProfileOpen(false);
+                  setProfileTarget(null);
+                }}
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  border: `1px solid ${ui.border}`,
+                  background: ui.mode === "light" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.25)",
+                  color: ui.text,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  padding: 0,
+                  lineHeight: 1,
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+            </div>
+            {/* Center: Title */}
+            <div style={{ flex: 1, textAlign: "center", fontWeight: 900, fontSize: 18, letterSpacing: -0.2 }}>
+              {profileData?.type === "user"
+                ? "Profil"
+                : profileData?.type === "biz"
+                ? "İşletme"
+                : ""}
+            </div>
+            {/* Right: Close button */}
+            <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center" }}>
+              <button
+                type="button"
+                aria-label="Kapat"
+                title="Kapat"
+                onClick={() => {
+                  setProfileOpen(false);
+                  setProfileTarget(null);
+                }}
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  border: `1px solid ${ui.border}`,
+                  background: ui.mode === "light" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.25)",
+                  color: ui.text,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  padding: 0,
+                  lineHeight: 1,
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          {/* Modal Content */}
+          <div style={{ padding: 24 }}>
+            {/* Render profile content here */}
+            {profileData?.type === "user" ? (
+              <div>
+                {/* User avatar and info */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                  <Avatar ui={ui} src={profileData.user.avatar} size={80} label={profileData.user.username} />
+                  <div style={{ fontWeight: 900, fontSize: 20 }}>
+                    @{profileData.user.username}
+                  </div>
+                  {profileData.user.bio && (
+                    <div style={{ color: ui.muted, fontSize: 14, marginTop: 4, textAlign: "center" }}>
+                      {profileData.user.bio}
+                    </div>
+                  )}
+                  {profileData.user.city && (
+                    <div style={{ color: ui.muted2, fontSize: 13, marginTop: 2 }}>
+                      {profileData.user.city}
+                    </div>
+                  )}
+                </div>
+                {/* User's businesses */}
+                {profileData.owned && profileData.owned.length > 0 && (
+                  <div style={{ marginTop: 22 }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 6 }}>İşletmeleri</div>
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {profileData.owned.map((b) => (
+                        <div
+                          key={b.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            border: `1px solid ${ui.border}`,
+                            borderRadius: 12,
+                            padding: "8px 12px",
+                            background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
+                            cursor: "pointer",
+                          }}
+                          onClick={() => openProfileBiz(b.id)}
+                        >
+                          <Avatar ui={ui} src={b.avatar} size={32} label={b.name} />
+                          <div style={{ fontWeight: 900 }}>{b.name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : profileData?.type === "biz" ? (
+              <div>
+                {/* Biz avatar and info */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                  <Avatar ui={ui} src={profileData.biz.avatar} size={80} label={profileData.biz.name} />
+                  <div style={{ fontWeight: 900, fontSize: 20 }}>
+                    {profileData.biz.name}
+                  </div>
+                  {profileData.biz.desc && (
+                    <div style={{ color: ui.muted, fontSize: 14, marginTop: 4, textAlign: "center" }}>
+                      {profileData.biz.desc}
+                    </div>
+                  )}
+                  {(profileData.biz.address || profileData.biz.city) && (
+                    <div style={{ color: ui.muted2, fontSize: 13, marginTop: 2 }}>
+                      {profileData.biz.address || profileData.biz.city}
+                    </div>
+                  )}
+                </div>
+                {/* Owner info */}
+                {profileData.owner ? (
+                  <div style={{ marginTop: 22 }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 6 }}>Sahibi</div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        border: `1px solid ${ui.border}`,
+                        borderRadius: 12,
+                        padding: "8px 12px",
+                        background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
+                        cursor: "pointer",
+                        maxWidth: 220,
+                      }}
+                      onClick={() => openProfileByUsername(profileData.owner.username)}
+                    >
+                      <Avatar ui={ui} src={profileData.owner.avatar} size={32} label={profileData.owner.username} />
+                      <div style={{ fontWeight: 900 }}>@{profileData.owner.username}</div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div style={{ color: ui.muted, textAlign: "center" }}>Profil bulunamadı.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
 
 const filteredBiz = useMemo(() => {
   const q = normalizeUsername(landingSearch);
