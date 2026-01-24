@@ -1690,24 +1690,40 @@ async function onPickHubMediaFile(e) {
       }))
     );
 
-    // Postlar
+    // Postlar (HUB) — hem byUsername (new) hem by (legacy) güncelle
     setPosts((prev) =>
-      prev.map((p) => ({
-        ...p,
-        by: normalizeUsername(p.by) === oldN ? newU : p.by,
-        comments: Array.isArray(p.comments)
-          ? p.comments.map((c) => ({
-              ...c,
-              by: normalizeUsername(c.by) === oldN ? newU : c.by,
-              replies: Array.isArray(c.replies)
-                ? c.replies.map((r) => ({
-                    ...r,
-                    by: normalizeUsername(r.by) === oldN ? newU : r.by,
-                  }))
-                : c.replies,
-            }))
-          : p.comments,
-      }))
+      (prev || []).map((p) => {
+        const nextP = {
+          ...p,
+          byUsername:
+            p?.byUsername != null && normalizeUsername(p.byUsername) === oldN ? newU : p?.byUsername,
+          by: p?.by != null && normalizeUsername(p.by) === oldN ? newU : p?.by,
+        };
+
+        const nextComments = Array.isArray(p?.comments)
+          ? (p.comments || []).map((c) => {
+              const nextC = {
+                ...c,
+                byUsername:
+                  c?.byUsername != null && normalizeUsername(c.byUsername) === oldN ? newU : c?.byUsername,
+                by: c?.by != null && normalizeUsername(c.by) === oldN ? newU : c?.by,
+              };
+
+              if (Array.isArray(c?.replies)) {
+                nextC.replies = (c.replies || []).map((r) => ({
+                  ...r,
+                  byUsername:
+                    r?.byUsername != null && normalizeUsername(r.byUsername) === oldN ? newU : r?.byUsername,
+                  by: r?.by != null && normalizeUsername(r.by) === oldN ? newU : r?.by,
+                }));
+              }
+
+              return nextC;
+            })
+          : p?.comments;
+
+        return { ...nextP, comments: nextComments };
+      })
     );
 
     // İşletmeler (ownerUsername / approvedBy)
@@ -5346,11 +5362,13 @@ return (
                         if (error) throw error;
 
                         await fetchHubPosts();
+                        try { await fetchProfiles(); } catch (_) {}
                       } catch (err) {
                         console.error("editHubComment error:", err);
                         alert("Yorum güncellenemedi.");
                         try {
                           await fetchHubPosts();
+                          try { await fetchProfiles(); } catch (_) {}
                         } catch (_) {}
                       }
                     }}
