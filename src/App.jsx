@@ -1412,121 +1412,7 @@ function deletePost(postId) {
 
   
 
-  {/* PROFILE MODAL */}
-  <Modal
-    ui={ui}
-    open={profileOpen}
-    title="Profil"
-    onClose={() => setProfileOpen(false)}
-    onBack={() => setProfileOpen(false)}
-    showBack
-    width={500}
-    iconClose
-  >
-    {(() => {
-      // --- Target user resolution block (see instructions) ---
-      const viewedUser = (() => {
-        if (!profileTarget || profileTarget.type !== "user") return null;
-
-        const uname = String(profileTarget.username || "").trim();
-        const key = normalizeUsername(uname);
-
-        // 1) If the opened profile is me, use `user` state (it has freshest metadata)
-        if (user && normalizeUsername(user.username) === key) return user;
-
-        // 2) Prefer userId match (username can change)
-        if (profileTarget.userId) {
-          const byId = (users || []).find((x) => String(x?.id || "") === String(profileTarget.userId));
-          if (byId) return byId;
-        }
-
-        // 3) Fallback: username match
-        const byU = (users || []).find((x) => normalizeUsername(x?.username) === key);
-        return byU || null;
-      })();
-
-      const viewedAge = viewedUser?.age;
-      const viewedCity = String(viewedUser?.city || "").trim();
-      const viewedState = String(viewedUser?.state || "").trim();
-      const viewedBio = String(viewedUser?.bio || "").trim();
-      const viewedLoc = [viewedCity, viewedState].filter(Boolean).join(", ");
-
-      // --- END Target user resolution block ---
-
-      // --- Profile modal body ---
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <Avatar
-              ui={ui}
-              src={viewedUser?.avatar}
-              size={60}
-              label={viewedUser?.username || profileTarget?.username}
-            />
-            {/* Profile summary/info block */}
-            <div style={{ display: "grid", gap: 4 }}>
-              <div style={{ fontSize: 18, fontWeight: 950 }}>@{viewedUser?.username || profileTarget?.username}</div>
-
-              {viewedUser?.createdAt ? (
-                <div style={{ color: ui.muted, fontSize: 13 }}>
-                  Kayıt: {fmt(viewedUser.createdAt)}
-                </div>
-              ) : null}
-
-              {/* ✅ Extra profile fields (boşsa gösterme) */}
-              {viewedAge ? <div style={{ color: ui.muted, fontSize: 13 }}>Yaş: {viewedAge}</div> : null}
-              {viewedLoc ? <div style={{ color: ui.muted, fontSize: 13 }}>Konum: {viewedLoc}</div> : null}
-              {viewedBio ? (
-                <div style={{ color: ui.muted, fontSize: 13, whiteSpace: "pre-wrap" }}>
-                  {viewedBio}
-                </div>
-              ) : null}
-            </div>
-          </div>
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {/* Example action: Mesaj Gönder */}
-            {viewedUser && user && normalizeUsername(user.username) !== normalizeUsername(viewedUser.username) && (
-              <Button ui={ui} variant="blue" onClick={() => openDmToUser(viewedUser.username)}>
-                Mesaj Gönder
-              </Button>
-            )}
-          </div>
-          <Divider ui={ui} />
-          {/* Sahip olduğu işletmeler */}
-          <div>
-            <div style={{ fontWeight: 950, marginBottom: 6 }}>Sahip olduğu işletmeler</div>
-            {(biz || [])
-              .filter(
-                (b) =>
-                  b?.ownerUsername &&
-                  viewedUser &&
-                  normalizeUsername(b.ownerUsername) === normalizeUsername(viewedUser.username)
-              )
-              .map((b) => (
-                <div
-                  key={b.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 0",
-                    borderBottom: `1px solid ${ui.border}`,
-                  }}
-                >
-                  <Avatar ui={ui} src={b.avatar} size={32} label={b.name} />
-                  <div>
-                    <div style={{ fontWeight: 900 }}>{b.name}</div>
-                    <div style={{ fontSize: 13, color: ui.muted }}>{b.category}</div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      );
-      // --- END Profile modal body ---
-    })()}
-  </Modal>
+  
 
   // Appointment modal
   const [showAppt, setShowAppt] = useState(false);
@@ -3844,250 +3730,6 @@ const profileData = useMemo(() => {
   return null;
 }, [profileTarget, users, biz, user, publicProfileCache]);
 
-
-    {/* === PROFILE MODAL === */}
-    {profileOpen && (
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100vw",
-          height: "100vh",
-          zIndex: 1000,
-          background: "rgba(0,0,0,0.34)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-        onClick={() => {
-          setProfileOpen(false);
-          setProfileTarget(null);
-        }}
-      >
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            minWidth: 320,
-            maxWidth: 420,
-            width: "90vw",
-            background: ui.panel,
-            borderRadius: 18,
-            boxShadow: `0 18px 40px ${ui.glow}`,
-            border: `1px solid ${ui.border}`,
-            padding: 0,
-            overflow: "hidden",
-            position: "relative",
-          }}
-        >
-          {/* Modal Header */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "10px 18px 10px 8px",
-              borderBottom: `1px solid ${ui.border}`,
-              minHeight: 48,
-              gap: 8,
-            }}
-          >
-            {/* Left: Back button */}
-            <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center" }}>
-              <button
-                type="button"
-                aria-label="Geri"
-                title="Geri"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={() => {
-                  setProfileOpen(false);
-                  setProfileTarget(null);
-                }}
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 12,
-                  border: `1px solid ${ui.border}`,
-                  background: ui.mode === "light" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.25)",
-                  color: ui.text,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  padding: 0,
-                  lineHeight: 1,
-                  WebkitTapHighlightColor: "transparent",
-                }}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
-              </button>
-            </div>
-            {/* Center: Title */}
-            <div style={{ flex: 1, textAlign: "center", fontWeight: 900, fontSize: 18, letterSpacing: -0.2 }}>
-              {profileData?.type === "user"
-                ? "Profil"
-                : profileData?.type === "biz"
-                ? "İşletme"
-                : ""}
-            </div>
-            {/* Right: Close button */}
-            <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center" }}>
-              <button
-                type="button"
-                aria-label="Kapat"
-                title="Kapat"
-                onClick={() => {
-                  setProfileOpen(false);
-                  setProfileTarget(null);
-                }}
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 12,
-                  border: `1px solid ${ui.border}`,
-                  background: ui.mode === "light" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.25)",
-                  color: ui.text,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  padding: 0,
-                  lineHeight: 1,
-                  WebkitTapHighlightColor: "transparent",
-                }}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          {/* Modal Content */}
-          <div style={{ padding: 24 }}>
-            {/* Render profile content here */}
-            {profileData?.type === "user" ? (
-              <div>
-                {/* User avatar and info */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                  <Avatar ui={ui} src={profileData.user.avatar} size={80} label={profileData.user.username} />
-                  <div style={{ fontWeight: 900, fontSize: 20 }}>
-                    @{profileData.user.username}
-                  </div>
-                  {profileData.user.bio && (
-                    <div style={{ color: ui.muted, fontSize: 14, marginTop: 4, textAlign: "center" }}>
-                      {profileData.user.bio}
-                    </div>
-                  )}
-                  {profileData.user.city && (
-                    <div style={{ color: ui.muted2, fontSize: 13, marginTop: 2 }}>
-                      {profileData.user.city}
-                    </div>
-                  )}
-                </div>
-                {/* User's businesses */}
-                {profileData.owned && profileData.owned.length > 0 && (
-                  <div style={{ marginTop: 22 }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 6 }}>İşletmeleri</div>
-                    <div style={{ display: "grid", gap: 12 }}>
-                      {profileData.owned.map((b) => (
-                        <div
-                          key={b.id}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                            border: `1px solid ${ui.border}`,
-                            borderRadius: 12,
-                            padding: "8px 12px",
-                            background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
-                            cursor: "pointer",
-                          }}
-                          onClick={() => openProfileBiz(b.id)}
-                        >
-                          <Avatar ui={ui} src={b.avatar} size={32} label={b.name} />
-                          <div style={{ fontWeight: 900 }}>{b.name}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : profileData?.type === "biz" ? (
-              <div>
-                {/* Biz avatar and info */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                  <Avatar ui={ui} src={profileData.biz.avatar} size={80} label={profileData.biz.name} />
-                  <div style={{ fontWeight: 900, fontSize: 20 }}>
-                    {profileData.biz.name}
-                  </div>
-                  {profileData.biz.desc && (
-                    <div style={{ color: ui.muted, fontSize: 14, marginTop: 4, textAlign: "center" }}>
-                      {profileData.biz.desc}
-                    </div>
-                  )}
-                  {(profileData.biz.address || profileData.biz.city) && (
-                    <div style={{ color: ui.muted2, fontSize: 13, marginTop: 2 }}>
-                      {profileData.biz.address || profileData.biz.city}
-                    </div>
-                  )}
-                </div>
-                {/* Owner info */}
-                {profileData.owner ? (
-                  <div style={{ marginTop: 22 }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 6 }}>Sahibi</div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        border: `1px solid ${ui.border}`,
-                        borderRadius: 12,
-                        padding: "8px 12px",
-                        background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
-                        cursor: "pointer",
-                        maxWidth: 220,
-                      }}
-                      onClick={() => openProfileByUsername(profileData.owner.username)}
-                    >
-                      <Avatar ui={ui} src={profileData.owner.avatar} size={32} label={profileData.owner.username} />
-                      <div style={{ fontWeight: 900 }}>@{profileData.owner.username}</div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div style={{ color: ui.muted, textAlign: "center" }}>Profil bulunamadı.</div>
-            )}
-          </div>
-        </div>
-      </div>
-    )}
-
 const filteredBiz = useMemo(() => {
   const q = normalizeUsername(landingSearch);
   const cat = String(categoryFilter || "").trim();
@@ -4161,6 +3803,125 @@ return (
         .tg-cta { animation: none; }
       }
     `}</style>
+    
+    {/* PROFILE MODAL */}
+  <Modal
+    ui={ui}
+    open={profileOpen}
+    title="Profil"
+    onClose={() => setProfileOpen(false)}
+    onBack={() => setProfileOpen(false)}
+    showBack
+    width={500}
+    iconClose
+  >
+    {(() => {
+      // --- Target user resolution block (see instructions) ---
+      const viewedUser = (() => {
+        if (!profileTarget || profileTarget.type !== "user") return null;
+
+        const uname = String(profileTarget.username || "").trim();
+        const key = normalizeUsername(uname);
+
+        // 1) If the opened profile is me, use `user` state (it has freshest metadata)
+        if (user && normalizeUsername(user.username) === key) return user;
+
+        // 2) Prefer userId match (username can change)
+        if (profileTarget.userId) {
+          const byId = (users || []).find((x) => String(x?.id || "") === String(profileTarget.userId));
+          if (byId) return byId;
+        }
+
+        // 3) Fallback: username match
+        const byU = (users || []).find((x) => normalizeUsername(x?.username) === key);
+        return byU || null;
+      })();
+
+      const viewedAge = viewedUser?.age;
+      const viewedCity = String(viewedUser?.city || "").trim();
+      const viewedState = String(viewedUser?.state || "").trim();
+      const viewedBio = String(viewedUser?.bio || "").trim();
+      const viewedLoc = [viewedCity, viewedState].filter(Boolean).join(", ");
+
+      // --- END Target user resolution block ---
+
+      // --- Profile modal body ---
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <Avatar
+              ui={ui}
+              src={viewedUser?.avatar}
+              size={60}
+              label={viewedUser?.username || profileTarget?.username}
+            />
+            {/* Profile summary/info block */}
+            <div style={{ display: "grid", gap: 4 }}>
+              <div style={{ fontSize: 18, fontWeight: 950 }}>@{viewedUser?.username || profileTarget?.username}</div>
+
+              {viewedUser?.createdAt ? (
+                <div style={{ color: ui.muted, fontSize: 13 }}>
+                  Kayıt: {fmt(viewedUser.createdAt)}
+                </div>
+              ) : null}
+
+              {/* ✅ Extra profile fields (boşsa gösterme) */}
+              {viewedAge ? <div style={{ color: ui.muted, fontSize: 13 }}>Yaş: {viewedAge}</div> : null}
+              {viewedLoc ? <div style={{ color: ui.muted, fontSize: 13 }}>Konum: {viewedLoc}</div> : null}
+              {viewedBio ? (
+                <div style={{ color: ui.muted, fontSize: 13, whiteSpace: "pre-wrap" }}>
+                  {viewedBio}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {/* Example action: Mesaj Gönder */}
+            {viewedUser && user && normalizeUsername(user.username) !== normalizeUsername(viewedUser.username) && (
+              <Button ui={ui} variant="blue" onClick={() => openDmToUser(viewedUser.username)}>
+                Mesaj Gönder
+              </Button>
+            )}
+          </div>
+          <Divider ui={ui} />
+          {/* Sahip olduğu işletmeler */}
+          <div>
+            <div style={{ fontWeight: 950, marginBottom: 6 }}>Sahip olduğu işletmeler</div>
+            {(biz || [])
+              .filter(
+                (b) =>
+                  b?.ownerUsername &&
+                  viewedUser &&
+                  normalizeUsername(b.ownerUsername) === normalizeUsername(viewedUser.username)
+              )
+              .map((b) => (
+                <div
+                  key={b.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 0",
+                    borderBottom: `1px solid ${ui.border}`,
+                  }}
+                >
+                  <Avatar ui={ui} src={b.avatar} size={32} label={b.name} />
+                  <div>
+                    <div style={{ fontWeight: 900 }}>{b.name}</div>
+                    <div style={{ fontSize: 13, color: ui.muted }}>{b.category}</div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      );
+      // --- END Profile modal body ---
+    })()}
+  </Modal>
+
+
+burasi mi
     
     {/* HUB Media hidden input (single occurrence) */}
     <input
