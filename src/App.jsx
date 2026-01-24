@@ -2216,18 +2216,72 @@ async function deleteAccount() {
   const ok = confirm("Hesabın kalıcı olarak silinecek. Emin misin?");
   if (!ok) return;
 
+  // mevcut kullanıcı bilgilerini (silme sonrası local listeden de kaldırmak için) sakla
+  const meId = String(user?.id || "");
+  const meUname = String(user?.username || "");
+
   try {
     const { error } = await supabase.rpc("delete_my_account");
     if (error) throw error;
 
-    alert("Hesabın silindi.");
-    await supabase.auth.signOut();
+    // Supabase session kapat
+    try {
+      await supabase.auth.signOut();
+    } catch (_) {}
 
-    // ✅ UI + state reset
+    // ✅ Local user listeden de kaldır (legacy/localStorage kalıntısı kalmasın)
+    if (meId || meUname) {
+      setUsers((prev) =>
+        (prev || []).filter(
+          (x) =>
+            String(x?.id || "") !== meId &&
+            normalizeUsername(x?.username) !== normalizeUsername(meUname)
+        )
+      );
+    }
+
+    alert("Hesabın silindi.");
+
+    // ✅ UI + state reset (logout gibi)
     setUser(null);
-    lsSet(KEY.USER, null);
+    try {
+      localStorage.removeItem(KEY.USER);
+    } catch (_) {}
+
     setShowSettings(false);
-    setShowAuth(false);
+    setShowAuth(true);
+    setShowRegister(false);
+    setShowBizApply(false);
+
+    setProfileOpen(false);
+    setProfileTarget(null);
+
+    setShowEditUser(false);
+    setEditUserCtx(null);
+
+    setShowDm(false);
+    setDmTarget(null);
+    setDmText("");
+
+    setShowAppt(false);
+    setApptBizId(null);
+    setApptMsg("");
+
+    // ana sayfaya dön
+    setActive("biz");
+    try {
+      localStorage.setItem("tg_active_tab_v1", "biz");
+    } catch (_) {}
+
+    // varsa URL state/hash temizle
+    try {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (_) {}
+
+    // en üste al
+    try {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    } catch (_) {}
   } catch (e) {
     console.error("delete account error:", e);
     alert("Hesap silinirken hata oluştu.");
