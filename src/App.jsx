@@ -3711,6 +3711,8 @@ const profileData = useMemo(() => {
 
   return null;
 }, [profileTarget, users, biz, user]);
+
+
     {/* === PROFILE MODAL === */}
     {profileOpen && (
       <div
@@ -5362,7 +5364,65 @@ return (
         {active === "profile" && (
           <div style={{ paddingTop: 26 }}>
             <Card ui={ui}>
-              <div style={{ fontSize: 18, fontWeight: 950 }}>Profil</div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                }}
+              >
+                <button
+                  type="button"
+                  aria-label="Geri"
+                  title="Geri"
+                  onClick={() => {
+                    // Profil sayfasından ana ekrana dön
+                    setActive("biz");
+                    setCategoryFilter("");
+                    setLandingSearch("");
+                    try {
+                      setProfileOpen(false);
+                      setProfileTarget(null);
+                    } catch (_) {}
+                  }}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 12,
+                    border: `1px solid ${ui.border}`,
+                    background: ui.mode === "light" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.25)",
+                    color: ui.text,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    padding: 0,
+                    lineHeight: 1,
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                </button>
+
+                <div style={{ fontSize: 18, fontWeight: 950 }}>Profil</div>
+
+                {/* sağ tarafta denge için boş alan */}
+                <span aria-hidden="true" style={{ width: 36, height: 36 }} />
+              </div>
               {!user ? (
                 <div style={{ marginTop: 8, color: ui.muted }}>
                   Giriş yapmadın. Profil bilgisi için giriş yap.
