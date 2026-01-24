@@ -2348,19 +2348,64 @@ function openProfileByUsername(username) {
   setProfileOpen(true);
 }
 
+// ✅ Public avatar resolver (reads from auth user -> local users[] -> cached public.profiles)
+// NOTE: Must be sync because it is used inside render. We fetch missing avatars in the background
+// and cache them so the UI re-renders when the avatar arrives.
+const [profileAvatarCache, setProfileAvatarCache] = useState({});
+const inFlightAvatarFetch = useRef({});
+
+async function fetchAvatarToCache(usernameKey) {
+  if (!usernameKey) return;
+  if (inFlightAvatarFetch.current[usernameKey]) return;
+  inFlightAvatarFetch.current[usernameKey] = true;
+
+  try {
+    if (!supabase?.from) return;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("avatar")
+      .eq("username", usernameKey)
+      .maybeSingle();
+
+    if (!error) {
+      const av = String(data?.avatar || "");
+      setProfileAvatarCache((prev) => {
+        // don't re-render if unchanged
+        if (String(prev?.[usernameKey] || "") === av) return prev;
+        return { ...(prev || {}), [usernameKey]: av };
+      });
+    }
+  } catch (_) {
+    // ignore
+  } finally {
+    inFlightAvatarFetch.current[usernameKey] = false;
+  }
+}
+
 function avatarByUsername(username) {
   const raw = String(username || "").trim();
   const uname = resolveUsernameAlias(raw);
   const key = normalizeUsername(uname);
+  if (!key) return "";
 
-  // 1) current authed user
+  // 1) current authed user (fastest + freshest)
   if (user && normalizeUsername(user.username) === key) {
     return String(user.avatar || "");
   }
 
   // 2) local users[]
   const found = (users || []).find((x) => normalizeUsername(x?.username) === key);
-  return String(found?.avatar || "");
+  const localAvatar = String(found?.avatar || "");
+  if (localAvatar) return localAvatar;
+
+  // 3) cached public profile avatar
+  const cached = String(profileAvatarCache?.[key] || "");
+  if (cached) return cached;
+
+  // 4) not found -> fetch in background, return empty for now
+  fetchAvatarToCache(key);
+  return "";
 }
 
 function openProfileBiz(bizId) {
@@ -3201,6 +3246,33 @@ if (supabase?.auth) {
 
     console.log("✅ updateUser OK");
 
+    // ✅ ALSO write to public.profiles so everyone can read avatar/fields
+try {
+  const unameLower = normalizeUsername(username);
+
+  const row = {
+    id: u?.id,
+    username: unameLower,
+    avatar: avatarStr ? avatarStr : null,
+    age: u?.age !== "" && u?.age != null ? Number(u.age) : null,
+    city: String(u?.city || "").trim() || null,
+    state: String(u?.state || "").trim() || null,
+    bio: String(u?.bio || "").trim() || null,
+  };
+
+  const { error: pErr } = await supabase
+    .from("profiles")
+    .upsert(row, { onConflict: "id" });
+
+  if (pErr) {
+    console.warn("⚠️ profiles upsert error:", pErr);
+  } else {
+    console.log("✅ profiles upsert OK");
+  }
+} catch (e) {
+  console.warn("⚠️ profiles upsert crash:", e);
+}
+
     // 🔁 Supabase başarılı → local state'i GARANTİ senkronla
     setUsers((prev) =>
       (prev || []).map((x) =>
@@ -3448,6 +3520,25 @@ async function setMyAvatar(base64) {
     });
   } catch (e) {
     console.error("setMyAvatar updateUser error:", e);
+  }
+
+  // ✅ ALSO mirror avatar to public.profiles so other users can see it
+  try {
+    const unameKey = normalizeUsername(updated.username);
+    if (unameKey) {
+      await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: updated.id,
+            username: unameKey,
+            avatar: base64 || null,
+          },
+          { onConflict: "id" }
+        );
+    }
+  } catch (e) {
+    console.warn("setMyAvatar profiles upsert error:", e);
   }
 }
 
