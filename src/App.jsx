@@ -1854,8 +1854,9 @@ bio: md.bio ?? prev?.bio ?? "",
     run();
   }, []);
 
-  // ✅ Boot + Local State + Supabase Auth Restore + Auth Listener
+// ✅ Boot + Local State + Supabase Auth Restore + Auth Listener
 useEffect(() => {
+  ensureSeed();
   let alive = true;
   let authSub = null;
 
@@ -2170,6 +2171,50 @@ async function loginNow(provider = "email", mode = "login") {
   }
 }
 
+// ✅ HARD RESET (logout/delete sonrası her koşulda UI + storage temizle)
+function hardResetToHome() {
+  try {
+    localStorage.removeItem(KEY.USER);
+    localStorage.removeItem(KEY.ADMIN_UNLOCK);
+    localStorage.removeItem("tg_active_tab_v1");
+  } catch (_) {}
+
+  setUser(null);
+  setShowAuth(false);
+  setShowRegister(false);
+  setShowSettings(false);
+  setShowBizApply(false);
+
+  setProfileOpen(false);
+  setProfileTarget(null);
+
+  setShowEditUser(false);
+  setEditUserCtx(null);
+
+  setShowDm(false);
+  setDmTarget(null);
+  setDmText("");
+
+  setShowAppt(false);
+  setApptBizId(null);
+  setApptMsg("");
+
+  setActive("biz");
+  try {
+    localStorage.setItem("tg_active_tab_v1", "biz");
+  } catch (_) {}
+
+  try {
+    window.history.replaceState({}, document.title, "/");
+  } catch (_) {}
+
+  try {
+    window.location.replace("/");
+  } catch (_) {
+    window.location.href = "/";
+  }
+}
+
 // ✅ LOGOUT
 async function logout() {
   try {
@@ -2177,37 +2222,7 @@ async function logout() {
   } catch (e) {
     console.error("logout error:", e);
   } finally {
-    // ✅ auth state
-    setUser(null);
-    try {
-      localStorage.removeItem(KEY.USER);
-    } catch (_) {}
-
-    // ✅ UI reset
-    setShowAuth(true);
-    setShowRegister(false);
-    setShowSettings(false);
-    setShowBizApply(false);
-
-    setProfileOpen(false);
-    setProfileTarget(null);
-
-    setShowEditUser(false);
-    setEditUserCtx(null);
-
-    setShowDm(false);
-    setDmTarget(null);
-    setDmText("");
-
-    setShowAppt(false);
-    setApptBizId(null);
-    setApptMsg("");
-
-    // ✅ aktif tab + kalıcı kayıt
-    setActive("biz");
-    try {
-      localStorage.setItem("tg_active_tab_v1", "biz");
-    } catch (_) {}
+    hardResetToHome();
   }
 }
 
@@ -2225,70 +2240,13 @@ async function deleteAccount() {
     const { error } = await supabase.rpc("delete_my_account");
     if (error) throw error;
 
-    // 2) Session'ı kesin kapat (listener bazen gecikebiliyor)
-    try {
-      await supabase.auth.signOut();
-    } catch (_) {}
-
-    // 3) Legacy/localStorage kalıntılarını temizle
-    try {
-      localStorage.removeItem(KEY.USER);
-    } catch (_) {}
-
-    // ✅ Local user listeden de kaldır
-    if (meId || meUname) {
-      setUsers((prev) =>
-        (prev || []).filter(
-          (x) =>
-            String(x?.id || "") !== meId &&
-            normalizeUsername(x?.username) !== normalizeUsername(meUname)
-        )
-      );
-    }
-
-    // 4) UI state'i tamamen logout gibi sıfırla
-    setUser(null);
-
-    setShowSettings(false);
-    setShowAuth(true);
-    setShowRegister(false);
-    setShowBizApply(false);
-
-    setProfileOpen(false);
-    setProfileTarget(null);
-
-    setShowEditUser(false);
-    setEditUserCtx(null);
-
-    setShowDm(false);
-    setDmTarget(null);
-    setDmText("");
-
-    setShowAppt(false);
-    setApptBizId(null);
-    setApptMsg("");
-
-    setActive("biz");
-    try {
-      localStorage.setItem("tg_active_tab_v1", "biz");
-    } catch (_) {}
-
-    // varsa URL state/hash temizle
-    try {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } catch (_) {}
-
     alert("Hesabın silindi.");
-
-    // 5) En sağlamı: ana sayfaya zorla yönlendir (session/cache takılmasın)
-    try {
-      window.location.replace("/");
-    } catch (_) {
-      window.location.href = "/";
-    }
+    hardResetToHome();
+    return;
   } catch (e) {
     console.error("delete account error:", e);
     alert("Hesap silinirken hata oluştu.");
+    hardResetToHome();
   }
 }
 // ✅ OAUTH LOGIN (Apple / Google vs.)
