@@ -2405,7 +2405,7 @@ function avatarByUsername(username) {
 
   // 4) not found -> fetch in background, return empty for now
   fetchAvatarToCache(key);
-  return "";
+  return undefined;
 }
 
 function openProfileBiz(bizId) {
