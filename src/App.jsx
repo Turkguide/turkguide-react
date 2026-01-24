@@ -2969,13 +2969,22 @@ async function saveEditUser() {
     return;
   }
 
-  const lower = normalizeUsername(username);
-const origLower = normalizeUsername(u._origUsername || "");
+  const currentId = String(u?.id ?? u?.uid ?? u?.user_id ?? "");
+const lower = normalizeUsername(username);
+const origLower = normalizeUsername(u?._origUsername ?? u?.username ?? "");
 
+// ✅ sadece username değiştiyse çakışma kontrolü
 if (lower !== origLower) {
-  const clash = users.find(
-    (x) => x.id !== u.id && normalizeUsername(x.username) === lower
-  );
+  const clash = users.find((x) => {
+    const xid = String(x?.id ?? x?.uid ?? x?.user_id ?? "");
+    if (normalizeUsername(x?.username) !== lower) return false;
+
+    // aynı kayıt ise clash sayma
+    if (currentId && xid && xid === currentId) return false;
+
+    return true;
+  });
+
   if (clash) {
     alert("Bu kullanıcı adı zaten var.");
     return;
