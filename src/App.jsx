@@ -2221,15 +2221,21 @@ async function deleteAccount() {
   const meUname = String(user?.username || "");
 
   try {
+    // 1) DB tarafında hesabı sil (RPC)
     const { error } = await supabase.rpc("delete_my_account");
     if (error) throw error;
 
-    // Supabase session kapat
+    // 2) Session'ı kesin kapat (listener bazen gecikebiliyor)
     try {
       await supabase.auth.signOut();
     } catch (_) {}
 
-    // ✅ Local user listeden de kaldır (legacy/localStorage kalıntısı kalmasın)
+    // 3) Legacy/localStorage kalıntılarını temizle
+    try {
+      localStorage.removeItem(KEY.USER);
+    } catch (_) {}
+
+    // ✅ Local user listeden de kaldır
     if (meId || meUname) {
       setUsers((prev) =>
         (prev || []).filter(
@@ -2240,13 +2246,8 @@ async function deleteAccount() {
       );
     }
 
-    alert("Hesabın silindi.");
-
-    // ✅ UI + state reset (logout gibi)
+    // 4) UI state'i tamamen logout gibi sıfırla
     setUser(null);
-    try {
-      localStorage.removeItem(KEY.USER);
-    } catch (_) {}
 
     setShowSettings(false);
     setShowAuth(true);
@@ -2267,7 +2268,6 @@ async function deleteAccount() {
     setApptBizId(null);
     setApptMsg("");
 
-    // ana sayfaya dön
     setActive("biz");
     try {
       localStorage.setItem("tg_active_tab_v1", "biz");
@@ -2278,10 +2278,14 @@ async function deleteAccount() {
       window.history.replaceState({}, document.title, window.location.pathname);
     } catch (_) {}
 
-    // en üste al
+    alert("Hesabın silindi.");
+
+    // 5) En sağlamı: ana sayfaya zorla yönlendir (session/cache takılmasın)
     try {
-      window.scrollTo({ top: 0, behavior: "auto" });
-    } catch (_) {}
+      window.location.replace("/");
+    } catch (_) {
+      window.location.href = "/";
+    }
   } catch (e) {
     console.error("delete account error:", e);
     alert("Hesap silinirken hata oluştu.");
