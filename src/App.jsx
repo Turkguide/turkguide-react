@@ -2970,11 +2970,17 @@ async function saveEditUser() {
   }
 
   const lower = normalizeUsername(username);
-  const clash = users.find((x) => x.id !== u.id && normalizeUsername(x.username) === lower);
+const origLower = normalizeUsername(u._origUsername || "");
+
+if (lower !== origLower) {
+  const clash = users.find(
+    (x) => x.id !== u.id && normalizeUsername(x.username) === lower
+  );
   if (clash) {
     alert("Bu kullanıcı adı zaten var.");
     return;
   }
+}
 
   // local users[] update (yoksa ekle)
   setUsers((prev) => {
