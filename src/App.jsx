@@ -2193,10 +2193,13 @@ async function fetchPublicProfileToCache(usernameKey) {
     const { data, error } = await supabase
       .from("profiles")
       .select("id, username, avatar, age, city, state, bio")
-      .eq("username", usernameKey)
+      .ilike("username", usernameKey)
       .maybeSingle();
 
-    if (error) return;
+    if (error) {
+      console.warn("fetchPublicProfileToCache error:", error);
+      return;
+    }
 
     const row = data || null;
     if (!row) return;
@@ -2233,17 +2236,20 @@ async function fetchAvatarToCache(usernameKey) {
     const { data, error } = await supabase
       .from("profiles")
       .select("avatar")
-      .eq("username", usernameKey)
+      .ilike("username", usernameKey)
       .maybeSingle();
 
-    if (!error) {
-      const av = String(data?.avatar || "");
-      setProfileAvatarCache((prev) => {
-        // don't re-render if unchanged
-        if (String(prev?.[usernameKey] || "") === av) return prev;
-        return { ...(prev || {}), [usernameKey]: av };
-      });
+    if (error) {
+      console.warn("fetchAvatarToCache error:", error);
+      return;
     }
+
+    const av = String(data?.avatar || "");
+    setProfileAvatarCache((prev) => {
+      // don't re-render if unchanged
+      if (String(prev?.[usernameKey] || "") === av) return prev;
+      return { ...(prev || {}), [usernameKey]: av };
+    });
   } catch (_) {
     // ignore
   } finally {
