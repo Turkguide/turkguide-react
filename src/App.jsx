@@ -828,7 +828,7 @@ function ToggleRow({ ui, label, desc, value, onToggle }) {
   );
 }
 
-/* ====== Landing (2. görsel) ====== */
+
 /* ====== Landing (2. görsel) ====== */
 function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearch }) {
   const segWrap = {
@@ -1211,12 +1211,7 @@ useEffect(() => {
   } catch (_) {}
 }, [active]);
 
-// ✅ active tab'i kalıcı kaydet (refresh fix)
-useEffect(() => {
-  try {
-    localStorage.setItem("tg_active_tab_v1", active);
-  } catch (_) {}
-}, [active]);
+
 
   // 🔄 Fetch + Realtime subscribe when HUB tab becomes active
   useEffect(() => {
@@ -1415,81 +1410,7 @@ function deletePost(postId) {
   const [dmTarget, setDmTarget] = useState(null);
   const [dmText, setDmText] = useState("");
 
-  {/* LIKED BY MODAL */}
-<Modal
-  ui={ui}
-  open={showLikedBy}
-  title="Kimler Beğendi"
-  onClose={() => {
-    setShowLikedBy(false);
-    setLikedByPost(null);
-  }}
-  width={520}
->
-  <div style={{ display: "grid", gap: 10 }}>
-    {!likedByPost ? (
-      <div style={{ color: ui.muted }}>Post seçilmedi.</div>
-    ) : (
-      <>
-        <div style={{ color: ui.muted2, fontSize: 12 }}>
-          @{hubPostAuthor(likedByPost)} • {fmt(likedByPost.createdAt)}
-        </div>
-
-        {Array.isArray(likedByPost.likedBy) && likedByPost.likedBy.length > 0 ? (
-          <div style={{ display: "grid", gap: 8 }}>
-            {likedByPost.likedBy
-              .slice()
-              .reverse()
-              .map((uname, idx) => (
-                <div
-                  key={`${uname}-${idx}`}
-                  onClick={() => {
-                    setShowLikedBy(false);
-                    setLikedByPost(null);
-                    openProfileByUsername(uname);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 12px",
-                    borderRadius: 14,
-                    border: `1px solid ${ui.border}`,
-                    background:
-                      ui.mode === "light"
-                        ? "rgba(0,0,0,0.02)"
-                        : "rgba(255,255,255,0.03)",
-                    cursor: "pointer",
-                    userSelect: "none",
-                  }}
-                  title="Profile git"
-                >
-                  <Avatar ui={ui} src={avatarByUsername(uname)} size={28} label={uname} />
-                  <div style={{ fontWeight: 900, fontSize: 13, color: ui.text }}>
-                    @{uname}
-                  </div>
-                </div>
-              ))}
-          </div>
-        ) : (
-          <div style={{ color: ui.muted }}>Henüz beğeni yok.</div>
-        )}
-      </>
-    )}
-
-    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
-      <Button
-        ui={ui}
-        onClick={() => {
-          setShowLikedBy(false);
-          setLikedByPost(null);
-        }}
-      >
-        Kapat
-      </Button>
-    </div>
-  </div>
-</Modal>
+  
 
   {/* PROFILE MODAL */}
   <Modal
