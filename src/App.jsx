@@ -935,18 +935,6 @@ return (
                           <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(m.createdAt)}</div>
                         </div>
                         <div style={{ marginTop: 6, color: ui.muted }}>{m.text || ""}</div>
-                        <div style={{ marginTop: 8 }}>
-                          <Button
-                            ui={ui}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (isBiz) messages.openDmToBiz(m.toBizId);
-                              else if (other) messages.openDmToUser(other);
-                            }}
-                          >
-                            Aç
-                          </Button>
-                        </div>
                       </div>
                     );
                   });
