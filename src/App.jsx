@@ -38,7 +38,7 @@ import { AppointmentModal, EditUserModal, EditBizModal, ProfileModal } from "./c
 import { SettingsModal } from "./features/settings";
 
 // Features - Auth
-import { useAuthState, useAuthCallback, useAuth } from "./features/auth";
+import { useAuthState, useAuthCallback, useAuth, AuthModal } from "./features/auth";
 
 // Features - Business
 import { useBusiness, useBusinessEdit } from "./features/business";
@@ -788,6 +788,23 @@ return (
         setThemePref={setThemePref}
         user={user}
         deleteAccount={auth.deleteAccount}
+      />
+
+      {/* AUTH MODAL */}
+      <AuthModal
+        ui={ui}
+        showAuth={showAuth}
+        showRegister={showRegister}
+        setShowAuth={setShowAuth}
+        setShowRegister={setShowRegister}
+        authEmail={auth.authEmail}
+        setAuthEmail={auth.setAuthEmail}
+        authPassword={auth.authPassword}
+        setAuthPassword={auth.setAuthPassword}
+        authUsername={auth.authUsername}
+        setAuthUsername={auth.setAuthUsername}
+        loginNow={auth.loginNow}
+        oauthLogin={auth.oauthLogin}
       />
   </div>
   </div>
