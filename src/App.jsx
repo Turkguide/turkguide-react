@@ -86,13 +86,24 @@ export default function App() {
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
 
   // Tabs
-const [active, setActive] = useState(() => {
+  const [active, setActive] = useState(() => {
   try {
     return localStorage.getItem("tg_active_tab_v1") || "biz";
   } catch (_) {
     return "biz";
   }
 });
+
+  const lastMainTabRef = useRef("biz");
+  useEffect(() => {
+    if (["biz", "news", "hub"].includes(active)) {
+      lastMainTabRef.current = active;
+    }
+  }, [active]);
+
+  function goBackToMainTab() {
+    setActive(lastMainTabRef.current || "biz");
+  }
 
 // 🧪 DEBUG
 useEffect(() => {
@@ -712,7 +723,10 @@ return (
         {active === "notifications" && (
           <div style={{ paddingTop: 26 }}>
             <Card ui={ui}>
-              <div style={{ fontSize: 18, fontWeight: 950 }}>Bildirimler</div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 18, fontWeight: 950 }}>Bildirimler</div>
+                <Button ui={ui} onClick={goBackToMainTab}>Geri</Button>
+              </div>
               <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
                 {notifications.notifications.length === 0 ? (
                   <div style={{ color: ui.muted }}>Şu an hiç bildiriminiz yok.</div>
@@ -752,7 +766,10 @@ return (
         {active === "messages" && (
           <div style={{ paddingTop: 26 }}>
             <Card ui={ui}>
-              <div style={{ fontSize: 18, fontWeight: 950 }}>Mesajlar</div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 18, fontWeight: 950 }}>Mesajlar</div>
+                <Button ui={ui} onClick={goBackToMainTab}>Geri</Button>
+              </div>
               <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
                 {(() => {
                   if (!user) return <div style={{ color: ui.muted }}>Giriş yapmanız gerekiyor.</div>;

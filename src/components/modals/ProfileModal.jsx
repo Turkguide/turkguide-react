@@ -21,6 +21,9 @@ export function ProfileModal({
     <Modal ui={ui} open={open} title="Profil" onClose={onClose}>
       {profileData.type === "user" && profileData.user ? (
         <div style={{ display: "grid", gap: 12 }}>
+          <div>
+            <Button ui={ui} onClick={onClose}>Geri</Button>
+          </div>
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <Avatar ui={ui} src={profileData.user.avatar} size={72} label={profileData.user.username} />
             <div>
@@ -142,6 +145,9 @@ export function ProfileModal({
         </div>
       ) : profileData.type === "biz" && profileData.biz ? (
         <div style={{ display: "grid", gap: 12 }}>
+          <div>
+            <Button ui={ui} onClick={onClose}>Geri</Button>
+          </div>
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <Avatar ui={ui} src={profileData.biz.avatar} size={72} label={profileData.biz.name} />
             <div>
