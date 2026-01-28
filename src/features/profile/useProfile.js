@@ -227,13 +227,25 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
         }
       }
 
-      if (!u) return { type: "loading" };
+      if (!u) {
+        return {
+          type: "user",
+          user: {
+            username: targetUname,
+            avatar: "",
+            xp: 0,
+            createdAt: null,
+          },
+          owned: [],
+          isPlaceholder: true,
+        };
+      }
 
       const owned = biz.filter(
         (b) => normalizeUsername(b.ownerUsername) === normalizeUsername(u.username) && b.status === "approved"
       );
 
-      return { type: "user", user: u, owned };
+      return { type: "user", user: u, owned, isPlaceholder: false };
     }
 
     // 🏢 BİZ PROFİLİ

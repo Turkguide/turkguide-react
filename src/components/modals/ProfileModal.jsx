@@ -16,14 +16,6 @@ export function ProfileModal({
 }) {
   if (!open || !profileData) return null;
 
-  if (profileData.type === "loading") {
-    return (
-      <Modal ui={ui} open={open} title="Profil" onClose={onClose}>
-        <div style={{ color: ui.muted, fontSize: 14 }}>Profil yükleniyor...</div>
-      </Modal>
-    );
-  }
-
   return (
     <Modal ui={ui} open={open} title="Profil" onClose={onClose}>
       {profileData.type === "user" && profileData.user ? (
@@ -37,8 +29,13 @@ export function ProfileModal({
                 {" • "}Katkı Puanı: {profileData.user.xp || 0}
               </div>
               <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
-                Kayıt: {fmt(profileData.user.createdAt)}
+                Kayıt: {profileData.user.createdAt ? fmt(profileData.user.createdAt) : "-"}
               </div>
+              {profileData.isPlaceholder ? (
+                <div style={{ color: ui.muted, marginTop: 6, fontSize: 12 }}>
+                  Profil bilgileri yükleniyor...
+                </div>
+              ) : null}
             </div>
           </div>
 
