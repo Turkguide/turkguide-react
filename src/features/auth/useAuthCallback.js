@@ -34,6 +34,9 @@ export function useAuthCallback({ setUser, setShowAuth, setActive, setLandingSea
           setActive("biz");
           setLandingSearch("");
           setCategoryFilter("");
+          try {
+            sessionStorage.setItem("tg_active_tab_v1", "biz");
+          } catch (_) {}
           window.scrollTo({ top: 0, behavior: "auto" });
           return;
         }

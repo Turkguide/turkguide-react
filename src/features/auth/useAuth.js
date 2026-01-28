@@ -37,7 +37,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
     try {
       localStorage.removeItem(KEY.USER);
       localStorage.removeItem(KEY.ADMIN_UNLOCK);
-      localStorage.removeItem("tg_active_tab_v1");
+      sessionStorage.removeItem("tg_active_tab_v1");
     } catch (_) {}
 
     setUser(null);
@@ -62,7 +62,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
 
     setActive("biz");
     try {
-      localStorage.setItem("tg_active_tab_v1", "biz");
+      sessionStorage.setItem("tg_active_tab_v1", "biz");
     } catch (_) {}
 
     try {
@@ -116,7 +116,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
           // ✅ Kayıt sonrası ana sayfa: İşletmeler
           setActive("biz");
           try {
-            localStorage.setItem("tg_active_tab_v1", "biz");
+            sessionStorage.setItem("tg_active_tab_v1", "biz");
           } catch (_) {}
           setShowAuth(true); // doğrulama için modal açık kalsın
         } else {
@@ -141,7 +141,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
           // ✅ Login olduysa da ana sayfa: İşletmeler
           setActive("biz");
           try {
-            localStorage.setItem("tg_active_tab_v1", "biz");
+            sessionStorage.setItem("tg_active_tab_v1", "biz");
           } catch (_) {}
           setShowAuth(false);
         }
@@ -182,7 +182,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
         // ✅ Login sonrası ana sayfa: İşletmeler
         setActive("biz");
         try {
-          localStorage.setItem("tg_active_tab_v1", "biz");
+          sessionStorage.setItem("tg_active_tab_v1", "biz");
         } catch (_) {}
 
         setShowAuth(false);

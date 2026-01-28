@@ -86,7 +86,13 @@ export default function App() {
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
 
   // Tabs
-  const [active, setActive] = useState("biz");
+  const [active, setActive] = useState(() => {
+    try {
+      return sessionStorage.getItem("tg_active_tab_v1") || "biz";
+    } catch (_) {
+      return "biz";
+    }
+  });
 
   const lastMainTabRef = useRef("biz");
   useEffect(() => {
@@ -107,7 +113,7 @@ useEffect(() => {
 // ✅ KALDIĞI YERİ HATIRLA
 useEffect(() => {
   try {
-    localStorage.setItem("tg_active_tab_v1", active);
+    sessionStorage.setItem("tg_active_tab_v1", active);
   } catch (_) {}
 }, [active]);
 
