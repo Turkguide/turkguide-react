@@ -219,7 +219,8 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
     } catch (e) {
       console.log("❌ deleteAccount() catch", e);
       console.error("delete account error:", e);
-      alert("Hesap silinirken hata oluştu.");
+      const detail = e?.message || e?.error_description || "";
+      alert(`Hesap silinirken hata oluştu.${detail ? `\n${detail}` : ""}`);
       hardResetToHome();
     }
   }
