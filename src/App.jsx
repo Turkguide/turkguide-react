@@ -552,6 +552,14 @@ function renderNotificationText(n) {
   }
 }
 
+function getDmOtherUsername(message, me) {
+  if (!message) return "";
+  const from = normalizeUsername(message.from);
+  const to = normalizeUsername(message.toUsername);
+  if (from === me) return message.toUsername || "";
+  return message.from || "";
+}
+
 if (!booted) return null;
 
 return (
@@ -735,6 +743,76 @@ return (
                     </div>
                   ))
                 )}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* MESSAGES */}
+        {active === "messages" && (
+          <div style={{ paddingTop: 26 }}>
+            <Card ui={ui}>
+              <div style={{ fontSize: 18, fontWeight: 950 }}>Mesajlar</div>
+              <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                {(() => {
+                  if (!user) return <div style={{ color: ui.muted }}>Giriş yapmanız gerekiyor.</div>;
+                  const me = normalizeUsername(user.username);
+                  const ownedBizIds = (biz || [])
+                    .filter((b) => normalizeUsername(b.ownerUsername) === me)
+                    .map((b) => b.id)
+                    .filter(Boolean);
+
+                  const visible = (dms || [])
+                    .filter((m) => {
+                      const isUserThread =
+                        m.toType === "user" &&
+                        (normalizeUsername(m.from) === me ||
+                          normalizeUsername(m.toUsername) === me);
+                      const isBizThread = m.toType === "biz" && ownedBizIds.includes(m.toBizId);
+                      return isUserThread || isBizThread;
+                    })
+                    .slice()
+                    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+                  if (visible.length === 0) {
+                    return <div style={{ color: ui.muted }}>Şu an hiç mesajınız yok.</div>;
+                  }
+
+                  return visible.slice(0, 50).map((m) => {
+                    const isBiz = m.toType === "biz";
+                    const other = getDmOtherUsername(m, me);
+                    return (
+                      <div
+                        key={m.id}
+                        style={{
+                          padding: "10px 0",
+                          borderBottom: `1px solid ${
+                            ui.mode === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"
+                          }`,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                          <div style={{ fontWeight: 900 }}>
+                            {isBiz ? "İşletme mesajı" : `@${other || "kullanıcı"}`}
+                          </div>
+                          <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(m.createdAt)}</div>
+                        </div>
+                        <div style={{ marginTop: 6, color: ui.muted }}>{m.text || ""}</div>
+                        <div style={{ marginTop: 8 }}>
+                          <Button
+                            ui={ui}
+                            onClick={() => {
+                              if (isBiz) messages.openDmToBiz(m.toBizId);
+                              else if (other) messages.openDmToUser(other);
+                            }}
+                          >
+                            Aç
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </Card>
           </div>
