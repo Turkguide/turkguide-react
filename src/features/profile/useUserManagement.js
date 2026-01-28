@@ -66,6 +66,7 @@ export function useUserManagement({
     // ✅ Username değişince profil popup "Profil bulunamadı" olmasın diye eski username'i yakala
     const oldUsername = String(u._origUsername || u.username || "").trim();
 
+
     const username = String(u.username || "").trim();
     if (!username) {
       alert("Username boş olamaz.");

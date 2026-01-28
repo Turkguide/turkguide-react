@@ -72,9 +72,6 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
   async function fetchHubPosts(retryOnAuth = true) {
     try {
       console.log("🟣 fetchHubPosts: start");
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useHub.js:74',message:'fetchHubPosts start',data:{hasSupabase:!!supabase?.from},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion agent log
       const { data, error } = await supabase
         .from("hub_posts")
         .select("*")
@@ -102,9 +99,6 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
     } catch (e) {
       console.error("fetchHubPosts error:", e);
       console.log("🟣 fetchHubPosts: catch raw=", e);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useHub.js:100',message:'fetchHubPosts error',data:{errorMessage:String(e?.message||e),errorCode:String(e?.code||''),errorHint:String(e?.hint||'')},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion agent log
       const msg = String(e?.message || e || "");
       const looksAuthExpired =
         msg.toLowerCase().includes("jwt expired") ||
