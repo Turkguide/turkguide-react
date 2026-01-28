@@ -18,7 +18,7 @@ export function SettingsModal({
     <Modal
       ui={ui}
       open={showSettings}
-      title="Ayarlar"
+      title="Settings"
       onClose={() => setShowSettings(false)}
       width={760}
     >
@@ -47,69 +47,69 @@ export function SettingsModal({
           </div>
         </Card>
 
-        {/* Misafir ise mesaj ayarları + hesap sil görünmesin */}
+        {/* Hide message/account controls for guests */}
         {!!user?.id && (
           <>
-            <div style={{ fontWeight: 950, fontSize: 14 }}>Mesaj Ayarları</div>
+            <div style={{ fontWeight: 950, fontSize: 14 }}>Messaging</div>
 
             <ToggleRow
               ui={ui}
-              label="Sohbeti Aç/Kapat"
-              desc="Kapalıysa gelen/giden mesajlar sessizce engellenir."
+              label="Enable chat"
+              desc="When off, incoming/outgoing messages are blocked."
               value={!!settings.chatEnabled}
               onToggle={() => setSettings((p) => ({ ...p, chatEnabled: !p.chatEnabled }))}
             />
 
             <ToggleRow
               ui={ui}
-              label="Görüldü Özelliği"
-              desc="Açıkken mesajlar 'okundu' olarak işaretlenebilir (MVP)."
+              label="Read receipts"
+              desc="When on, messages can be marked as read (MVP)."
               value={!!settings.readReceipts}
               onToggle={() => setSettings((p) => ({ ...p, readReceipts: !p.readReceipts }))}
             />
 
             <ToggleRow
               ui={ui}
-              label="Mesaj Bildirimleri"
-              desc="Açıkken rozet/okunmamış sayısı güncel tutulur (MVP)."
+              label="Message notifications"
+              desc="When on, unread badges are shown (MVP)."
               value={!!settings.msgNotifications}
               onToggle={() => setSettings((p) => ({ ...p, msgNotifications: !p.msgNotifications }))}
             />
 
-            <div style={{ fontWeight: 950, fontSize: 14, marginTop: 18 }}>Bildirimler</div>
+            <div style={{ fontWeight: 950, fontSize: 14, marginTop: 18 }}>Notifications</div>
 
             <ToggleRow
               ui={ui}
-              label="Bildirimleri Aç/Kapat"
-              desc="Açıkken beğeni/yorum/yanıt bildirimleri gösterilir."
+              label="Enable notifications"
+              desc="When on, like/comment/reply alerts are shown."
               value={!!settings.notificationsEnabled}
               onToggle={() =>
                 setSettings((p) => ({ ...p, notificationsEnabled: !p.notificationsEnabled }))
               }
             />
 
-            <div style={{ fontWeight: 950, fontSize: 14, marginTop: 18 }}>Yasal</div>
+            <div style={{ fontWeight: 950, fontSize: 14, marginTop: 18 }}>Legal</div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <Button
                 ui={ui}
                 onClick={() => window.open("/privacy.html", "_blank", "noopener,noreferrer")}
                 size="sm"
               >
-                Gizlilik
+                Privacy Policy
               </Button>
               <Button
                 ui={ui}
                 onClick={() => window.open("/terms.html", "_blank", "noopener,noreferrer")}
                 size="sm"
               >
-                Kullanım Şartları
+                Terms of Use
               </Button>
               <Button
                 ui={ui}
                 onClick={() => window.open("/contact.html", "_blank", "noopener,noreferrer")}
                 size="sm"
               >
-                İletişim
+                Contact
               </Button>
             </div>
 
@@ -123,7 +123,7 @@ export function SettingsModal({
               }}
             >
               <Button ui={ui} onClick={deleteAccount} variant="danger" size="sm">
-                🗑️ Hesabımı Sil
+                🗑️ Delete Account
               </Button>
             </div>
           </>

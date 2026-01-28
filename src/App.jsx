@@ -612,6 +612,47 @@ return (
       </div>
     ) : null}
 
+    {/* FOOTER (always visible) */}
+    <div
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: active === "biz" ? 84 : 12,
+        zIndex: 40,
+        display: "flex",
+        justifyContent: "center",
+        pointerEvents: "none",
+      }}
+    >
+      <div
+        style={{
+          background: ui.mode === "light" ? "rgba(255,255,255,0.88)" : "rgba(10,12,18,0.85)",
+          border: `1px solid ${ui.border}`,
+          borderRadius: 999,
+          padding: "8px 14px",
+          display: "inline-flex",
+          gap: 12,
+          fontSize: 12,
+          color: ui.muted2,
+          backdropFilter: "blur(12px)",
+          pointerEvents: "auto",
+        }}
+      >
+        <a href="/privacy.html" style={{ color: "inherit", textDecoration: "none" }}>
+          Privacy Policy
+        </a>
+        <span style={{ opacity: 0.6 }}>•</span>
+        <a href="/terms.html" style={{ color: "inherit", textDecoration: "none" }}>
+          Terms of Use
+        </a>
+        <span style={{ opacity: 0.6 }}>•</span>
+        <a href="/contact.html" style={{ color: "inherit", textDecoration: "none" }}>
+          Contact
+        </a>
+      </div>
+    </div>
+
 
       {/* CONTENT */}
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 16px 16px" }}>
