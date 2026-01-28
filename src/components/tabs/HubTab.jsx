@@ -534,7 +534,7 @@ export function HubTab({
                           .sort((a, b) => {
                             const ta = new Date(a?.createdAt || 0).getTime();
                             const tb = new Date(b?.createdAt || 0).getTime();
-                            return ta - tb;
+                            return tb - ta;
                           })
                           .map((c) => {
                             const key = `${p.id}:${c.id}`;
