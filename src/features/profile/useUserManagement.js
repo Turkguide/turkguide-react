@@ -47,7 +47,6 @@ export function useUserManagement({
     setEditUserCtx({
       ...u,
       _origUsername: String(u.username || "").trim(), // ✅ KRİTİK: eski username sakla
-      _origEmail: String(u.email || "").trim(),
     });
 
     setShowEditUser(true);
@@ -80,16 +79,9 @@ export function useUserManagement({
     const oldUsername = String(u._origUsername || u.username || "").trim();
 
     const username = String(u.username || "").trim();
-    const email = String(u.email || "").trim();
     if (!username) {
       setEditUserError("Username boş olamaz.");
       alert("Username boş olamaz.");
-      setSavingEditUser(false);
-      return;
-    }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEditUserError("Geçerli bir email girin.");
-      alert("Geçerli bir email girin.");
       setSavingEditUser(false);
       return;
     }
@@ -172,7 +164,7 @@ export function useUserManagement({
         ...(p || {}),
         ...(u || {}),
         id: me.id,
-        email: email || me.email,
+        email: me.email,
         username,
         avatar: u.avatar ?? p?.avatar ?? "",
         Tier: u.Tier ?? p?.Tier ?? null,
@@ -256,22 +248,7 @@ export function useUserManagement({
           session_email: sessUser.email,
         });
 
-        const oldEmail = String(u._origEmail || me?.email || "").trim();
-        const emailChanged = !!email && normalizeUsername(email) !== normalizeUsername(oldEmail);
-
-        if (emailChanged && me && String(me?.id) !== String(u?.id)) {
-          const msg = "Email sadece kendi hesabın için değiştirilebilir.";
-          setEditUserError(msg);
-          alert(msg);
-          setSavingEditUser(false);
-          return;
-        }
-
-        const updatePayload = emailChanged
-          ? { email, data: payload }
-          : { data: payload };
-
-        const { data: updateData, error } = await supabase.auth.updateUser(updatePayload);
+        const { error } = await supabase.auth.updateUser({ data: payload });
 
         if (error) {
           console.error("❌ updateUser error FULL:", error);
@@ -292,20 +269,7 @@ export function useUserManagement({
 
         console.log("✅ updateUser OK");
 
-        if (emailChanged && updateData?.user) {
-          alert("Email değişikliği için doğrulama maili gönderildi. Onaylamadan paylaşım yapılamaz.");
-          setUser((p) => ({
-            ...(p || {}),
-            email,
-            emailConfirmedAt: updateData.user.email_confirmed_at ?? updateData.user.confirmed_at ?? null,
-            emailVerified:
-              !!(updateData.user.email_confirmed_at ?? updateData.user.confirmed_at) &&
-              !updateData.user.new_email,
-            newEmailPending: updateData.user.new_email ?? email,
-          }));
-        } else {
-          alert("Profil güncellendi.");
-        }
+        alert("Profil güncellendi.");
 
         // ✅ ALSO write to public.profiles so everyone can read avatar/fields
         try {
