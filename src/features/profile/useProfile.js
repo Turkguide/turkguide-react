@@ -235,6 +235,9 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
             avatar: "",
             xp: 0,
             createdAt: null,
+            city: "",
+            state: "",
+            country: "",
           },
           owned: [],
           isPlaceholder: true,
@@ -245,7 +248,17 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
         (b) => normalizeUsername(b.ownerUsername) === normalizeUsername(u.username) && b.status === "approved"
       );
 
-      return { type: "user", user: u, owned, isPlaceholder: false };
+      return {
+        type: "user",
+        user: {
+          ...u,
+          city: u.city ?? "",
+          state: u.state ?? "",
+          country: u.country ?? "",
+        },
+        owned,
+        isPlaceholder: false,
+      };
     }
 
     // 🏢 BİZ PROFİLİ

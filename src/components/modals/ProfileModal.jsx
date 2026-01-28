@@ -29,7 +29,7 @@ export function ProfileModal({
                 {" • "}Katkı Puanı: {profileData.user.xp || 0}
               </div>
               <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
-                Kayıt: {profileData.user.createdAt ? fmt(profileData.user.createdAt) : "-"}
+                Kayıt: {profileData.user.createdAt ? fmt(profileData.user.createdAt) : "Gizlenmiş"}
               </div>
               {profileData.isPlaceholder ? (
                 <div style={{ color: ui.muted, marginTop: 6, fontSize: 12 }}>
@@ -37,6 +37,12 @@ export function ProfileModal({
                 </div>
               ) : null}
             </div>
+          </div>
+
+          <div style={{ display: "grid", gap: 4, color: ui.muted2, fontSize: 12 }}>
+            <div>Şehir: {profileData.user.city ? profileData.user.city : "Gizlenmiş"}</div>
+            <div>Eyalet: {profileData.user.state ? profileData.user.state : "Gizlenmiş"}</div>
+            <div>Ülke: {profileData.user.country ? profileData.user.country : "Gizlenmiş"}</div>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
