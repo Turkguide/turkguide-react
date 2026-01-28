@@ -33,7 +33,7 @@ export function ProfileModal({
               </div>
               {profileData.isPlaceholder ? (
                 <div style={{ color: ui.muted, marginTop: 6, fontSize: 12 }}>
-                  Profil bilgileri yükleniyor...
+                  Profil bilgileri gizli veya bulunamadı.
                 </div>
               ) : null}
             </div>
@@ -68,7 +68,10 @@ export function ProfileModal({
               <Button
                 ui={ui}
                 variant="blue"
-                onClick={() => messages.openDmToUser(profileData.user.username)}
+                onClick={() => {
+                  onClose();
+                  messages.openDmToUser(profileData.user.username);
+                }}
                 style={{
                   background: "transparent",
                   border: "none",
@@ -201,7 +204,10 @@ export function ProfileModal({
                   <button
                     type="button"
                     style={{ ...act, color: ui.blue }}
-                    onClick={() => messages.openDmToBiz(profileData.biz.id)}
+                    onClick={() => {
+                      onClose();
+                      messages.openDmToBiz(profileData.biz.id);
+                    }}
                     title="Mesaj"
                   >
                     <span style={icon}>💬</span>
