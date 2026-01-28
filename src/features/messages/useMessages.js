@@ -15,7 +15,10 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
    */
   function openDmToUser(username) {
     if (!requireAuth({ requireVerified: true })) return false;
-    if (!settings.chatEnabled) return false;
+    if (!settings.chatEnabled) {
+      alert("Mesajlar şu anda kapalı.");
+      return false;
+    }
     setDmTarget({ type: "user", username });
     setDmText("");
     setShowDm(true);
@@ -27,7 +30,10 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
    */
   function openDmToBiz(bizId) {
     if (!requireAuth({ requireVerified: true })) return false;
-    if (!settings.chatEnabled) return false;
+    if (!settings.chatEnabled) {
+      alert("Mesajlar şu anda kapalı.");
+      return false;
+    }
     setDmTarget({ type: "biz", bizId });
     setDmText("");
     setShowDm(true);
@@ -39,7 +45,10 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
    */
   async function sendDm() {
     if (!requireAuth({ requireVerified: true })) return;
-    if (!settings.chatEnabled) return;
+    if (!settings.chatEnabled) {
+      alert("Mesajlar şu anda kapalı.");
+      return;
+    }
 
     const text = String(dmText || "").trim();
     if (!text) return;
