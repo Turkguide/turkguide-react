@@ -49,7 +49,7 @@ export function TopBar({
   const goMyProfile = () => {
     if (!user) return;
     closeTopOverlays();
-    setActive("profile");
+    profile.openProfileByUsername(user.username);
   };
 
   const goNotifications = () => {
