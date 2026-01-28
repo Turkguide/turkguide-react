@@ -37,53 +37,65 @@ export function DMModal({
               overflow: "auto",
             }}
           >
-            {dms
-              .filter((m) => {
-                if (dmTarget.type === "user") {
-                  return (
-                    m.toType === "user" &&
-                    normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username)
-                  );
-                }
-                return m.toType === "biz" && m.toBizId === dmTarget.bizId;
-              })
-              .slice()
-              .reverse()
-              .map((m) => (
-                <div
-                  key={m.id}
-                  style={{
-                    padding: "10px 0",
-                    borderBottom: `1px solid ${
-                      ui.mode === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"
-                    }`,
-                  }}
-                >
+            {(() => {
+              const list = dms
+                .filter((m) => {
+                  if (dmTarget.type === "user") {
+                    return (
+                      m.toType === "user" &&
+                      normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username)
+                    );
+                  }
+                  return m.toType === "biz" && m.toBizId === dmTarget.bizId;
+                })
+                .slice()
+                .reverse();
+
+              return list.map((m, idx) => {
+                const prev = list[idx - 1];
+                const showHeader =
+                  idx === 0 ||
+                  normalizeUsername(prev?.from) !== normalizeUsername(m.from);
+
+                return (
                   <div
+                    key={m.id}
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      flexWrap: "wrap",
+                      padding: "10px 0",
+                      borderBottom: `1px solid ${
+                        ui.mode === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"
+                      }`,
                     }}
                   >
-                    <span
-                      style={{
-                        fontWeight: 950,
-                        cursor: "pointer",
-                        textDecoration: "underline",
-                      }}
-                      onClick={() => profile.openProfileByUsername(resolveUsernameAlias(m.from))}
-                    >
-                      @{resolveUsernameAlias(m.from)}
-                    </span>
+                    {showHeader ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: 950,
+                            cursor: "pointer",
+                            textDecoration: "underline",
+                          }}
+                          onClick={() => profile.openProfileByUsername(resolveUsernameAlias(m.from))}
+                        >
+                          @{resolveUsernameAlias(m.from)}
+                        </span>
 
-                    <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(m.createdAt)}</span>
+                        <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(m.createdAt)}</span>
+                      </div>
+                    ) : null}
+
+                    <div style={{ marginTop: showHeader ? 6 : 0 }}>{m.text}</div>
                   </div>
-
-                  <div style={{ marginTop: 6 }}>{m.text}</div>
-                </div>
-              ))}
+                );
+              });
+            })()}
 
             {dms.filter((m) =>
               dmTarget.type === "user"
