@@ -149,7 +149,7 @@ export function TopBar({
             flexWrap: "nowrap",
           }}
         >
-          {isAuthed && settingsHook.settings?.notificationsEnabled && (
+          {isAuthed && (
             <button
               type="button"
               aria-label="Bildirimler"
