@@ -3,6 +3,7 @@ import { supabase } from "../../supabaseClient";
 import { KEY } from "../../constants";
 import { lsGet, lsSet } from "../../utils/localStorage";
 import { ensureSeed } from "../../utils/seed";
+import { normalizeUsername } from "../../utils/helpers";
 
 /**
  * Hook for managing auth state and session restoration
@@ -10,6 +11,32 @@ import { ensureSeed } from "../../utils/seed";
 export function useAuthState() {
   const [user, setUser] = useState(null);
   const [booted, setBooted] = useState(false);
+
+  async function syncPublicProfile(nextUser) {
+    try {
+      if (!supabase?.from) return;
+      if (!nextUser?.id) return;
+      const unameRaw = String(nextUser?.username || "").trim();
+      if (!unameRaw) return;
+      const unameKey = normalizeUsername(unameRaw);
+      const avatarStr = typeof nextUser.avatar === "string" ? nextUser.avatar : "";
+      await supabase.from("profiles").upsert(
+        {
+          id: nextUser.id,
+          username: unameKey,
+          avatar: avatarStr || null,
+          age: nextUser?.age ?? null,
+          city: String(nextUser?.city || "").trim() || null,
+          state: String(nextUser?.state || "").trim() || null,
+          country: String(nextUser?.country || "").trim() || null,
+          bio: String(nextUser?.bio || "").trim() || null,
+        },
+        { onConflict: "id" }
+      );
+    } catch (e) {
+      console.warn("syncPublicProfile error:", e);
+    }
+  }
 
   useEffect(() => {
     ensureSeed();
@@ -49,7 +76,7 @@ export function useAuthState() {
         }
         if (session?.user) {
           const md = session.user.user_metadata || {};
-          setUser({
+          const nextUser = {
             id: session.user.id,
             email: session.user.email,
             username: md.username ?? null,
@@ -60,8 +87,11 @@ export function useAuthState() {
             age: md.age ?? "",
             city: md.city ?? "",
             state: md.state ?? "",
+            country: md.country ?? "",
             bio: md.bio ?? "",
-          });
+          };
+          setUser(nextUser);
+          syncPublicProfile(nextUser);
         } else {
           setUser(null);
         }
@@ -72,7 +102,7 @@ export function useAuthState() {
 
           if (s?.user) {
             const md = s.user.user_metadata || {};
-            setUser({
+            const nextUser = {
               id: s.user.id,
               email: s.user.email,
               username: md.username ?? null,
@@ -83,8 +113,11 @@ export function useAuthState() {
               age: md.age ?? "",
               city: md.city ?? "",
               state: md.state ?? "",
+              country: md.country ?? "",
               bio: md.bio ?? "",
-            });
+            };
+            setUser(nextUser);
+            syncPublicProfile(nextUser);
           } else {
             setUser(null);
           }
