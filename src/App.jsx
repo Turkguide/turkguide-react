@@ -898,6 +898,8 @@ return (
         setEditUserCtx={userManagement.setEditUserCtx}
         pickedAvatarName={userManagement.pickedAvatarName}
         setPickedAvatarName={userManagement.setPickedAvatarName}
+        savingEditUser={userManagement.savingEditUser}
+        editUserError={userManagement.editUserError}
         onSave={userManagement.saveEditUser}
       />
 

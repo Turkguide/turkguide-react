@@ -8,6 +8,8 @@ export function EditUserModal({
   setEditUserCtx,
   pickedAvatarName,
   setPickedAvatarName,
+  savingEditUser,
+  editUserError,
   onSave,
 }) {
   if (!open || !editUserCtx) return null;
@@ -203,9 +205,12 @@ export function EditUserModal({
         </div>
 
         {/* AKSİYONLAR */}
+        {editUserError ? (
+          <div style={{ color: ui.red, fontSize: 12, fontWeight: 700 }}>{editUserError}</div>
+        ) : null}
         <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-          <Button ui={ui} variant="solidBlue" onClick={onSave}>
-            Kaydet
+          <Button ui={ui} variant="solidBlue" onClick={onSave} disabled={savingEditUser}>
+            {savingEditUser ? "Kaydediliyor..." : "Kaydet"}
           </Button>
           <Button ui={ui} onClick={onClose}>
             Kapat

@@ -28,6 +28,8 @@ export function useUserManagement({
   const [showEditUser, setShowEditUser] = useState(false);
   const [editUserCtx, setEditUserCtx] = useState(null);
   const [pickedAvatarName, setPickedAvatarName] = useState("");
+  const [savingEditUser, setSavingEditUser] = useState(false);
+  const [editUserError, setEditUserError] = useState("");
 
   /**
    * Open edit user modal
@@ -55,30 +57,40 @@ export function useUserManagement({
    * Save edited user
    */
   async function saveEditUser() {
+    setEditUserError("");
+    setSavingEditUser(true);
     const u = editUserCtx;
-    if (!u) return;
+    if (!u) {
+      setSavingEditUser(false);
+      return;
+    }
 
-    const isAdmin = typeof admin.adminMode !== "undefined" ? admin.adminMode : false;
+    const isAdmin = admin?.adminMode ?? false;
     const me = typeof user !== "undefined" ? user : null;
 
-    const can = isAdmin || (me && u.id && me.id && u.id === me.id);
+    const can = isAdmin || (me && (u.id || u.user_id || u.uid) && me.id && (u.id || u.user_id || u.uid) === me.id);
     if (!can) {
+      setEditUserError("Bu profili düzenleme yetkin yok.");
       alert("Bu profili düzenleme yetkin yok.");
+      setSavingEditUser(false);
       return;
     }
 
     // ✅ Username değişince profil popup "Profil bulunamadı" olmasın diye eski username'i yakala
     const oldUsername = String(u._origUsername || u.username || "").trim();
 
-
     const username = String(u.username || "").trim();
     const email = String(u.email || "").trim();
     if (!username) {
+      setEditUserError("Username boş olamaz.");
       alert("Username boş olamaz.");
+      setSavingEditUser(false);
       return;
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEditUserError("Geçerli bir email girin.");
       alert("Geçerli bir email girin.");
+      setSavingEditUser(false);
       return;
     }
 
@@ -88,7 +100,8 @@ export function useUserManagement({
 
     // ✅ sadece username değiştiyse çakışma kontrolü
     if (lower !== origLower) {
-      const clash = users.find((x) => {
+      const usersList = Array.isArray(users) ? users : [];
+      const clash = usersList.find((x) => {
         const xid = String(x?.id ?? x?.uid ?? x?.user_id ?? "");
         if (normalizeUsername(x?.username) !== lower) return false;
 
@@ -99,7 +112,9 @@ export function useUserManagement({
       });
 
       if (clash) {
+        setEditUserError("Bu kullanıcı adı zaten var.");
         alert("Bu kullanıcı adı zaten var.");
+        setSavingEditUser(false);
         return;
       }
     }
@@ -178,13 +193,19 @@ export function useUserManagement({
 
         if (sErr) {
           console.error("❌ getSession error:", sErr);
-          alert("Supabase session okunamadı: " + (sErr.message || JSON.stringify(sErr)));
+          const msg = "Supabase session okunamadı: " + (sErr.message || JSON.stringify(sErr));
+          setEditUserError(msg);
+          alert(msg);
+          setSavingEditUser(false);
           return;
         }
 
         if (!sessUser) {
           console.error("❌ No session user. user state:", user);
-          alert("Supabase session yok (login düşmüş olabilir). Lütfen çıkış yapıp tekrar giriş yap.");
+          const msg = "Supabase session yok (login düşmüş olabilir). Lütfen çıkış yapıp tekrar giriş yap.";
+          setEditUserError(msg);
+          alert(msg);
+          setSavingEditUser(false);
           return;
         }
 
@@ -239,7 +260,10 @@ export function useUserManagement({
         const emailChanged = !!email && normalizeUsername(email) !== normalizeUsername(oldEmail);
 
         if (emailChanged && me && String(me?.id) !== String(u?.id)) {
-          alert("Email sadece kendi hesabın için değiştirilebilir.");
+          const msg = "Email sadece kendi hesabın için değiştirilebilir.";
+          setEditUserError(msg);
+          alert(msg);
+          setSavingEditUser(false);
           return;
         }
 
@@ -251,7 +275,7 @@ export function useUserManagement({
 
         if (error) {
           console.error("❌ updateUser error FULL:", error);
-          alert(
+          const msg =
             "updateUser error: " +
               (error.message || "") +
               "\nstatus: " +
@@ -259,8 +283,10 @@ export function useUserManagement({
               "\nname: " +
               (error.name || "") +
               "\nJSON: " +
-              JSON.stringify(error)
-          );
+              JSON.stringify(error);
+          setEditUserError(msg);
+          alert(msg);
+          setSavingEditUser(false);
           return;
         }
 
@@ -344,16 +370,22 @@ export function useUserManagement({
         }
       } catch (e) {
         console.error("💥 updateUser crash FULL:", e);
-        alert("updateUser crash: " + (e?.message || JSON.stringify(e)));
+        const msg = "updateUser crash: " + (e?.message || JSON.stringify(e));
+        setEditUserError(msg);
+        alert(msg);
+        setSavingEditUser(false);
         return;
       }
     } else {
-      alert("Supabase bağlantısı hazır değil, lütfen tekrar deneyin.");
+      const msg = "Supabase bağlantısı hazır değil, lütfen tekrar deneyin.";
+      setEditUserError(msg);
+      alert(msg);
+      setSavingEditUser(false);
       return;
     }
 
     // ✅ Profil popup açıksa, target username'i güncelle (Profil bulunamadı fix)
-    profile.setProfileTarget((pt) => {
+    profile?.setProfileTarget?.((pt) => {
       if (!pt || pt.type !== "user") return pt;
 
       const cur = normalizeUsername(pt.username || "");
@@ -565,9 +597,10 @@ export function useUserManagement({
     }
 
     // ✅ başarıyla buraya geldiyse kapat
-    admin.addLog("USER_EDIT", { id: u.id, username });
+    admin?.addLog?.("USER_EDIT", { id: u.id, username });
     setShowEditUser(false);
     setEditUserCtx(null);
+    setSavingEditUser(false);
   }
 
   /**
@@ -642,6 +675,8 @@ export function useUserManagement({
     setEditUserCtx,
     pickedAvatarName,
     setPickedAvatarName,
+    savingEditUser,
+    editUserError,
     openEditUser,
     saveEditUser,
     setMyAvatar,
