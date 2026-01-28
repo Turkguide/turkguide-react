@@ -328,6 +328,28 @@ export function useUserManagement({
     const oldU = String(oldUsername || "").trim();
 
     if (oldU && newUsername && normalizeUsername(oldU) !== normalizeUsername(newUsername)) {
+      const oldKey = normalizeUsername(oldU);
+      const replaceUsername = (value) =>
+        normalizeUsername(value || "") === oldKey ? newUsername : value;
+
+      const remapComments = (comments) =>
+        Array.isArray(comments)
+          ? comments.map((c) => {
+              const nextC = {
+                ...c,
+                byUsername: replaceUsername(c?.byUsername),
+                by: replaceUsername(c?.by),
+              };
+              if (Array.isArray(c?.replies)) {
+                nextC.replies = c.replies.map((r) => ({
+                  ...r,
+                  byUsername: replaceUsername(r?.byUsername),
+                  by: replaceUsername(r?.by),
+                }));
+              }
+              return nextC;
+            })
+          : comments;
       // ✅ eski username ile de profile açabilmek için alias map'e ekle
       setUsernameAliases((prev) => ({
         ...(prev || {}),
@@ -445,6 +467,61 @@ export function useUserManagement({
               : a.ownerUsername,
         }))
       );
+
+      // 6) Supabase HUB posts + comments güncelle (kalıcı)
+      if (supabase?.from) {
+        try {
+          const { data: hubRows, error: hubErr } = await supabase
+            .from("hub_posts")
+            .select("id, username, comments")
+            .order("created_at", { ascending: false })
+            .limit(200);
+          if (hubErr) throw hubErr;
+          const list = Array.isArray(hubRows) ? hubRows : [];
+          await Promise.all(
+            list.map(async (row) => {
+              const nextUsername =
+                normalizeUsername(row?.username || "") === oldKey ? newUsername : row?.username;
+              const nextComments = remapComments(row?.comments);
+              const changedComments =
+                JSON.stringify(nextComments || []) !== JSON.stringify(row?.comments || []);
+              if (nextUsername === row?.username && !changedComments) return;
+              await supabase
+                .from("hub_posts")
+                .update({ username: nextUsername, comments: nextComments })
+                .eq("id", row.id);
+            })
+          );
+        } catch (e) {
+          console.warn("hub_posts username sync error:", e);
+        }
+      }
+
+      // 7) Supabase DMs güncelle (kalıcı)
+      if (supabase?.from) {
+        try {
+          await supabase.from("dms").update({ from_username: newUsername }).ilike("from_username", oldU);
+          await supabase.from("dms").update({ to_username: newUsername }).ilike("to_username", oldU);
+          const { data: dmRows, error: dmErr } = await supabase
+            .from("dms")
+            .select("id, read_by")
+            .contains("read_by", [oldU])
+            .limit(200);
+          if (dmErr) throw dmErr;
+          const list = Array.isArray(dmRows) ? dmRows : [];
+          await Promise.all(
+            list.map(async (row) => {
+              const nextReadBy = (row?.read_by || []).map((rb) => replaceUsername(rb));
+              if (JSON.stringify(nextReadBy) === JSON.stringify(row?.read_by || [])) return;
+              await supabase.from("dms").update({ read_by: nextReadBy }).eq("id", row.id);
+            })
+          );
+        } catch (e) {
+          console.warn("dms username sync error:", e);
+        }
+      }
+    } else {
+      // username unchanged; no remap
     }
 
     // ✅ başarıyla buraya geldiyse kapat
