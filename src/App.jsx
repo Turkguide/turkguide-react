@@ -311,6 +311,77 @@ useEffect(() => {
     });
   }, [booted, user?.username, biz]);
 
+  // 🔔 Realtime: DMs insert/update
+  useEffect(() => {
+    if (!booted || !user || !supabase?.channel) return;
+    const me = normalizeUsername(user.username);
+    if (!me) return;
+
+    const ownedBizIds = (biz || [])
+      .filter((b) => normalizeUsername(b.ownerUsername) === me)
+      .map((b) => String(b.id))
+      .filter(Boolean);
+
+    const mapRow = (m) => ({
+      id: m.id,
+      createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
+      from: m.from_username,
+      toType: m.to_type,
+      toUsername: m.to_username,
+      toBizId: m.to_biz_id,
+      text: m.text || "",
+      readBy: Array.isArray(m.read_by) ? m.read_by : [],
+    });
+
+    const isRelevant = (m) => {
+      const isToUser =
+        m.to_type === "user" && normalizeUsername(m.to_username) === me;
+      const isFromUser = normalizeUsername(m.from_username) === me;
+      const isToBiz =
+        m.to_type === "biz" && ownedBizIds.includes(String(m.to_biz_id));
+      return isToUser || isFromUser || isToBiz;
+    };
+
+    const channel = supabase
+      .channel("realtime:dms")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "dms" },
+        (payload) => {
+          const m = payload?.new;
+          if (!m || !isRelevant(m)) return;
+          const mapped = mapRow(m);
+          setDms((prev) => {
+            if ((prev || []).some((x) => String(x.id) === String(mapped.id))) {
+              return prev;
+            }
+            return [mapped, ...(prev || [])];
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "dms" },
+        (payload) => {
+          const m = payload?.new;
+          if (!m || !isRelevant(m)) return;
+          const mapped = mapRow(m);
+          setDms((prev) =>
+            (prev || []).map((x) =>
+              String(x.id) === String(mapped.id) ? mapped : x
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch (_) {}
+    };
+  }, [booted, user?.username, biz]);
+
   // Appointment hook (must be after auth hook and business hook)
   const appointment = useAppointment({
     user,
