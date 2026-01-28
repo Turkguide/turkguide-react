@@ -166,6 +166,17 @@ export function EditUserModal({
           />
         </div>
 
+        {/* COUNTRY */}
+        <div>
+          <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Ülke</div>
+          <input
+            value={String(editUserCtx.country || "")}
+            onChange={(e) => setEditUserCtx((p) => ({ ...p, country: e.target.value }))}
+            placeholder="Örn: United States"
+            style={inputStyle(ui)}
+          />
+        </div>
+
         {/* BIO */}
         <div>
           <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Bio</div>

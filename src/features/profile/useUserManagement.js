@@ -114,6 +114,7 @@ export function useUserManagement({
           age: u.age ?? old.age ?? "",
           city: u.city ?? old.city ?? "",
           state: u.state ?? old.state ?? "",
+          country: u.country ?? old.country ?? "",
           bio: u.bio ?? old.bio ?? "",
         };
         return copy;
@@ -133,6 +134,7 @@ export function useUserManagement({
           age: u.age || "",
           city: u.city || "",
           state: u.state || "",
+          country: u.country || "",
           bio: u.bio || "",
         },
         ...prev,
@@ -153,6 +155,7 @@ export function useUserManagement({
         age: u.age ?? p?.age ?? "",
         city: u.city ?? p?.city ?? "",
         state: u.state ?? p?.state ?? "",
+        country: u.country ?? p?.country ?? "",
         bio: u.bio ?? p?.bio ?? "",
       }));
     }
@@ -211,6 +214,7 @@ export function useUserManagement({
           age: u.age !== "" && u.age != null ? u.age : null,
           city: String(u.city || "").trim() || null,
           state: String(u.state || "").trim() || null,
+          country: String(u.country || "").trim() || null,
           bio: String(u.bio || "").trim() || null,
         };
 
@@ -251,6 +255,7 @@ export function useUserManagement({
             age: u?.age !== "" && u?.age != null ? Number(u.age) : null,
             city: String(u?.city || "").trim() || null,
             state: String(u?.state || "").trim() || null,
+            country: String(u?.country || "").trim() || null,
             bio: String(u?.bio || "").trim() || null,
           };
 
@@ -279,6 +284,7 @@ export function useUserManagement({
                   age: u?.age ?? x?.age ?? "",
                   city: u?.city ?? x?.city ?? "",
                   state: u?.state ?? x?.state ?? "",
+                  country: u?.country ?? x?.country ?? "",
                   bio: u?.bio ?? x?.bio ?? "",
                 }
               : x
@@ -295,6 +301,7 @@ export function useUserManagement({
             age: u?.age ?? p?.age ?? "",
             city: u?.city ?? p?.city ?? "",
             state: u?.state ?? p?.state ?? "",
+            country: u?.country ?? p?.country ?? "",
             bio: u?.bio ?? p?.bio ?? "",
           }));
         }
