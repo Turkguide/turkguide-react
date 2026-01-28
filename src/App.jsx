@@ -54,10 +54,6 @@ function fmt(ts) {
 function normalizeUsername(s) {
   return String(s || "").trim().toLowerCase();
 }
-function getXP(u) {
-  // legacy + yeni alanlar: XP / xp
-  return Number(u?.XP ?? u?.xp ?? 0);
-}
 function isAdminUser(username, admins) {
   const u = normalizeUsername(username);
   return (admins || []).map((x) => normalizeUsername(x)).includes(u);
@@ -847,53 +843,6 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
     gap: 6,
   };
 
-  const Seg = ({ id, icon, label }) => {
-  const isActive = active === id;
-
-  return (
-    <div
-      onClick={() => setActive(id)}
-      style={{
-        minWidth: 0,
-        padding: "12px 8px",
-        borderRadius: 14,
-        background: isActive ? "#fff" : "transparent",
-        color: isActive ? "#000" : "rgba(0,0,0,0.55)",
-
-        // ✅ Mobilde yazı kesilmesin: icon üstte, yazı altta 2 satıra kadar
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-
-        fontWeight: 950,
-        cursor: "pointer",
-        userSelect: "none",
-        textAlign: "center",
-      }}
-    >
-      <span style={{ opacity: isActive ? 1 : 0.8, lineHeight: 1 }}>{icon}</span>
-
-      <span
-        style={{
-          maxWidth: "100%",
-          fontSize: 13,
-          lineHeight: 1.1,
-
-          // ✅ kesme yok, wrap var
-          whiteSpace: "normal",
-          overflow: "hidden",
-          textOverflow: "clip",
-          wordBreak: "break-word",
-        }}
-      >
-        {label}
-      </span>
-    </div>
-  );
-};
-
   return (
   // ✅ FULL-WIDTH HERO (gri ambians sağ-sol tam dolar)
   <div
@@ -1004,9 +953,9 @@ function LandingHero({ ui, active, setActive, searchText, setSearchText, onSearc
 
           <div style={{ width: "100%", maxWidth: 1100, boxSizing: "border-box" }}>
             <div style={segWrap}>
-              <Seg id="biz" icon="🏢" label="İŞLETMELER" />
-              <Seg id="news" icon="📰" label="HABERLER" />
-              <Seg id="hub" icon="👥" label="HUB" />
+              <Seg id="biz" icon="🏢" label="İŞLETMELER" active={active} setActive={setActive} />
+              <Seg id="news" icon="📰" label="HABERLER" active={active} setActive={setActive} />
+              <Seg id="hub" icon="👥" label="HUB" active={active} setActive={setActive} />
             </div>
           </div>
         </div>
@@ -1176,6 +1125,55 @@ function CategoryGrid({ ui, counts = {}, onPickCategory, biz = [] }) {
     </div>
   );
 }
+
+// Seg component - App dışında tanımlanmalı
+function Seg({ id, icon, label, active, setActive }) {
+  const isActive = active === id;
+
+  return (
+    <div
+      onClick={() => setActive(id)}
+      style={{
+        minWidth: 0,
+        padding: "12px 8px",
+        borderRadius: 14,
+        background: isActive ? "#fff" : "transparent",
+        color: isActive ? "#000" : "rgba(0,0,0,0.55)",
+
+        // ✅ Mobilde yazı kesilmesin: icon üstte, yazı altta 2 satıra kadar
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+
+        fontWeight: 950,
+        cursor: "pointer",
+        userSelect: "none",
+        textAlign: "center",
+      }}
+    >
+      <span style={{ opacity: isActive ? 1 : 0.8, lineHeight: 1 }}>{icon}</span>
+
+      <span
+        style={{
+          maxWidth: "100%",
+          fontSize: 13,
+          lineHeight: 1.1,
+
+          // ✅ kesme yok, wrap var
+          whiteSpace: "normal",
+          overflow: "hidden",
+          textOverflow: "clip",
+          wordBreak: "break-word",
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
 /* ========= APP ========= */
 export default function App() {
   console.log("🔥 App.jsx yüklendi");
@@ -1261,6 +1259,10 @@ const [commentMenuOpenKey, setCommentMenuOpenKey] = useState(null);
 const [editingCommentKey, setEditingCommentKey] = useState(null);
 const [editCommentDraft, setEditCommentDraft] = useState("");
 
+// 💬 Yorum cevapla
+const [replyingCommentKey, setReplyingCommentKey] = useState(null); // "postId:commentId"
+const [replyDraft, setReplyDraft] = useState("");
+
   // 🧪 DEBUG: posts state gerçekten güncelleniyor mu?
   useEffect(() => {
     try {
@@ -1309,11 +1311,12 @@ const [pickedAvatarName, setPickedAvatarName] = useState("");
   const [editBizCtx, setEditBizCtx] = useState(null);
 
   // HUB
-  const [composer, setComposer] = useState("");
-  const [commentDraft, setCommentDraft] = useState({});
-  const [commentMenu, setCommentMenu] = useState(null); 
-// { postId, commentId } veya null
-  const [hubMedia, setHubMedia] = useState(null);
+const [composer, setComposer] = useState("");
+const [commentDraft, setCommentDraft] = useState({});
+const [commentMenu, setCommentMenu] = useState(null);
+const [hubMedia, setHubMedia] = useState(null);
+
+
 
   // HUB comment input refs ("Yorum" tıklayınca input'a focus)
 const commentInputRefs = useRef({});
@@ -2593,7 +2596,7 @@ async function fetchHubPosts() {
     const { data, error } = await supabase
       .from("hub_posts")
       .select("*")
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: true })
       .limit(50);
 
     if (error) throw error;
@@ -3698,7 +3701,7 @@ const profileData = useMemo(() => {
       }
     }
 
-    if (!u) return null;
+    if (!u) return { type: "loading" };
 
     const owned = biz.filter(
       (b) => normalizeUsername(b.ownerUsername) === normalizeUsername(u.username) && b.status === "approved"
@@ -4846,7 +4849,11 @@ return (
 <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
   {(p.comments || [])
     .slice()
-    .reverse()
+    .sort((a, b) => {
+      const ta = new Date(a?.createdAt || 0).getTime();
+      const tb = new Date(b?.createdAt || 0).getTime();
+      return ta - tb; // ✅ oldest -> newest (SON YORUM EN ALTA)
+    })
     .map((c) => {
       const key = `${p.id}:${c.id}`;
       const isOwner =
@@ -4908,6 +4915,28 @@ return (
             })()}
 
             <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(c.createdAt)}</span>
+
+            <button
+  type="button"
+  onClick={(e) => {
+    e.stopPropagation();
+    setReplyingCommentKey(replyingCommentKey === key ? null : key);
+    setReplyDraft("");
+  }}
+  style={{
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    fontWeight: 900,
+    fontSize: 12,
+    padding: "2px 6px",
+    borderRadius: 10,
+    color: ui.mode === "light" ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.65)",
+  }}
+  title="Cevapla"
+>
+  Cevapla
+</button>
 
             {isOwner ? (
               <div
@@ -6351,6 +6380,7 @@ bio: user.bio ?? "",
     setProfileTarget(null);
   }}
 >
+
   {!profileData ? (
     <div style={{ color: ui.muted }}>Profil bulunamadı.</div>
   ) : profileData.type === "user" ? (
