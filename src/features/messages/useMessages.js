@@ -60,20 +60,39 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
     // Save to Supabase
     try {
       if (supabase?.from) {
-        const { error } = await supabase.from("dms").insert([
-          {
-            id: msg.id,
-            created_at: new Date(msg.createdAt).toISOString(),
-            from_username: msg.from,
-            to_type: msg.toType,
-            to_username: msg.toUsername,
-            to_biz_id: msg.toBizId,
-            text: msg.text,
-            read_by: msg.readBy,
-          },
-        ]);
+        const fullPayload = {
+          id: msg.id,
+          created_at: new Date(msg.createdAt).toISOString(),
+          from_username: msg.from,
+          to_type: msg.toType,
+          to_username: msg.toUsername,
+          to_biz_id: msg.toBizId,
+          text: msg.text,
+          read_by: msg.readBy,
+        };
+
+        const { error } = await supabase.from("dms").insert([fullPayload]);
         if (error) {
-          console.error("sendDm DB error:", error);
+          const isColumnMismatch =
+            String(error.message || "").includes("column") ||
+            String(error.message || "").includes("does not exist") ||
+            String(error.code || "") === "42703";
+
+          if (isColumnMismatch) {
+            const minimalPayload = {
+              id: msg.id,
+              created_at: new Date(msg.createdAt).toISOString(),
+              from_username: msg.from,
+              to_username: msg.toUsername,
+              text: msg.text,
+            };
+            const { error: retryError } = await supabase.from("dms").insert([minimalPayload]);
+            if (!retryError) return;
+            console.error("sendDm retry error:", retryError);
+          } else {
+            console.error("sendDm DB error:", error);
+          }
+
           // Revert optimistic update on error
           setDms((prev) => prev.filter((m) => m.id !== msg.id));
           alert("Mesaj gönderilemedi. Lütfen tekrar deneyin.");

@@ -536,6 +536,22 @@ function clearFilters() {
   setCategoryFilter("");
 }
 
+function renderNotificationText(n) {
+  const from = n.fromUsername ? `@${n.fromUsername}` : "Bir kullanıcı";
+  switch (n.type) {
+    case "like":
+      return `${from} paylaşımınızı beğendi.`;
+    case "comment":
+      return `${from} paylaşımınıza yorum yaptı.`;
+    case "comment_reply":
+      return `${from} yorumunuza cevap verdi.`;
+    case "repost":
+      return `${from} paylaşımınızı HUB'da yeniden paylaştı.`;
+    default:
+      return `${from} size bir bildirim gönderdi.`;
+  }
+}
+
 if (!booted) return null;
 
 return (
@@ -682,6 +698,46 @@ return (
             pickHubMedia={hub.pickHubMedia}
             hubShare={hub.hubShare}
           />
+        )}
+
+        {/* NOTIFICATIONS */}
+        {active === "notifications" && (
+          <div style={{ paddingTop: 26 }}>
+            <Card ui={ui}>
+              <div style={{ fontSize: 18, fontWeight: 950 }}>Bildirimler</div>
+              <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                {notifications.notifications.length === 0 ? (
+                  <div style={{ color: ui.muted }}>Şu an hiç bildiriminiz yok.</div>
+                ) : (
+                  notifications.notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      style={{
+                        padding: "10px 0",
+                        borderBottom: `1px solid ${
+                          ui.mode === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"
+                        }`,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                        <div style={{ fontWeight: n.read ? 700 : 900 }}>{renderNotificationText(n)}</div>
+                        <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(n.createdAt)}</div>
+                      </div>
+                      {!n.read ? (
+                        <Button
+                          ui={ui}
+                          onClick={() => notifications.markAsRead(n.id)}
+                          style={{ marginTop: 6 }}
+                        >
+                          Okundu
+                        </Button>
+                      ) : null}
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          </div>
         )}
 
       {/* FOOTER (bottom of page) */}

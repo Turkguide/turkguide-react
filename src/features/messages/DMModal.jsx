@@ -90,7 +90,7 @@ export function DMModal({
                 ? m.toType === "user" &&
                   normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username)
                 : m.toType === "biz" && m.toBizId === dmTarget.bizId
-            ).length === 0 && <div style={{ color: ui.muted }}>Henüz mesaj yok.</div>}
+            ).length === 0 && <div style={{ color: ui.muted }}>Şu an hiç mesajınız yok.</div>}
           </div>
 
           <textarea
