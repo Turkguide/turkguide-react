@@ -158,16 +158,6 @@ export function HubTab({
                       </button>
                     </div>
 
-                    <div style={{ padding: 10, color: ui.muted2, fontSize: 12 }}>
-                      {hub.hubMedia.kind === "video"
-                        ? (() => {
-                            const duration = hub.hubMedia.duration || 0;
-                            const rounded = Math.round(duration * 10);
-                            const seconds = rounded * 0.1;
-                            return `Video: ${seconds}s • Max 60s • 2K`;
-                          })()
-                        : "Fotoğraf: 4:5"}
-                    </div>
                   </div>
                 ) : null}
 
@@ -433,13 +423,6 @@ export function HubTab({
                               />
                             )}
                           </div>
-
-                          <div style={{ color: ui.muted, fontSize: 12, marginTop: 8 }}>
-                            {p.media.kind === "video" && p.media.duration
-                              ? `Video: ${Math.round(p.media.duration)}s • `
-                              : ""}
-                            Fotograf oranı: 4:5 • Video max 60s {" / "} 2K
-                          </div>
                         </div>
                       ) : null}
 
@@ -560,6 +543,7 @@ export function HubTab({
                               normalizeUsername(user.username) === normalizeUsername(c.byUsername);
                             const menuOpen = hub.commentMenuOpenKey === key;
                             const isEditing = hub.editingCommentKey === key;
+                            const isReplying = hub.replyingCommentKey === key;
 
                             return (
                               <div
@@ -581,10 +565,7 @@ export function HubTab({
                                   }}
                                 >
                                   {(() => {
-                                    const commenter = (users || []).find(
-                                      (u) => normalizeUsername(u.username) === normalizeUsername(c.byUsername)
-                                    );
-                                    const avatarSrc = commenter?.avatar || "";
+                                    const avatarSrc = profile.avatarByUsername(c.byUsername);
 
                                     return (
                                       <div
@@ -841,32 +822,67 @@ export function HubTab({
                                     c.text
                                   )}
                                 </div>
+
+                                {/* Reply input */}
+                                {isReplying ? (
+                                  <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                                    <input
+                                      placeholder="Cevap yaz..."
+                                      value={hub.replyDraft || ""}
+                                      onChange={(e) => hub.setReplyDraft(e.target.value)}
+                                      style={inputStyle(ui, { padding: "8px 10px", flex: 1 })}
+                                    />
+                                    <Button
+                                      ui={ui}
+                                      variant="solidBlue"
+                                      onClick={() => {
+                                        const text = String(hub.replyDraft || "").trim();
+                                        if (!text) return;
+                                        hub.hubComment(p.id, c.id);
+                                      }}
+                                      style={{ padding: "8px 14px" }}
+                                    >
+                                      Gönder
+                                    </Button>
+                                    <Button
+                                      ui={ui}
+                                      onClick={() => {
+                                        hub.setReplyingCommentKey(null);
+                                        hub.setReplyDraft("");
+                                      }}
+                                      style={{ padding: "8px 14px" }}
+                                    >
+                                      İptal
+                                    </Button>
+                                  </div>
+                                ) : null}
                               </div>
                             );
                           })}
                       </div>
 
                       {/* comment input (HER ZAMAN EN ALTA) */}
-                      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                        <input
-                          placeholder={user ? "Yorum yaz..." : "Yorum için giriş yap"}
-                          value={hub.commentDraft[p.id] || ""}
-                          onChange={(e) => hub.setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))}
-                          onFocus={() => {
-                            if (!user) setShowAuth(true);
-                          }}
-                          style={inputStyle(ui, { padding: "10px 12px" })}
-                        />
-                        <Button ui={ui} variant="solidBlue" onClick={() => hub.hubComment(p.id)}>
-                          Gönder
-                        </Button>
-                      </div>
+                      {!hub.replyingCommentKey ? (
+                        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                          <input
+                            placeholder={user ? "Yorum yaz..." : "Yorum için giriş yap"}
+                            value={hub.commentDraft[p.id] || ""}
+                            onChange={(e) => hub.setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))}
+                            onFocus={() => {
+                              if (!user) setShowAuth(true);
+                            }}
+                            style={inputStyle(ui, { padding: "10px 12px" })}
+                          />
+                          <Button ui={ui} variant="solidBlue" onClick={() => hub.hubComment(p.id)}>
+                            Gönder
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
                   </Card>
                 ))}
               </div>
             )}
-      </div>
     </div>
   );
 }

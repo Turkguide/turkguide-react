@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "../../supabaseClient";
 import { now, uid, normalizeUsername } from "../../utils/helpers";
 
 /**
@@ -34,7 +35,7 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
   /**
    * Send DM
    */
-  function sendDm() {
+  async function sendDm() {
     if (!requireAuth()) return;
     if (!settings.chatEnabled) return;
 
@@ -52,8 +53,28 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
       readBy: [],
     };
 
+    // Optimistic UI update
     setDms((prev) => [msg, ...prev]);
     setDmText("");
+
+    // Save to Supabase
+    try {
+      if (supabase?.from) {
+        const { error } = await supabase.from("dms").insert([msg]);
+        if (error) {
+          console.error("sendDm DB error:", error);
+          // Revert optimistic update on error
+          setDms((prev) => prev.filter((m) => m.id !== msg.id));
+          alert("Mesaj gönderilemedi. Lütfen tekrar deneyin.");
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("sendDm exception:", e);
+      // Revert optimistic update on error
+      setDms((prev) => prev.filter((m) => m.id !== msg.id));
+      alert("Mesaj gönderilemedi. Lütfen tekrar deneyin.");
+    }
   }
 
   /**

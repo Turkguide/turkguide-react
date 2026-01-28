@@ -48,11 +48,10 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
     setProfileTarget({ type: "user", userId: null, username: uname });
     setProfileOpen(true);
 
-    try {
-      await fetchPublicProfileToCache(key);
-    } catch (_) {
-      // ignore
-    }
+    // Fetch profile in background - don't block UI
+    fetchPublicProfileToCache(key).catch((e) => {
+      console.warn("openProfileByUsername: failed to fetch public profile:", e);
+    });
   }
 
   /**
@@ -72,7 +71,10 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
     inFlightPublicProfileFetch.current[usernameKey] = true;
 
     try {
-      if (!supabase?.from) return;
+      if (!supabase?.from) {
+        console.warn("fetchPublicProfileToCache: supabase not available");
+        return;
+      }
 
       const { data, error } = await supabase
         .from("profiles")
@@ -86,7 +88,11 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
       }
 
       const row = data || null;
-      if (!row) return;
+      if (!row) {
+        // Profile not found in database, but we still allow opening the profile modal
+        // with limited info (username only)
+        return;
+      }
 
       const mapped = {
         id: row.id || null,
@@ -104,6 +110,8 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
         if (prevRow && String(prevRow.avatar || "") === String(mapped.avatar || "")) return prev;
         return { ...(prev || {}), [usernameKey]: mapped };
       });
+    } catch (e) {
+      console.error("fetchPublicProfileToCache exception:", e);
     } finally {
       inFlightPublicProfileFetch.current[usernameKey] = false;
     }

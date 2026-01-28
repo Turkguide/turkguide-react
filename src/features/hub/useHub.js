@@ -6,7 +6,7 @@ import { normalizeImageToFotograf, validateAndLoadVideo } from "../../services/m
 /**
  * Hook for HUB operations
  */
-export function useHub({ user, setPosts, posts, requireAuth }) {
+export function useHub({ user, setPosts, posts, requireAuth, createNotification }) {
   const [composer, setComposer] = useState("");
   const [commentDraft, setCommentDraft] = useState({});
   const [hubMedia, setHubMedia] = useState(null);
@@ -234,6 +234,21 @@ export function useHub({ user, setPosts, posts, requireAuth }) {
         .select();
 
       if (error) throw error;
+
+      // Create notification if liked (not unliked)
+      if (!hasLiked && createNotification) {
+        const postAuthor = hubPostAuthor(target);
+        if (postAuthor) {
+          createNotification({
+            type: "like",
+            fromUsername: user.username,
+            toUsername: postAuthor,
+            postId: postId,
+            commentId: null,
+            metadata: {},
+          });
+        }
+      }
     } catch (e) {
       console.error("❌ hubLike DB error:", e);
       setPosts((prev) => (prev || []).map((p) => (p.id === postId ? target : p)));
@@ -242,12 +257,15 @@ export function useHub({ user, setPosts, posts, requireAuth }) {
   }
 
   /**
-   * Add comment to a HUB post
+   * Add comment to a HUB post (or reply to a comment)
    */
-  async function hubComment(postId) {
+  async function hubComment(postId, replyToCommentId = null) {
     if (!requireAuth()) return;
 
-    const text = String(commentDraft[postId] || "").trim();
+    // Use replyDraft if replying, otherwise use commentDraft
+    const text = replyToCommentId
+      ? String(replyDraft || "").trim()
+      : String(commentDraft[postId] || "").trim();
     if (!text) return;
 
     const newComment = {
@@ -255,6 +273,7 @@ export function useHub({ user, setPosts, posts, requireAuth }) {
       createdAt: now(),
       byUsername: user.username,
       text,
+      replyTo: replyToCommentId || null,
     };
 
     // Optimistic UI
@@ -265,6 +284,10 @@ export function useHub({ user, setPosts, posts, requireAuth }) {
     );
 
     setCommentDraft((d) => ({ ...d, [postId]: "" }));
+    if (replyingCommentKey) {
+      setReplyingCommentKey(null);
+      setReplyDraft("");
+    }
 
     // Save to DB
     try {
@@ -278,6 +301,37 @@ export function useHub({ user, setPosts, posts, requireAuth }) {
         .eq("id", postId);
 
       if (error) throw error;
+
+      // Create notification
+      if (createNotification) {
+        if (replyToCommentId) {
+          // Reply to comment - notify comment author
+          const replyToComment = currentComments.find((c) => c.id === replyToCommentId);
+          if (replyToComment && replyToComment.byUsername) {
+            createNotification({
+              type: "comment_reply",
+              fromUsername: user.username,
+              toUsername: replyToComment.byUsername,
+              postId: postId,
+              commentId: replyToCommentId,
+              metadata: { replyCommentId: newComment.id },
+            });
+          }
+        } else {
+          // Regular comment - notify post author
+          const postAuthor = hubPostAuthor(target);
+          if (postAuthor) {
+            createNotification({
+              type: "comment",
+              fromUsername: user.username,
+              toUsername: postAuthor,
+              postId: postId,
+              commentId: newComment.id,
+              metadata: {},
+            });
+          }
+        }
+      }
 
       await fetchHubPosts();
     } catch (e) {
@@ -346,10 +400,70 @@ export function useHub({ user, setPosts, posts, requireAuth }) {
   }
 
   /**
-   * Repost (placeholder)
+   * Repost a HUB post
    */
-  function hubRepost(postId) {
-    alert("🌀 HUB'la yakında geliyor");
+  async function hubRepost(postId) {
+    if (!requireAuth()) return;
+
+    const target = (posts || []).find((p) => p.id === postId);
+    if (!target) return;
+
+    // Create a new post with reference to original
+    const repostContent = `🌀 HUB'la: ${target.content || ""}`;
+    const newPost = {
+      id: uid(),
+      createdAt: now(),
+      byType: "user",
+      byUsername: user.username,
+      content: repostContent,
+      media: target.media || null,
+      likes: 0,
+      likedBy: [],
+      comments: [],
+      repostOf: postId, // Reference to original post
+    };
+
+    // Optimistic UI
+    setPosts((prev) => [newPost, ...prev]);
+
+    // Save to Supabase
+    try {
+      const { error } = await supabase.from("hub_posts").insert([
+        {
+          id: newPost.id,
+          username: user.username,
+          content: repostContent,
+          media: target.media || null,
+          likes: 0,
+          liked_by: [],
+          comments: [],
+          repost_of: postId,
+        },
+      ]);
+
+      if (error) throw error;
+
+      // Create notification for original post author
+      if (createNotification) {
+        const postAuthor = hubPostAuthor(target);
+        if (postAuthor) {
+          createNotification({
+            type: "repost",
+            fromUsername: user.username,
+            toUsername: postAuthor,
+            postId: postId,
+            commentId: null,
+            metadata: { repostId: newPost.id },
+          });
+        }
+      }
+
+      await fetchHubPosts();
+    } catch (e) {
+      console.error("hubRepost DB error:", e);
+      setPosts((prev) => prev.filter((p) => p.id !== newPost.id));
+      alert("HUB'la işlemi başarısız oldu.");
+    }
   }
 
   /**

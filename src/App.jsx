@@ -58,6 +58,9 @@ import { useSettings } from "./features/settings";
 // Features - Appointments
 import { useAppointment } from "./features/appointments";
 
+// Features - Notifications
+import { useNotifications } from "./features/notifications";
+
 /**
  * TurkGuide MVP — Refactored App.jsx
  * ✅ Modüler yapı: constants, utils, hooks, components ayrıldı
@@ -300,6 +303,12 @@ useEffect(() => {
     setBiz,
   });
 
+  // Notifications hook
+  const notifications = useNotifications({
+    user,
+    booted,
+  });
+
   const approvedBiz = useMemo(() => biz.filter((x) => x.status === "approved"), [biz]);
   const deletedBiz = useMemo(() => biz.filter((x) => x.status === "deleted"), [biz]);
   const pendingApps = useMemo(() => bizApps.filter((x) => x.status === "pending"), [bizApps]);
@@ -365,6 +374,7 @@ useEffect(() => {
     setPosts,
     posts,
     requireAuth,
+    createNotification: notifications.createNotification,
   });
 
   // 🔄 Fetch + Realtime subscribe when HUB tab becomes active
@@ -440,8 +450,11 @@ const unreadDmForMe = useMemo(() => {
     const isToBiz =
       m.toType === "biz" &&
       biz.some((b) => b.id === m.toBizId && normalizeUsername(b.ownerUsername) === me);
-    return isToUser || isToBiz;
-  }).filter((m) => !m.read);
+    if (!(isToUser || isToBiz)) return false;
+    // Check if message is read by current user
+    const readBy = Array.isArray(m.readBy) ? m.readBy : [];
+    return !readBy.some((u) => normalizeUsername(u) === me);
+  });
 }, [dms, biz, user]);
 
 const unreadThreadsForMe = useMemo(() => {
@@ -455,17 +468,23 @@ const unreadThreadsForMe = useMemo(() => {
       m.toType === "biz" &&
       biz.some((b) => b.id === m.toBizId && normalizeUsername(b.ownerUsername) === me);
 
-    if ((isToUser || isToBiz) && !m.read) {
-      senders.add(normalizeUsername(m.from));
+    if (isToUser || isToBiz) {
+      const readBy = Array.isArray(m.readBy) ? m.readBy : [];
+      const isRead = readBy.some((u) => normalizeUsername(u) === me);
+      if (!isRead) {
+        senders.add(normalizeUsername(m.from));
+      }
     }
   }
 
   return senders.size;
 }, [dms, biz, user]);
 
-// Notifications (placeholder - will be implemented later)
-const unreadNotificationsForMe = 0;
-const touchNotificationsSeen = () => {};
+// Notifications
+const unreadNotificationsForMe = notifications.unreadCount;
+const touchNotificationsSeen = () => {
+  notifications.markAllAsRead();
+};
 
 function landingDoSearch() {
   // şu an sadece filtre input'u kullanıyoruz; buton UX için
