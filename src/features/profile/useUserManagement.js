@@ -59,9 +59,15 @@ export function useUserManagement({
   async function saveEditUser() {
     setEditUserError("");
     setSavingEditUser(true);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H1',location:'useUserManagement.js:61',message:'saveEditUser entry',data:{hasCtx:!!editUserCtx,saving:true},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     const u = editUserCtx;
     if (!u) {
       setSavingEditUser(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H1',location:'useUserManagement.js:65',message:'saveEditUser exit no ctx',data:{saving:false},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       return;
     }
 
@@ -73,6 +79,9 @@ export function useUserManagement({
       setEditUserError("Bu profili düzenleme yetkin yok.");
       alert("Bu profili düzenleme yetkin yok.");
       setSavingEditUser(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H2',location:'useUserManagement.js:73',message:'saveEditUser blocked no permission',data:{saving:false},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       return;
     }
 
@@ -85,12 +94,18 @@ export function useUserManagement({
       setEditUserError("Username boş olamaz.");
       alert("Username boş olamaz.");
       setSavingEditUser(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H2',location:'useUserManagement.js:84',message:'saveEditUser blocked empty username',data:{saving:false},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       return;
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEditUserError("Geçerli bir email girin.");
       alert("Geçerli bir email girin.");
       setSavingEditUser(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H2',location:'useUserManagement.js:92',message:'saveEditUser blocked invalid email',data:{saving:false,hasEmail:true},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       return;
     }
 
@@ -115,6 +130,9 @@ export function useUserManagement({
         setEditUserError("Bu kullanıcı adı zaten var.");
         alert("Bu kullanıcı adı zaten var.");
         setSavingEditUser(false);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H2',location:'useUserManagement.js:118',message:'saveEditUser blocked username clash',data:{saving:false},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         return;
       }
     }
@@ -188,6 +206,9 @@ export function useUserManagement({
     // ✅ Supabase user_metadata güncelle (kalıcı) — hata olursa kapatma
     if (supabase?.auth) {
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'useUserManagement.js:176',message:'saveEditUser getSession start',data:{hasAuth:true},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         const { data: sData, error: sErr } = await supabase.auth.getSession();
         const sessUser = sData?.session?.user;
 
@@ -197,6 +218,9 @@ export function useUserManagement({
           setEditUserError(msg);
           alert(msg);
           setSavingEditUser(false);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'useUserManagement.js:187',message:'saveEditUser getSession error',data:{saving:false},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
           return;
         }
 
@@ -206,6 +230,9 @@ export function useUserManagement({
           setEditUserError(msg);
           alert(msg);
           setSavingEditUser(false);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'useUserManagement.js:197',message:'saveEditUser no session user',data:{saving:false},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
           return;
         }
 
@@ -264,6 +291,9 @@ export function useUserManagement({
           setEditUserError(msg);
           alert(msg);
           setSavingEditUser(false);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H2',location:'useUserManagement.js:268',message:'saveEditUser blocked email not own',data:{saving:false,emailChanged:true},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
           return;
         }
 
@@ -271,6 +301,9 @@ export function useUserManagement({
           ? { email, data: payload }
           : { data: payload };
 
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'useUserManagement.js:279',message:'saveEditUser updateUser start',data:{emailChanged:!!emailChanged},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         const { data: updateData, error } = await supabase.auth.updateUser(updatePayload);
 
         if (error) {
@@ -287,10 +320,16 @@ export function useUserManagement({
           setEditUserError(msg);
           alert(msg);
           setSavingEditUser(false);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'useUserManagement.js:293',message:'saveEditUser updateUser error',data:{saving:false},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
           return;
         }
 
         console.log("✅ updateUser OK");
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H4',location:'useUserManagement.js:299',message:'saveEditUser updateUser ok',data:{emailChanged:!!emailChanged},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
 
         if (emailChanged && updateData?.user) {
           alert("Email değişikliği için doğrulama maili gönderildi. Onaylamadan paylaşım yapılamaz.");
@@ -374,6 +413,9 @@ export function useUserManagement({
         setEditUserError(msg);
         alert(msg);
         setSavingEditUser(false);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H4',location:'useUserManagement.js:365',message:'saveEditUser crash',data:{saving:false},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         return;
       }
     } else {
@@ -381,6 +423,9 @@ export function useUserManagement({
       setEditUserError(msg);
       alert(msg);
       setSavingEditUser(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'useUserManagement.js:374',message:'saveEditUser no supabase auth',data:{saving:false},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       return;
     }
 
@@ -601,6 +646,9 @@ export function useUserManagement({
     setShowEditUser(false);
     setEditUserCtx(null);
     setSavingEditUser(false);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H4',location:'useUserManagement.js:611',message:'saveEditUser done',data:{saving:false},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
   }
 
   /**
