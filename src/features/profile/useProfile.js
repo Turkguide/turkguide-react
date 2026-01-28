@@ -78,7 +78,7 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, username, avatar, age, city, state, bio")
+        .select("id, username, avatar, age, city, state, country, bio, created_at")
         .ilike("username", usernameKey)
         .maybeSingle();
 
@@ -101,13 +101,27 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
         age: row.age ?? "",
         city: row.city ?? "",
         state: row.state ?? "",
+        country: row.country ?? "",
         bio: row.bio ?? "",
+        createdAt: row.created_at || null,
       };
 
       setPublicProfileCache((prev) => {
         const prevRow = prev?.[usernameKey];
         // don't re-render if unchanged
-        if (prevRow && String(prevRow.avatar || "") === String(mapped.avatar || "")) return prev;
+        if (
+          prevRow &&
+          String(prevRow.avatar || "") === String(mapped.avatar || "") &&
+          String(prevRow.city || "") === String(mapped.city || "") &&
+          String(prevRow.state || "") === String(mapped.state || "") &&
+          String(prevRow.country || "") === String(mapped.country || "") &&
+          String(prevRow.bio || "") === String(mapped.bio || "") &&
+          String(prevRow.username || "") === String(mapped.username || "") &&
+          String(prevRow.createdAt || "") === String(mapped.createdAt || "") &&
+          String(prevRow.age || "") === String(mapped.age || "")
+        ) {
+          return prev;
+        }
         return { ...(prev || {}), [usernameKey]: mapped };
       });
     } catch (e) {
