@@ -108,38 +108,40 @@ export function DMModal({
             ).length === 0 && <div style={{ color: ui.muted }}>Şu an hiç mesajınız yok.</div>}
           </div>
 
-          <textarea
-            value={dmText}
-            onChange={(e) => setDmText(e.target.value)}
-            onInput={(e) => {
-              e.target.style.height = "0px";
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            placeholder="Mesaj..."
-            rows={1}
-            style={inputStyle(ui, { minHeight: 0, height: 34, resize: "none", overflow: "hidden" })}
-          />
+          <div style={{ marginTop: "auto", display: "grid", gap: 10 }}>
+            <textarea
+              value={dmText}
+              onChange={(e) => setDmText(e.target.value)}
+              onInput={(e) => {
+                e.target.style.height = "0px";
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              placeholder="Mesaj..."
+              rows={1}
+              style={inputStyle(ui, { minHeight: 0, height: 34, resize: "none", overflow: "hidden" })}
+            />
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button
-              ui={ui}
-              variant="solidBlue"
-              onClick={() => {
-                sendDm();
-                if (settings.readReceipts) markThreadRead(dmTarget);
-              }}
-            >
-              Gönder
-            </Button>
-            <Button
-              ui={ui}
-              onClick={() => {
-                setShowDm(false);
-                setDmTarget(null);
-              }}
-            >
-              Kapat
-            </Button>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Button
+                ui={ui}
+                variant="solidBlue"
+                onClick={() => {
+                  sendDm();
+                  if (settings.readReceipts) markThreadRead(dmTarget);
+                }}
+              >
+                Gönder
+              </Button>
+              <Button
+                ui={ui}
+                onClick={() => {
+                  setShowDm(false);
+                  setDmTarget(null);
+                }}
+              >
+                Kapat
+              </Button>
+            </div>
           </div>
         </div>
       )}
