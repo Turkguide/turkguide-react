@@ -432,7 +432,9 @@ useEffect(() => {
     if (active === "hub") {
       console.log("🟣 HUB tab active -> hub.fetchHubPosts() running");
       // initial load
-      hub.fetchHubPosts();
+      Promise.resolve(hub.fetchHubPosts()).catch((e) =>
+        console.error("fetchHubPosts error:", e)
+      );
 
       // realtime: any insert/update/delete on hub_posts refreshes the list
       if (supabase?.channel) {
@@ -443,7 +445,9 @@ useEffect(() => {
             { event: "*", schema: "public", table: "hub_posts" },
             () => {
               // keep it simple: re-fetch latest
-              hub.fetchHubPosts();
+              Promise.resolve(hub.fetchHubPosts()).catch((e) =>
+                console.error("fetchHubPosts error:", e)
+              );
             }
           )
           .subscribe();
@@ -965,6 +969,7 @@ return (
         setThemePref={setThemePref}
         user={user}
         deleteAccount={auth.deleteAccount}
+        logout={auth.logout}
       />
 
       {/* AUTH MODAL */}

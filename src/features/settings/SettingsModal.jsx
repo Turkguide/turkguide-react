@@ -13,6 +13,7 @@ export function SettingsModal({
   setThemePref,
   user,
   deleteAccount,
+  logout,
 }) {
   return (
     <Modal
@@ -119,9 +120,13 @@ export function SettingsModal({
                 paddingTop: 16,
                 borderTop: `1px solid ${ui.border}`,
                 display: "flex",
-                justifyContent: "flex-end",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
+              <Button ui={ui} onClick={logout} size="sm">
+                Çıkış Yap
+              </Button>
               <Button ui={ui} onClick={deleteAccount} variant="danger" size="sm">
                 🗑️ Hesabı Sil
               </Button>
