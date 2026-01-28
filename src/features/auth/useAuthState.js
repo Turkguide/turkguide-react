@@ -37,7 +37,16 @@ export function useAuthState() {
 
         if (error) console.error("❌ getSession error:", error);
 
-        const session = data?.session;
+        let session = data?.session;
+        const nowSec = Math.floor(Date.now() / 1000);
+        if (session?.expires_at && session.expires_at <= nowSec + 60) {
+          try {
+            const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+            if (!refreshError && refreshed?.session) {
+              session = refreshed.session;
+            }
+          } catch (_) {}
+        }
         if (session?.user) {
           const md = session.user.user_metadata || {};
           setUser({
