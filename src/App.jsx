@@ -271,11 +271,6 @@ useEffect(() => {
     if (!booted || !user || !supabase?.from) return;
     const me = normalizeUsername(user.username);
     if (!me) return;
-    if (isDev) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H1',location:'App.jsx:272',message:'fetchDms start',data:{hasUser:!!user?.username,hasSupabase:!!supabase?.from,me},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-    }
 
     const ownedBizIds = (biz || [])
       .filter((b) => normalizeUsername(b.ownerUsername) === me)
@@ -298,17 +293,7 @@ useEffect(() => {
     query.then(({ data, error }) => {
       if (error) {
         console.error("fetchDms error:", error);
-        if (isDev) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H2',location:'App.jsx:294',message:'fetchDms error',data:{msg:String(error?.message||''),status:error?.status||null,code:error?.code||null},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
-        }
         return;
-      }
-      if (isDev) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H1',location:'App.jsx:303',message:'fetchDms ok',data:{count:(data||[]).length},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
       }
 
       const mapped = (data || []).map((m) => ({
