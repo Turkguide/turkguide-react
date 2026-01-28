@@ -14,22 +14,24 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
    * Open DM to user
    */
   function openDmToUser(username) {
-    if (!requireAuth({ requireVerified: true })) return;
-    if (!settings.chatEnabled) return;
+    if (!requireAuth({ requireVerified: true })) return false;
+    if (!settings.chatEnabled) return false;
     setDmTarget({ type: "user", username });
     setDmText("");
     setShowDm(true);
+    return true;
   }
 
   /**
    * Open DM to business
    */
   function openDmToBiz(bizId) {
-    if (!requireAuth({ requireVerified: true })) return;
-    if (!settings.chatEnabled) return;
+    if (!requireAuth({ requireVerified: true })) return false;
+    if (!settings.chatEnabled) return false;
     setDmTarget({ type: "biz", bizId });
     setDmText("");
     setShowDm(true);
+    return true;
   }
 
   /**

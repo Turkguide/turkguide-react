@@ -95,8 +95,8 @@ export function ProfileModal({
                 ui={ui}
                 variant="blue"
                 onClick={() => {
-                  onClose();
-                  messages.openDmToUser(profileData.user.username);
+                  const opened = messages.openDmToUser(profileData.user.username);
+                  if (opened) onClose();
                 }}
                 style={{
                   background: "transparent",
@@ -234,8 +234,8 @@ export function ProfileModal({
                     type="button"
                     style={{ ...act, color: ui.blue }}
                     onClick={() => {
-                      onClose();
-                      messages.openDmToBiz(profileData.biz.id);
+                      const opened = messages.openDmToBiz(profileData.biz.id);
+                      if (opened) onClose();
                     }}
                     title="Mesaj"
                   >
