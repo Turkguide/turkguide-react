@@ -804,7 +804,7 @@ return (
                     .map((b) => b.id)
                     .filter(Boolean);
 
-                  const visible = (dms || [])
+                  const threads = (dms || [])
                     .filter((m) => {
                       const isUserThread =
                         m.toType === "user" &&
@@ -813,6 +813,25 @@ return (
                       const isBizThread = m.toType === "biz" && ownedBizIds.includes(m.toBizId);
                       return isUserThread || isBizThread;
                     })
+                    .reduce((acc, m) => {
+                      if (m.toType === "biz") {
+                        const key = `biz:${m.toBizId}`;
+                        const prev = acc.get(key);
+                        const next = !prev || (m.createdAt || 0) > (prev.createdAt || 0) ? m : prev;
+                        acc.set(key, next);
+                        return acc;
+                      }
+
+                      const other =
+                        normalizeUsername(m.from) === me ? m.toUsername : m.from;
+                      const key = `user:${normalizeUsername(other)}`;
+                      const prev = acc.get(key);
+                      const next = !prev || (m.createdAt || 0) > (prev.createdAt || 0) ? m : prev;
+                      acc.set(key, next);
+                      return acc;
+                    }, new Map());
+
+                  const visible = Array.from(threads.values())
                     .slice()
                     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
@@ -831,6 +850,11 @@ return (
                           borderBottom: `1px solid ${
                             ui.mode === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"
                           }`,
+                          cursor: "pointer",
+                        }}
+                        onClick={() => {
+                          if (isBiz) messages.openDmToBiz(m.toBizId);
+                          else if (other) messages.openDmToUser(other);
                         }}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
@@ -843,7 +867,8 @@ return (
                         <div style={{ marginTop: 8 }}>
                           <Button
                             ui={ui}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (isBiz) messages.openDmToBiz(m.toBizId);
                               else if (other) messages.openDmToUser(other);
                             }}
