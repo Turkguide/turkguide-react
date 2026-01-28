@@ -1,0 +1,128 @@
+import { Modal, Button, inputStyle } from "../../components/ui";
+import { fmt, normalizeUsername } from "../../utils/helpers";
+
+/**
+ * DM Modal Component
+ */
+export function DMModal({
+  ui,
+  showDm,
+  setShowDm,
+  dmTarget,
+  dmText,
+  setDmText,
+  dms,
+  settings,
+  profile,
+  resolveUsernameAlias,
+  sendDm,
+  markThreadRead,
+}) {
+  return (
+    <Modal ui={ui} open={showDm} title="Mesaj" onClose={() => setShowDm(false)}>
+      {!dmTarget ? null : (
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ color: ui.muted }}>
+            Hedef: {dmTarget.type === "user" ? <b>@{dmTarget.username}</b> : <b>İşletme</b>}
+          </div>
+
+          <div
+            style={{
+              border: `1px solid ${ui.border}`,
+              borderRadius: 16,
+              padding: 12,
+              background:
+                ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
+              maxHeight: 260,
+              overflow: "auto",
+            }}
+          >
+            {dms
+              .filter((m) => {
+                if (dmTarget.type === "user") {
+                  return (
+                    m.toType === "user" &&
+                    normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username)
+                  );
+                }
+                return m.toType === "biz" && m.toBizId === dmTarget.bizId;
+              })
+              .slice()
+              .reverse()
+              .map((m) => (
+                <div
+                  key={m.id}
+                  style={{
+                    padding: "10px 0",
+                    borderBottom: `1px solid ${
+                      ui.mode === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"
+                    }`,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: 950,
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                      onClick={() => profile.openProfileByUsername(resolveUsernameAlias(m.from))}
+                    >
+                      @{resolveUsernameAlias(m.from)}
+                    </span>
+
+                    <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(m.createdAt)}</span>
+                  </div>
+
+                  <div style={{ marginTop: 6 }}>{m.text}</div>
+                </div>
+              ))}
+
+            {dms.filter((m) =>
+              dmTarget.type === "user"
+                ? m.toType === "user" &&
+                  normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username)
+                : m.toType === "biz" && m.toBizId === dmTarget.bizId
+            ).length === 0 && <div style={{ color: ui.muted }}>Henüz mesaj yok.</div>}
+          </div>
+
+          <textarea
+            value={dmText}
+            onChange={(e) => setDmText(e.target.value)}
+            placeholder="Mesaj yaz..."
+            style={inputStyle(ui, { minHeight: 90, resize: "vertical" })}
+          />
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Button
+              ui={ui}
+              variant="solidBlue"
+              onClick={() => {
+                sendDm();
+                if (settings.readReceipts) markThreadRead(dmTarget);
+              }}
+            >
+              Gönder
+            </Button>
+            <Button
+              ui={ui}
+              onClick={() => {
+                setShowDm(false);
+                setDmTarget(null);
+              }}
+            >
+              Kapat
+            </Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
