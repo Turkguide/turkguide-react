@@ -192,6 +192,22 @@ export function TopBar({
             <>
               <button
                 type="button"
+                aria-label="Ayarlar"
+                title="Ayarlar"
+                onClick={() => {
+                  closeTopOverlays();
+                  settingsHook.setShowSettings(true);
+                }}
+                style={iconBtnStyle}
+              >
+                <IconBase size={22}>
+                  <path d="M12 8.75A3.25 3.25 0 1 0 12 15.25 3.25 3.25 0 0 0 12 8.75z" />
+                  <path d="M19.4 15a7.9 7.9 0 0 0 .1-1 7.9 7.9 0 0 0-.1-1l2.1-1.6a.7.7 0 0 0 .2-.8l-2-3.4a.7.7 0 0 0-.7-.3l-2.5 1a7.7 7.7 0 0 0-1.7-1l-.4-2.6a.7.7 0 0 0-.7-.6h-4a.7.7 0 0 0-.7.6l-.4 2.6a7.7 7.7 0 0 0-1.7 1l-2.5-1a.7.7 0 0 0-.7.3l-2 3.4a.7.7 0 0 0 .2.8L4.6 12a7.9 7.9 0 0 0-.1 1 7.9 7.9 0 0 0 .1 1l-2.1 1.6a.7.7 0 0 0-.2.8l2 3.4a.7.7 0 0 0 .7.3l2.5-1a7.7 7.7 0 0 0 1.7 1l.4 2.6a.7.7 0 0 0 .7.6h4a.7.7 0 0 0 .7-.6l.4-2.6a7.7 7.7 0 0 0 1.7-1l2.5 1a.7.7 0 0 0 .7-.3l2-3.4a.7.7 0 0 0-.2-.8L19.4 15z" />
+                </IconBase>
+              </button>
+
+              <button
+                type="button"
                 aria-label="Mesajlar"
                 title="Mesajlar"
                 onClick={goMessages}
