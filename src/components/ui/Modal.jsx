@@ -1,7 +1,7 @@
 import { Button } from "./Button";
 import { IconBase } from "./Icons";
 
-export function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999, iconClose = false, showBack = false, onBack }) {
+export function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999, iconClose = false, showBack = false, onBack, fullScreen = false }) {
   if (!open) return null;
 
   return (
@@ -11,11 +11,11 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
         inset: 0,
         background: "rgba(0,0,0,0.55)",
         display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        padding: "16px",
-        paddingTop: "calc(16px + env(safe-area-inset-top))",
-        paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+        alignItems: fullScreen ? "stretch" : "flex-start",
+        justifyContent: fullScreen ? "stretch" : "center",
+        padding: fullScreen ? 0 : "16px",
+        paddingTop: fullScreen ? 0 : "calc(16px + env(safe-area-inset-top))",
+        paddingBottom: fullScreen ? 0 : "calc(16px + env(safe-area-inset-bottom))",
         overflowY: "auto",
         WebkitOverflowScrolling: "touch",
         zIndex,
@@ -24,15 +24,19 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
     >
       <div
         style={{
-          width: `min(${width}px, 100%)`,
-          maxHeight: "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
-          borderRadius: 22,
-          border: `1px solid ${ui.border}`,
+          width: fullScreen ? "100%" : `min(${width}px, 100%)`,
+          maxHeight: fullScreen
+            ? "100dvh"
+            : "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+          borderRadius: fullScreen ? 0 : 22,
+          border: fullScreen ? "none" : `1px solid ${ui.border}`,
           background: ui.mode === "light" ? "rgba(255,255,255,0.98)" : "rgba(10,12,18,0.96)",
           boxShadow: "0 40px 120px rgba(0,0,0,0.35)",
           display: "flex",
           flexDirection: "column",
-          padding: 16,
+          padding: fullScreen
+            ? "calc(12px + env(safe-area-inset-top)) 16px calc(12px + env(safe-area-inset-bottom))"
+            : 16,
           color: ui.text,
         }}
         onMouseDown={(e) => e.stopPropagation()}

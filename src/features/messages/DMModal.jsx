@@ -19,9 +19,9 @@ export function DMModal({
   markThreadRead,
 }) {
   return (
-    <Modal ui={ui} open={showDm} title="Mesaj" onClose={() => setShowDm(false)}>
+    <Modal ui={ui} open={showDm} title="Mesaj" onClose={() => setShowDm(false)} fullScreen>
       {!dmTarget ? null : (
-        <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
           <div style={{ color: ui.muted }}>
             Hedef: {dmTarget.type === "user" ? <b>@{dmTarget.username}</b> : <b>İşletme</b>}
           </div>
@@ -33,7 +33,8 @@ export function DMModal({
               padding: 12,
               background:
                 ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
-              maxHeight: 260,
+              flex: "1 1 auto",
+              minHeight: 0,
               overflow: "auto",
             }}
           >
