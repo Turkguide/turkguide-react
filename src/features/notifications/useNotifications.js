@@ -6,6 +6,7 @@ import { normalizeUsername } from "../../utils/helpers";
  * Hook for Notifications operations
  */
 export function useNotifications({ user, booted }) {
+  const isDev = import.meta.env.DEV;
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const channelRef = useRef(null);
@@ -24,6 +25,11 @@ export function useNotifications({ user, booted }) {
         setLoading(false);
         return;
       }
+      if (isDev) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'useNotifications.js:27',message:'fetchNotifications start',data:{hasUser:!!user?.username,me},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+      }
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
@@ -33,7 +39,17 @@ export function useNotifications({ user, booted }) {
 
       if (error) {
         console.error("fetchNotifications error:", error);
+        if (isDev) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H4',location:'useNotifications.js:40',message:'fetchNotifications error',data:{msg:String(error?.message||''),status:error?.status||null,code:error?.code||null},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+        }
         return;
+      }
+      if (isDev) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'useNotifications.js:46',message:'fetchNotifications ok',data:{count:(data||[]).length},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
       }
 
       const mapped = (data || []).map((n) => ({
