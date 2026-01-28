@@ -16,9 +16,17 @@ export function ProfileModal({
 }) {
   if (!open || !profileData) return null;
 
+  if (profileData.type === "loading") {
+    return (
+      <Modal ui={ui} open={open} title="Profil" onClose={onClose}>
+        <div style={{ color: ui.muted, fontSize: 14 }}>Profil yükleniyor...</div>
+      </Modal>
+    );
+  }
+
   return (
     <Modal ui={ui} open={open} title="Profil" onClose={onClose}>
-      {profileData.type === "user" ? (
+      {profileData.type === "user" && profileData.user ? (
         <div style={{ display: "grid", gap: 12 }}>
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <Avatar ui={ui} src={profileData.user.avatar} size={72} label={profileData.user.username} />
@@ -103,7 +111,7 @@ export function ProfileModal({
             </div>
           )}
         </div>
-      ) : (
+      ) : profileData.type === "biz" && profileData.biz ? (
         <div style={{ display: "grid", gap: 12 }}>
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <Avatar ui={ui} src={profileData.biz.avatar} size={72} label={profileData.biz.name} />
@@ -201,6 +209,8 @@ export function ProfileModal({
             })()}
           </div>
         </div>
+      ) : (
+        <div style={{ color: ui.muted, fontSize: 14 }}>Profil bulunamadı.</div>
       )}
     </Modal>
   );
