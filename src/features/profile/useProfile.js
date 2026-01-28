@@ -154,6 +154,7 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
       }
 
       const av = String(data?.avatar || "");
+      console.log("fetchAvatarToCache avatarUrl =", av);
       setProfileAvatarCache((prev) => {
         // don't re-render if unchanged
         if (String(prev?.[usernameKey] || "") === av) return prev;
