@@ -56,9 +56,9 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
     if (setDmTarget) setDmTarget(null);
     if (setDmText) setDmText("");
 
-    setShowAppt(false);
-    setApptBizId(null);
-    setApptMsg("");
+    if (setShowAppt) setShowAppt(false);
+    if (setApptBizId) setApptBizId(null);
+    if (setApptMsg) setApptMsg("");
 
     setActive("biz");
     try {
