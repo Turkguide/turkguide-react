@@ -60,7 +60,18 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
     // Save to Supabase
     try {
       if (supabase?.from) {
-        const { error } = await supabase.from("dms").insert([msg]);
+        const { error } = await supabase.from("dms").insert([
+          {
+            id: msg.id,
+            created_at: new Date(msg.createdAt).toISOString(),
+            from_username: msg.from,
+            to_type: msg.toType,
+            to_username: msg.toUsername,
+            to_biz_id: msg.toBizId,
+            text: msg.text,
+            read_by: msg.readBy,
+          },
+        ]);
         if (error) {
           console.error("sendDm DB error:", error);
           // Revert optimistic update on error

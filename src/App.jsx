@@ -250,6 +250,51 @@ useEffect(() => {
     requireAuth: auth.requireAuth,
   });
 
+  // 🔄 Fetch DMs from Supabase when user is ready
+  useEffect(() => {
+    if (!booted || !user || !supabase?.from) return;
+    const me = normalizeUsername(user.username);
+    if (!me) return;
+
+    const ownedBizIds = (biz || [])
+      .filter((b) => normalizeUsername(b.ownerUsername) === me)
+      .map((b) => b.id)
+      .filter(Boolean);
+
+    let query = supabase
+      .from("dms")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    const orParts = [`from_username.ilike.${me}`, `to_username.ilike.${me}`];
+    if (ownedBizIds.length > 0) {
+      orParts.push(`to_biz_id.in.(${ownedBizIds.join(",")})`);
+    }
+
+    query = query.or(orParts.join(","));
+
+    query.then(({ data, error }) => {
+      if (error) {
+        console.error("fetchDms error:", error);
+        return;
+      }
+
+      const mapped = (data || []).map((m) => ({
+        id: m.id,
+        createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
+        from: m.from_username,
+        toType: m.to_type,
+        toUsername: m.to_username,
+        toBizId: m.to_biz_id,
+        text: m.text || "",
+        readBy: Array.isArray(m.read_by) ? m.read_by : [],
+      }));
+
+      setDms(mapped);
+    });
+  }, [booted, user?.username, biz]);
+
   // Appointment hook (must be after auth hook and business hook)
   const appointment = useAppointment({
     user,
