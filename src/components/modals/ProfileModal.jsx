@@ -9,6 +9,7 @@ export function ProfileModal({
   user,
   profile,
   messages,
+  onOpenSettings,
   openAppointment,
   openDirections,
   openCall,
@@ -47,23 +48,45 @@ export function ProfileModal({
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {normalizeUsername(user?.username) === normalizeUsername(profileData.user.username) ? (
-              <Button
-                ui={ui}
-                variant="blue"
-                onClick={() => {
-                  onEditUser(profileData.user);
-                }}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  boxShadow: "none",
-                  padding: "8px 12px",
-                  fontWeight: 900,
-                  color: ui.text,
-                }}
-              >
-                ✏️ Profili Düzenle
-              </Button>
+              <>
+                <Button
+                  ui={ui}
+                  variant="blue"
+                  onClick={() => {
+                    onEditUser(profileData.user);
+                  }}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    boxShadow: "none",
+                    padding: "8px 12px",
+                    fontWeight: 900,
+                    color: ui.text,
+                  }}
+                >
+                  ✏️ Profili Düzenle
+                </Button>
+                {onOpenSettings ? (
+                  <Button
+                    ui={ui}
+                    variant="blue"
+                    onClick={() => {
+                      onClose();
+                      onOpenSettings();
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      boxShadow: "none",
+                      padding: "8px 12px",
+                      fontWeight: 900,
+                      color: ui.text,
+                    }}
+                  >
+                    ⚙️ Ayarlar
+                  </Button>
+                ) : null}
+              </>
             ) : (
               <Button
                 ui={ui}

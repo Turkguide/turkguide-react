@@ -8,7 +8,12 @@ import { KEY } from "../../constants";
 export function useSettings({ booted }) {
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState(() =>
-    lsGet(KEY.SETTINGS, { chatEnabled: true, readReceipts: true, msgNotifications: true })
+    lsGet(KEY.SETTINGS, {
+      chatEnabled: true,
+      readReceipts: true,
+      msgNotifications: true,
+      notificationsEnabled: true,
+    })
   );
 
   // Restore from localStorage on boot
@@ -19,6 +24,7 @@ export function useSettings({ booted }) {
         chatEnabled: true,
         readReceipts: true,
         msgNotifications: true,
+        notificationsEnabled: true,
       })
     );
   }, [booted]);

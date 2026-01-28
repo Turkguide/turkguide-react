@@ -76,6 +76,18 @@ export function SettingsModal({
               onToggle={() => setSettings((p) => ({ ...p, msgNotifications: !p.msgNotifications }))}
             />
 
+            <div style={{ fontWeight: 950, fontSize: 14, marginTop: 18 }}>Bildirimler</div>
+
+            <ToggleRow
+              ui={ui}
+              label="Bildirimleri Aç/Kapat"
+              desc="Açıkken beğeni/yorum/yanıt bildirimleri gösterilir."
+              value={!!settings.notificationsEnabled}
+              onToggle={() =>
+                setSettings((p) => ({ ...p, notificationsEnabled: !p.notificationsEnabled }))
+              }
+            />
+
             <div
               style={{
                 marginTop: 24,

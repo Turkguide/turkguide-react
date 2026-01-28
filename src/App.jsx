@@ -34,6 +34,9 @@ import { BusinessTab, HubTab } from "./components/tabs";
 // Components - Modals
 import { AppointmentModal, EditUserModal, EditBizModal, ProfileModal } from "./components/modals";
 
+// Features - Settings
+import { SettingsModal } from "./features/settings";
+
 // Features - Auth
 import { useAuthState, useAuthCallback, useAuth } from "./features/auth";
 
@@ -767,10 +770,24 @@ return (
         user={user}
         profile={profile}
         messages={messages}
+        onOpenSettings={() => settingsHook.setShowSettings(true)}
         openAppointment={appointment.openAppointment}
         openDirections={openDirections}
         openCall={openCall}
         onEditUser={userManagement.openEditUser}
+      />
+
+      {/* SETTINGS MODAL */}
+      <SettingsModal
+        ui={ui}
+        showSettings={settingsHook.showSettings}
+        setShowSettings={settingsHook.setShowSettings}
+        settings={settingsHook.settings}
+        setSettings={settingsHook.setSettings}
+        themePref={themePref}
+        setThemePref={setThemePref}
+        user={user}
+        deleteAccount={auth.deleteAccount}
       />
   </div>
   </div>
