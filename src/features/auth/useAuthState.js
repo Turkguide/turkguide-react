@@ -89,6 +89,11 @@ export function useAuthState() {
             state: md.state ?? "",
             country: md.country ?? "",
             bio: md.bio ?? "",
+            emailConfirmedAt: session.user.email_confirmed_at ?? session.user.confirmed_at ?? null,
+            emailVerified:
+              !!(session.user.email_confirmed_at ?? session.user.confirmed_at) &&
+              !session.user.new_email,
+            newEmailPending: session.user.new_email ?? null,
           };
           setUser(nextUser);
           syncPublicProfile(nextUser);
@@ -115,6 +120,10 @@ export function useAuthState() {
               state: md.state ?? "",
               country: md.country ?? "",
               bio: md.bio ?? "",
+              emailConfirmedAt: s.user.email_confirmed_at ?? s.user.confirmed_at ?? null,
+              emailVerified:
+                !!(s.user.email_confirmed_at ?? s.user.confirmed_at) && !s.user.new_email,
+              newEmailPending: s.user.new_email ?? null,
             };
             setUser(nextUser);
             syncPublicProfile(nextUser);

@@ -14,7 +14,7 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
    * Open DM to user
    */
   function openDmToUser(username) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
     if (!settings.chatEnabled) return;
     setDmTarget({ type: "user", username });
     setDmText("");
@@ -25,7 +25,7 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
    * Open DM to business
    */
   function openDmToBiz(bizId) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
     if (!settings.chatEnabled) return;
     setDmTarget({ type: "biz", bizId });
     setDmText("");
@@ -36,7 +36,7 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
    * Send DM
    */
   async function sendDm() {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
     if (!settings.chatEnabled) return;
 
     const text = String(dmText || "").trim();

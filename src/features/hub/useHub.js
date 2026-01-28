@@ -71,27 +71,34 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    */
   async function fetchHubPosts(retryOnAuth = true) {
     try {
+      if (!supabase?.from) {
+        throw new Error("Supabase client hazır değil.");
+      }
       console.log("🟣 fetchHubPosts: start");
       const { data, error } = await supabase
         .from("hub_posts")
         .select("*")
-        .order("created_at", { ascending: true })
+        .order("created_at", { ascending: false })
         .limit(50);
 
       if (error) throw error;
       console.log("🟣 fetchHubPosts: ok rows=", (data || []).length, "first=", (data || [])[0]);
 
-      const mapped = (data || []).map((r) => ({
-        id: r.id,
-        createdAt: new Date(r.created_at).getTime(),
-        byType: "user",
-        byUsername: r.username || r.by_username || r.bu_username || "",
-        content: r.content || "",
-        media: r.media || null,
-        likes: r.likes || 0,
-        likedBy: Array.isArray(r.liked_by) ? r.liked_by : [],
-        comments: r.comments || [],
-      }));
+      const mapped = (data || []).map((r) => {
+        const createdAtRaw = r?.created_at ? new Date(r.created_at).getTime() : now();
+        const createdAt = Number.isFinite(createdAtRaw) ? createdAtRaw : now();
+        return {
+          id: r.id,
+          createdAt,
+          byType: "user",
+          byUsername: r.username || r.by_username || r.bu_username || "",
+          content: r.content || "",
+          media: r.media || null,
+          likes: r.likes || 0,
+          likedBy: Array.isArray(r.liked_by) ? r.liked_by : [],
+          comments: r.comments || [],
+        };
+      });
 
       console.log("🧪 mapped[0] likes/likedBy =", mapped?.[0]?.likes, mapped?.[0]?.likedBy);
       setPosts(mapped);
@@ -125,7 +132,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Share a HUB post
    */
   async function hubShare() {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
     console.log("HUB SHARE ÇALIŞTI");
 
     const text = String(composer || "").trim();
@@ -210,7 +217,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Like/unlike a HUB post
    */
   async function hubLike(postId) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
 
     if (!user || !user.username) {
       alert("Oturum bulunamadı, lütfen tekrar giriş yapın.");
@@ -275,7 +282,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Add comment to a HUB post (or reply to a comment)
    */
   async function hubComment(postId, replyToCommentId = null) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
 
     // Use replyDraft if replying, otherwise use commentDraft
     const text = replyToCommentId
@@ -369,7 +376,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Delete a HUB comment
    */
   async function deleteHubComment(postId, commentId) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
 
     const target = (posts || []).find((p) => p.id === postId);
     if (!target) return;
@@ -418,7 +425,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Repost a HUB post
    */
   async function hubRepost(postId) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
 
     const target = (posts || []).find((p) => p.id === postId);
     if (!target) return;
@@ -503,7 +510,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Start editing a post
    */
   function startEditPost(p, adminMode) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
     if (!canEditPost(p, adminMode)) return;
     setEditingPostId(p.id);
     setEditPostDraft(String(p.content || ""));
@@ -521,7 +528,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Save edited post
    */
   async function saveEditPost(postId, adminMode) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
     const text = String(editPostDraft || "").trim();
 
     const target = posts.find((x) => x.id === postId);
@@ -568,7 +575,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Delete a post
    */
   async function deletePost(postId, adminMode) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireVerified: true })) return;
 
     const p = posts.find((x) => x.id === postId);
     if (!p || !canEditPost(p, adminMode)) return;

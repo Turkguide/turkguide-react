@@ -133,6 +133,20 @@ export function EditUserModal({
           />
         </div>
 
+        {/* EMAIL */}
+        <div>
+          <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Email</div>
+          <input
+            value={editUserCtx.email || ""}
+            onChange={(e) => setEditUserCtx((p) => ({ ...p, email: e.target.value }))}
+            placeholder="ornek@mail.com"
+            style={inputStyle(ui)}
+          />
+          <div style={{ color: ui.muted2, fontSize: 12, marginTop: 6 }}>
+            Email değişirse doğrulama maili gönderilir.
+          </div>
+        </div>
+
         {/* AGE */}
         <div>
           <div style={{ fontWeight: 900, fontSize: 12, marginBottom: 6 }}>Yaş</div>

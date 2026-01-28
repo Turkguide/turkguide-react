@@ -45,6 +45,7 @@ export function useUserManagement({
     setEditUserCtx({
       ...u,
       _origUsername: String(u.username || "").trim(), // ✅ KRİTİK: eski username sakla
+      _origEmail: String(u.email || "").trim(),
     });
 
     setShowEditUser(true);
@@ -68,6 +69,7 @@ export function useUserManagement({
 
 
     const username = String(u.username || "").trim();
+    const email = String(u.email || "").trim();
     if (!username) {
       alert("Username boş olamaz.");
       return;
@@ -226,7 +228,19 @@ export function useUserManagement({
           session_email: sessUser.email,
         });
 
-        const { error } = await supabase.auth.updateUser({ data: payload });
+        const oldEmail = String(u._origEmail || me?.email || "").trim();
+        const emailChanged = !!email && normalizeUsername(email) !== normalizeUsername(oldEmail);
+
+        if (emailChanged && me && String(me?.id) !== String(u?.id)) {
+          alert("Email sadece kendi hesabın için değiştirilebilir.");
+          return;
+        }
+
+        const updatePayload = emailChanged
+          ? { email, data: payload }
+          : { data: payload };
+
+        const { data: updateData, error } = await supabase.auth.updateUser(updatePayload);
 
         if (error) {
           console.error("❌ updateUser error FULL:", error);
@@ -244,6 +258,19 @@ export function useUserManagement({
         }
 
         console.log("✅ updateUser OK");
+
+        if (emailChanged && updateData?.user) {
+          alert("Email değişikliği için doğrulama maili gönderildi. Onaylamadan paylaşım yapılamaz.");
+          setUser((p) => ({
+            ...(p || {}),
+            email,
+            emailConfirmedAt: updateData.user.email_confirmed_at ?? updateData.user.confirmed_at ?? null,
+            emailVerified:
+              !!(updateData.user.email_confirmed_at ?? updateData.user.confirmed_at) &&
+              !updateData.user.new_email,
+            newEmailPending: updateData.user.new_email ?? email,
+          }));
+        }
 
         // ✅ ALSO write to public.profiles so everyone can read avatar/fields
         try {

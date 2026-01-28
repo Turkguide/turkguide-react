@@ -79,9 +79,13 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
   /**
    * Require authentication - shows auth modal if not logged in
    */
-  function requireAuth() {
+  function requireAuth(options = {}) {
     if (!user) {
       setShowAuth(true);
+      return false;
+    }
+    if (options.requireVerified && user?.emailVerified === false) {
+      alert("Email adresini doğrulamalısın. Mailine gelen bağlantıya tıkla.");
       return false;
     }
     return true;
@@ -129,6 +133,10 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
             city: data.user.user_metadata?.city ?? "",
             state: data.user.user_metadata?.state ?? "",
             bio: data.user.user_metadata?.bio ?? "",
+            emailConfirmedAt: data.user.email_confirmed_at ?? data.user.confirmed_at ?? null,
+            emailVerified:
+              !!(data.user.email_confirmed_at ?? data.user.confirmed_at) && !data.user.new_email,
+            newEmailPending: data.user.new_email ?? null,
           });
           // ✅ Login olduysa da ana sayfa: İşletmeler
           setActive("biz");
@@ -165,6 +173,10 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
           city: data.user.user_metadata?.city ?? "",
           state: data.user.user_metadata?.state ?? "",
           bio: data.user.user_metadata?.bio ?? "",
+          emailConfirmedAt: data.user.email_confirmed_at ?? data.user.confirmed_at ?? null,
+          emailVerified:
+            !!(data.user.email_confirmed_at ?? data.user.confirmed_at) && !data.user.new_email,
+          newEmailPending: data.user.new_email ?? null,
         });
 
         // ✅ Login sonrası ana sayfa: İşletmeler
