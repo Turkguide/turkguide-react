@@ -162,12 +162,6 @@ useEffect(() => {
     resolveUsernameAlias,
   });
 
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:158',message:'useProfile - checking resolveUsernameAlias',data:{resolveUsernameAliasExists:typeof resolveUsernameAlias!=='undefined',resolveUsernameAliasType:typeof resolveUsernameAlias},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  }, [resolveUsernameAlias]);
-  // #endregion
-
   // Settings hook (must be before auth hook)
   const settingsHook = useSettings({
     booted,
@@ -237,12 +231,6 @@ useEffect(() => {
     setApptBizId: null, // Will be set after appointment hook
     setApptMsg: null, // Will be set after appointment hook
   });
-
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:236',message:'useAuth - checking dependencies',data:{setShowBizApplyRefExists:setShowBizApplyRef.current!==null,userManagementExists:typeof userManagement!=='undefined',userManagementType:typeof userManagement},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,C'})}).catch(()=>{});
-  }, [userManagement]);
-  // #endregion
 
   // Auth callback handling
   useAuthCallback({
@@ -379,9 +367,6 @@ useEffect(() => {
 
   // 🔄 Fetch + Realtime subscribe when HUB tab becomes active
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:375',message:'hub useEffect - checking hub variable',data:{hubExists:typeof hub!=='undefined',hubType:typeof hub,hubFetchHubPostsExists:typeof hub?.fetchHubPosts!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     if (!hub || !hub.fetchHubPosts) return;
     let channel = null;
 
@@ -504,16 +489,6 @@ function clearFilters() {
 }
 
 if (!booted) return null;
-
-// #region agent log
-useEffect(() => {
-  try {
-    fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:487',message:'App render - checking all hooks',data:{hubExists:typeof hub!=='undefined',businessExists:typeof business!=='undefined',authExists:typeof auth!=='undefined',profileExists:typeof profile!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-  } catch (e) {
-    console.error('Debug log error:', e);
-  }
-}, [hub, business, auth, profile]);
-// #endregion
 
 return (
   <div
