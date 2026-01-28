@@ -15,6 +15,33 @@ export function HubTab({
   pickHubMedia,
   hubShare,
 }) {
+  function renderTextWithHashtags(text) {
+    const value = String(text || "");
+    if (!value) return null;
+    const parts = [];
+    const regex = /#[\p{L}\p{N}_]+/gu;
+    let lastIndex = 0;
+    for (const match of value.matchAll(regex)) {
+      const idx = match.index ?? 0;
+      if (idx > lastIndex) {
+        parts.push(value.slice(lastIndex, idx));
+      }
+      parts.push(
+        <span
+          key={`tag-${idx}-${match[0]}`}
+          style={{ color: ui.blue, fontWeight: 800 }}
+        >
+          {match[0]}
+        </span>
+      );
+      lastIndex = idx + match[0].length;
+    }
+    if (lastIndex < value.length) {
+      parts.push(value.slice(lastIndex));
+    }
+    return parts;
+  }
+
   return (
     <div style={{ display: "grid", gap: 14, paddingTop: 26 }}>
       <Card ui={ui}>
@@ -376,7 +403,9 @@ export function HubTab({
                           })}
                         />
                       ) : (
-                        <div style={{ marginTop: 10, fontSize: 18, fontWeight: 900 }}>{p.content}</div>
+                        <div style={{ marginTop: 10, fontSize: 18, fontWeight: 900 }}>
+                          {renderTextWithHashtags(p.content)}
+                        </div>
                       )}
 
                       {p.editedAt ? (
@@ -819,7 +848,29 @@ export function HubTab({
                                       </div>
                                     </div>
                                   ) : (
-                                    c.text
+                                    (() => {
+                                      const replyToUsername = c?.replyTo
+                                        ? (p.comments || []).find((cc) => String(cc.id) === String(c.replyTo))
+                                            ?.byUsername
+                                        : null;
+                                      return (
+                                        <>
+                                          {replyToUsername ? (
+                                            <span
+                                              onClick={() => profile.openProfileByUsername(replyToUsername)}
+                                              style={{
+                                                color: ui.blue,
+                                                fontWeight: 800,
+                                                cursor: "pointer",
+                                              }}
+                                            >
+                                              @{replyToUsername}{" "}
+                                            </span>
+                                          ) : null}
+                                          {renderTextWithHashtags(c.text)}
+                                        </>
+                                      );
+                                    })()
                                   )}
                                 </div>
 
