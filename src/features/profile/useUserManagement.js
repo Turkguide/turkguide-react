@@ -310,26 +310,31 @@ export function useUserManagement({
         // ✅ ALSO write to public.profiles so everyone can read avatar/fields
         try {
           const unameLower = normalizeUsername(username);
-
-          const row = {
-            id: u?.id,
-            username: unameLower,
-            avatar: avatarStr ? avatarStr : null,
-            age: u?.age !== "" && u?.age != null ? Number(u.age) : null,
-            city: String(u?.city || "").trim() || null,
-            state: String(u?.state || "").trim() || null,
-            country: String(u?.country || "").trim() || null,
-            bio: String(u?.bio || "").trim() || null,
-          };
-
-          const { error: pErr } = await supabase
-            .from("profiles")
-            .upsert(row, { onConflict: "id" });
-
-          if (pErr) {
-            console.warn("⚠️ profiles upsert error:", pErr);
+          const emailValue = String(u?.email || user?.email || "").trim();
+          if (!emailValue) {
+            console.warn("profiles upsert skipped: email missing");
           } else {
-            console.log("✅ profiles upsert OK");
+            const row = {
+              id: u?.id,
+              username: unameLower,
+              email: emailValue,
+              avatar: avatarStr ? avatarStr : null,
+              age: u?.age !== "" && u?.age != null ? Number(u.age) : null,
+              city: String(u?.city || "").trim() || null,
+              state: String(u?.state || "").trim() || null,
+              country: String(u?.country || "").trim() || null,
+              bio: String(u?.bio || "").trim() || null,
+            };
+
+            const { error: pErr } = await supabase
+              .from("profiles")
+              .upsert(row, { onConflict: "id" });
+
+            if (pErr) {
+              console.warn("⚠️ profiles upsert error:", pErr);
+            } else {
+              console.log("✅ profiles upsert OK");
+            }
           }
         } catch (e) {
           console.warn("⚠️ profiles upsert crash:", e);
@@ -651,6 +656,11 @@ export function useUserManagement({
     // ✅ ALSO mirror avatar to public.profiles so other users can see it
     try {
       const unameKey = normalizeUsername(updated.username);
+      const emailValue = String(updated?.email || "").trim();
+      if (!emailValue) {
+        console.warn("setMyAvatar profiles upsert skipped: email missing");
+        return;
+      }
       if (unameKey) {
         await supabase
           .from("profiles")
@@ -658,6 +668,7 @@ export function useUserManagement({
             {
               id: updated.id,
               username: unameKey,
+              email: emailValue,
               avatar: base64 || null,
             },
             { onConflict: "id" }

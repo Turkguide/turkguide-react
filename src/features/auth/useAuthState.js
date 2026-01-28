@@ -18,12 +18,18 @@ export function useAuthState() {
       if (!nextUser?.id) return;
       const unameRaw = String(nextUser?.username || "").trim();
       if (!unameRaw) return;
+      const emailValue = String(nextUser?.email || "").trim();
+      if (!emailValue) {
+        console.warn("syncPublicProfile skipped: email missing");
+        return;
+      }
       const unameKey = normalizeUsername(unameRaw);
       const avatarStr = typeof nextUser.avatar === "string" ? nextUser.avatar : "";
       await supabase.from("profiles").upsert(
         {
           id: nextUser.id,
           username: unameKey,
+          email: emailValue,
           avatar: avatarStr || null,
           age: nextUser?.age ?? null,
           city: String(nextUser?.city || "").trim() || null,
