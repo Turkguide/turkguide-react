@@ -43,7 +43,8 @@ export function DMModal({
                   if (dmTarget.type === "user") {
                     return (
                       m.toType === "user" &&
-                      normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username)
+                      (normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username) ||
+                        normalizeUsername(m.from) === normalizeUsername(dmTarget.username))
                     );
                   }
                   return m.toType === "biz" && m.toBizId === dmTarget.bizId;
@@ -100,7 +101,8 @@ export function DMModal({
             {dms.filter((m) =>
               dmTarget.type === "user"
                 ? m.toType === "user" &&
-                  normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username)
+                  (normalizeUsername(m.toUsername) === normalizeUsername(dmTarget.username) ||
+                    normalizeUsername(m.from) === normalizeUsername(dmTarget.username))
                 : m.toType === "biz" && m.toBizId === dmTarget.bizId
             ).length === 0 && <div style={{ color: ui.muted }}>Şu an hiç mesajınız yok.</div>}
           </div>

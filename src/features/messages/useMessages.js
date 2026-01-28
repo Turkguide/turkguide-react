@@ -22,6 +22,7 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
     setDmTarget({ type: "user", username });
     setDmText("");
     setShowDm(true);
+    markThreadRead({ type: "user", username });
     return true;
   }
 
@@ -37,6 +38,7 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
     setDmTarget({ type: "biz", bizId });
     setDmText("");
     setShowDm(true);
+    markThreadRead({ type: "biz", bizId });
     return true;
   }
 
@@ -129,7 +131,8 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
         const isToUser =
           target.type === "user" &&
           m.toType === "user" &&
-          normalizeUsername(m.toUsername) === normalizeUsername(target.username);
+          (normalizeUsername(m.toUsername) === normalizeUsername(target.username) ||
+            normalizeUsername(m.from) === normalizeUsername(target.username));
         const isToBiz = target.type === "biz" && m.toType === "biz" && m.toBizId === target.bizId;
         if (!(isToUser || isToBiz)) return m;
         const readBy = new Set((m.readBy || []).map(normalizeUsername));
