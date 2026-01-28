@@ -62,7 +62,10 @@ export function useUserManagement({
     const me = typeof user !== "undefined" ? user : null;
 
     const can = isAdmin || (me && u.id && me.id && u.id === me.id);
-    if (!can) return;
+    if (!can) {
+      alert("Bu profili düzenleme yetkin yok.");
+      return;
+    }
 
     // ✅ Username değişince profil popup "Profil bulunamadı" olmasın diye eski username'i yakala
     const oldUsername = String(u._origUsername || u.username || "").trim();
@@ -72,6 +75,10 @@ export function useUserManagement({
     const email = String(u.email || "").trim();
     if (!username) {
       alert("Username boş olamaz.");
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      alert("Geçerli bir email girin.");
       return;
     }
 
@@ -150,7 +157,7 @@ export function useUserManagement({
         ...(p || {}),
         ...(u || {}),
         id: me.id,
-        email: me.email,
+        email: email || me.email,
         username,
         avatar: u.avatar ?? p?.avatar ?? "",
         Tier: u.Tier ?? p?.Tier ?? null,
@@ -270,6 +277,8 @@ export function useUserManagement({
               !updateData.user.new_email,
             newEmailPending: updateData.user.new_email ?? email,
           }));
+        } else {
+          alert("Profil güncellendi.");
         }
 
         // ✅ ALSO write to public.profiles so everyone can read avatar/fields
@@ -338,6 +347,9 @@ export function useUserManagement({
         alert("updateUser crash: " + (e?.message || JSON.stringify(e)));
         return;
       }
+    } else {
+      alert("Supabase bağlantısı hazır değil, lütfen tekrar deneyin.");
+      return;
     }
 
     // ✅ Profil popup açıksa, target username'i güncelle (Profil bulunamadı fix)
