@@ -88,6 +88,31 @@ export function SettingsModal({
               }
             />
 
+            <div style={{ fontWeight: 950, fontSize: 14, marginTop: 18 }}>Yasal</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Button
+                ui={ui}
+                onClick={() => window.open("/privacy.html", "_blank", "noopener,noreferrer")}
+                size="sm"
+              >
+                Gizlilik
+              </Button>
+              <Button
+                ui={ui}
+                onClick={() => window.open("/terms.html", "_blank", "noopener,noreferrer")}
+                size="sm"
+              >
+                Kullanım Şartları
+              </Button>
+              <Button
+                ui={ui}
+                onClick={() => window.open("/contact.html", "_blank", "noopener,noreferrer")}
+                size="sm"
+              >
+                İletişim
+              </Button>
+            </div>
+
             <div
               style={{
                 marginTop: 24,
