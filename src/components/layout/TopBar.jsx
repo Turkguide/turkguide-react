@@ -1,4 +1,5 @@
 import { IconBase, BellIcon, ChatIcon, LoginIcon } from "../ui";
+import { fmt } from "../../utils/helpers";
 
 export function TopBar({
   ui,
@@ -13,6 +14,12 @@ export function TopBar({
   unreadNotificationsForMe,
   unreadThreadsForMe,
   touchNotificationsSeen,
+  notificationsList,
+  showNotificationsMenu,
+  onToggleNotificationsMenu,
+  onCloseNotificationsMenu,
+  onViewAllNotifications,
+  renderNotificationText,
 }) {
   const iconBtnStyle = {
     width: 34,
@@ -44,6 +51,10 @@ export function TopBar({
       profile.setProfileOpen(false);
       profile.setProfileTarget(null);
     } catch (_) {}
+
+    try {
+      onCloseNotificationsMenu?.();
+    } catch (_) {}
   };
 
   const goMyProfile = () => {
@@ -52,10 +63,18 @@ export function TopBar({
     profile.openProfileByUsername(user.username);
   };
 
-  const goNotifications = () => {
-    closeTopOverlays();
-    touchNotificationsSeen();
-    setActive("notifications");
+  const toggleNotifications = () => {
+    try {
+      settingsHook.setShowSettings(false);
+      setShowAuth(false);
+    } catch (_) {}
+
+    try {
+      profile.setProfileOpen(false);
+      profile.setProfileTarget(null);
+    } catch (_) {}
+
+    onToggleNotificationsMenu?.();
   };
 
   const goMessages = () => {
@@ -150,42 +169,107 @@ export function TopBar({
           }}
         >
           {isAuthed && (
-            <button
-              type="button"
-              aria-label="Bildirimler"
-              title="Bildirimler"
-              onClick={goNotifications}
-              style={{ ...iconBtnStyle, position: "relative" }}
-            >
-              <BellIcon size={22} />
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                aria-label="Bildirimler"
+                title="Bildirimler"
+                onClick={toggleNotifications}
+                style={{ ...iconBtnStyle, position: "relative" }}
+              >
+                <BellIcon size={22} />
 
-              {unreadNotificationsForMe > 0 ? (
-                <span
+                {unreadNotificationsForMe > 0 ? (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: -4,
+                      right: -4,
+                      minWidth: 18,
+                      height: 18,
+                      padding: "0 6px",
+                      borderRadius: 999,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11,
+                      fontWeight: 950,
+                      lineHeight: 1,
+                      background: "#E53935",
+                      color: "#fff",
+                      border: `2px solid ${ui.top}`,
+                      boxSizing: "border-box",
+                      userSelect: "none",
+                    }}
+                  >
+                    {unreadNotificationsForMe > 99 ? "99+" : unreadNotificationsForMe}
+                  </span>
+                ) : null}
+              </button>
+
+              {showNotificationsMenu ? (
+                <div
                   style={{
                     position: "absolute",
-                    top: -4,
-                    right: -4,
-                    minWidth: 18,
-                    height: 18,
-                    padding: "0 6px",
-                    borderRadius: 999,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 11,
-                    fontWeight: 950,
-                    lineHeight: 1,
-                    background: "#E53935",
-                    color: "#fff",
-                    border: `2px solid ${ui.top}`,
-                    boxSizing: "border-box",
-                    userSelect: "none",
+                    top: 40,
+                    right: 0,
+                    width: 340,
+                    maxHeight: 420,
+                    overflowY: "auto",
+                    background: ui.panel,
+                    border: `1px solid ${ui.border}`,
+                    borderRadius: 14,
+                    padding: 12,
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+                    zIndex: 60,
                   }}
                 >
-                  {unreadNotificationsForMe > 99 ? "99+" : unreadNotificationsForMe}
-                </span>
+                  <div style={{ fontWeight: 900, marginBottom: 8 }}>Bildirimler</div>
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {(notificationsList || []).slice(0, 9).length === 0 ? (
+                      <div style={{ color: ui.muted, fontSize: 13 }}>Şu an hiç bildiriminiz yok.</div>
+                    ) : (
+                      (notificationsList || []).slice(0, 9).map((n) => (
+                        <div
+                          key={n.id}
+                          style={{
+                            paddingBottom: 8,
+                            borderBottom: `1px solid ${
+                              ui.mode === "light" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"
+                            }`,
+                          }}
+                        >
+                          <div style={{ fontWeight: n.read ? 700 : 900, fontSize: 13 }}>
+                            {renderNotificationText ? renderNotificationText(n) : ""}
+                          </div>
+                          <div style={{ color: ui.muted2, fontSize: 11 }}>{fmt(n.createdAt)}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      touchNotificationsSeen();
+                      onViewAllNotifications?.();
+                    }}
+                    style={{
+                      marginTop: 10,
+                      width: "100%",
+                      border: `1px solid ${ui.border}`,
+                      background: ui.panel2,
+                      color: ui.text,
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Tüm bildirimler
+                  </button>
+                </div>
               ) : null}
-            </button>
+            </div>
           )}
 
           {isAuthed ? (

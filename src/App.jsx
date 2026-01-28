@@ -131,6 +131,7 @@ useEffect(() => {
   }, [posts]);
   const [dms, setDms] = useState([]);
   const [appts, setAppts] = useState([]);
+  const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
   
   const [infoPage, setInfoPage] = useState(null);
 // infoPage: "about" | "help" | "privacy" | "terms" | "contact" | null
@@ -534,6 +535,19 @@ const touchNotificationsSeen = () => {
   notifications.markAllAsRead();
 };
 
+const openNotificationsMenu = () => {
+  setShowNotificationsMenu((prev) => !prev);
+};
+
+const closeNotificationsMenu = () => {
+  setShowNotificationsMenu(false);
+};
+
+const viewAllNotifications = () => {
+  closeNotificationsMenu();
+  setActive("notifications");
+};
+
 function landingDoSearch() {
   // şu an sadece filtre input'u kullanıyoruz; buton UX için
 }
@@ -617,6 +631,12 @@ return (
       unreadNotificationsForMe={unreadNotificationsForMe}
       unreadThreadsForMe={unreadThreadsForMe}
       touchNotificationsSeen={touchNotificationsSeen}
+      notificationsList={notifications.notifications}
+      showNotificationsMenu={showNotificationsMenu}
+      onToggleNotificationsMenu={openNotificationsMenu}
+      onCloseNotificationsMenu={closeNotificationsMenu}
+      onViewAllNotifications={viewAllNotifications}
+      renderNotificationText={renderNotificationText}
     />
     
     {/* HUB Media hidden input (single occurrence) */}
