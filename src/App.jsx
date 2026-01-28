@@ -86,13 +86,7 @@ export default function App() {
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
 
   // Tabs
-  const [active, setActive] = useState(() => {
-  try {
-    return localStorage.getItem("tg_active_tab_v1") || "biz";
-  } catch (_) {
-    return "biz";
-  }
-});
+  const [active, setActive] = useState("biz");
 
   const lastMainTabRef = useRef("biz");
   useEffect(() => {
