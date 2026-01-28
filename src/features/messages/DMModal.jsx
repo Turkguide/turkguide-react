@@ -22,8 +22,8 @@ export function DMModal({
     <Modal ui={ui} open={showDm} title="Mesaj" onClose={() => setShowDm(false)} fullScreen>
       {!dmTarget ? null : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
-          <div style={{ color: ui.muted }}>
-            Hedef: {dmTarget.type === "user" ? <b>@{dmTarget.username}</b> : <b>İşletme</b>}
+          <div style={{ color: ui.muted, fontSize: 13 }}>
+            Kime? {dmTarget.type === "user" ? <b>@{dmTarget.username}</b> : <b>İşletme</b>}
           </div>
 
           <div
@@ -80,20 +80,20 @@ export function DMModal({
                       >
                         <span
                           style={{
-                            fontWeight: 950,
+                            fontWeight: 900,
+                            fontSize: 13,
                             cursor: "pointer",
-                            textDecoration: "underline",
                           }}
                           onClick={() => profile.openProfileByUsername(resolveUsernameAlias(m.from))}
                         >
                           @{resolveUsernameAlias(m.from)}
                         </span>
 
-                        <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(m.createdAt)}</span>
+                        <span style={{ color: ui.muted2, fontSize: 11 }}>{fmt(m.createdAt)}</span>
                       </div>
                     ) : null}
 
-                    <div style={{ marginTop: showHeader ? 6 : 0 }}>{m.text}</div>
+                    <div style={{ marginTop: showHeader ? 6 : 0, fontSize: 13 }}>{m.text}</div>
                   </div>
                 );
               });
@@ -111,8 +111,13 @@ export function DMModal({
           <textarea
             value={dmText}
             onChange={(e) => setDmText(e.target.value)}
-            placeholder="Mesaj yaz..."
-            style={inputStyle(ui, { minHeight: 90, resize: "vertical" })}
+            onInput={(e) => {
+              e.target.style.height = "0px";
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            placeholder="Mesaj..."
+            rows={1}
+            style={inputStyle(ui, { minHeight: 0, height: 34, resize: "none", overflow: "hidden" })}
           />
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
