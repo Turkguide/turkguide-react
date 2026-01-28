@@ -369,145 +369,150 @@ export function useUserManagement({
     const oldU = String(oldUsername || "").trim();
 
     if (oldU && newUsername && normalizeUsername(oldU) !== normalizeUsername(newUsername)) {
-      const oldKey = normalizeUsername(oldU);
-      const replaceUsername = (value) =>
-        normalizeUsername(value || "") === oldKey ? newUsername : value;
+      try {
+        const oldKey = normalizeUsername(oldU);
+        const replaceUsername = (value) =>
+          normalizeUsername(value || "") === oldKey ? newUsername : value;
 
-      const remapComments = (comments) =>
-        Array.isArray(comments)
-          ? comments.map((c) => {
-              const nextC = {
-                ...c,
-                byUsername: replaceUsername(c?.byUsername),
-                by: replaceUsername(c?.by),
-              };
-              if (Array.isArray(c?.replies)) {
-                nextC.replies = c.replies.map((r) => ({
-                  ...r,
-                  byUsername: replaceUsername(r?.byUsername),
-                  by: replaceUsername(r?.by),
-                }));
-              }
-              return nextC;
-            })
-          : comments;
-      // ✅ eski username ile de profile açabilmek için alias map'e ekle
-      setUsernameAliases((prev) => ({
-        ...(prev || {}),
-        [normalizeUsername(oldU)]: newUsername,
-      }));
-
-      // 1) İşletmelerde ownerUsername güncelle
-      setBiz((prev) =>
-        prev.map((b) =>
-          normalizeUsername(b.ownerUsername) === normalizeUsername(oldU)
-            ? { ...b, ownerUsername: newUsername }
-            : b
-        )
-      );
-
-      // 2) HUB post + yorumlarda byUsername güncelle
-      setPosts((prev) =>
-        (prev || []).map((p) => {
-          // posts: support both `byUsername` (new) and `by` (legacy)
-          const pByUsername = p?.byUsername;
-          const pByLegacy = p?.by;
-
-          const nextP = {
-            ...p,
-            byUsername:
-              pByUsername != null && normalizeUsername(pByUsername) === normalizeUsername(oldU)
-                ? newUsername
-                : pByUsername,
-            by:
-              pByLegacy != null && normalizeUsername(pByLegacy) === normalizeUsername(oldU)
-                ? newUsername
-                : pByLegacy,
-          };
-
-          const nextComments = Array.isArray(p?.comments)
-            ? (p.comments || []).map((c) => {
-                const cByUsername = c?.byUsername;
-                const cByLegacy = c?.by;
-
+        const remapComments = (comments) =>
+          Array.isArray(comments)
+            ? comments.map((c) => {
                 const nextC = {
                   ...c,
-                  byUsername:
-                    cByUsername != null && normalizeUsername(cByUsername) === normalizeUsername(oldU)
-                      ? newUsername
-                      : cByUsername,
-                  by:
-                    cByLegacy != null && normalizeUsername(cByLegacy) === normalizeUsername(oldU)
-                      ? newUsername
-                      : cByLegacy,
+                  byUsername: replaceUsername(c?.byUsername),
+                  by: replaceUsername(c?.by),
                 };
-
-                // replies: also support both fields
                 if (Array.isArray(c?.replies)) {
-                  nextC.replies = (c.replies || []).map((r) => {
-                    const rByUsername = r?.byUsername;
-                    const rByLegacy = r?.by;
-                    return {
-                      ...r,
-                      byUsername:
-                        rByUsername != null && normalizeUsername(rByUsername) === normalizeUsername(oldU)
-                          ? newUsername
-                          : rByUsername,
-                      by:
-                        rByLegacy != null && normalizeUsername(rByLegacy) === normalizeUsername(oldU)
-                          ? newUsername
-                          : rByLegacy,
-                    };
-                  });
+                  nextC.replies = c.replies.map((r) => ({
+                    ...r,
+                    byUsername: replaceUsername(r?.byUsername),
+                    by: replaceUsername(r?.by),
+                  }));
                 }
-
                 return nextC;
               })
-            : p?.comments;
+            : comments;
+        // ✅ eski username ile de profile açabilmek için alias map'e ekle
+        setUsernameAliases((prev) => ({
+          ...(prev || {}),
+          [normalizeUsername(oldU)]: newUsername,
+        }));
 
-          return {
-            ...nextP,
-            comments: nextComments,
-          };
-        })
-      );
+        // 1) İşletmelerde ownerUsername güncelle
+        setBiz((prev) =>
+          (prev || []).map((b) =>
+            normalizeUsername(b.ownerUsername) === normalizeUsername(oldU)
+              ? { ...b, ownerUsername: newUsername }
+              : b
+          )
+        );
 
-      // 3) DM'lerde from/toUsername güncelle
-      setDms((prev) =>
-        prev.map((m) => ({
-          ...m,
-          from: normalizeUsername(m.from) === normalizeUsername(oldU) ? newUsername : m.from,
-          toUsername:
-            m.toType === "user" && normalizeUsername(m.toUsername) === normalizeUsername(oldU)
-              ? newUsername
-              : m.toUsername,
-          readBy: (m.readBy || []).map((rb) =>
-            normalizeUsername(rb) === normalizeUsername(oldU) ? newUsername : rb
-          ),
-        }))
-      );
+        // 2) HUB post + yorumlarda byUsername güncelle
+        setPosts((prev) =>
+          (prev || []).map((p) => {
+            // posts: support both `byUsername` (new) and `by` (legacy)
+            const pByUsername = p?.byUsername;
+            const pByLegacy = p?.by;
 
-      // 4) Randevularda fromUsername güncelle
-      setAppts((prev) =>
-        prev.map((a) =>
-          normalizeUsername(a.fromUsername) === normalizeUsername(oldU)
-            ? { ...a, fromUsername: newUsername }
-            : a
-        )
-      );
+            const nextP = {
+              ...p,
+              byUsername:
+                pByUsername != null && normalizeUsername(pByUsername) === normalizeUsername(oldU)
+                  ? newUsername
+                  : pByUsername,
+              by:
+                pByLegacy != null && normalizeUsername(pByLegacy) === normalizeUsername(oldU)
+                  ? newUsername
+                  : pByLegacy,
+            };
 
-      // 5) Biz başvurularında applicant/ownerUsername güncelle (varsa)
-      setBizApps((prev) =>
-        prev.map((a) => ({
-          ...a,
-          applicant:
-            normalizeUsername(a.applicant) === normalizeUsername(oldU) ? newUsername : a.applicant,
-          ownerUsername:
-            normalizeUsername(a.ownerUsername) === normalizeUsername(oldU)
-              ? newUsername
-              : a.ownerUsername,
-        }))
-      );
+            const nextComments = Array.isArray(p?.comments)
+              ? (p.comments || []).map((c) => {
+                  const cByUsername = c?.byUsername;
+                  const cByLegacy = c?.by;
+
+                  const nextC = {
+                    ...c,
+                    byUsername:
+                      cByUsername != null && normalizeUsername(cByUsername) === normalizeUsername(oldU)
+                        ? newUsername
+                        : cByUsername,
+                    by:
+                      cByLegacy != null && normalizeUsername(cByLegacy) === normalizeUsername(oldU)
+                        ? newUsername
+                        : cByLegacy,
+                  };
+
+                  // replies: also support both fields
+                  if (Array.isArray(c?.replies)) {
+                    nextC.replies = (c.replies || []).map((r) => {
+                      const rByUsername = r?.byUsername;
+                      const rByLegacy = r?.by;
+                      return {
+                        ...r,
+                        byUsername:
+                          rByUsername != null &&
+                          normalizeUsername(rByUsername) === normalizeUsername(oldU)
+                            ? newUsername
+                            : rByUsername,
+                        by:
+                          rByLegacy != null && normalizeUsername(rByLegacy) === normalizeUsername(oldU)
+                            ? newUsername
+                            : rByLegacy,
+                      };
+                    });
+                  }
+
+                  return nextC;
+                })
+              : p?.comments;
+
+            return {
+              ...nextP,
+              comments: nextComments,
+            };
+          })
+        );
+
+        // 3) DM'lerde from/toUsername güncelle
+        setDms((prev) =>
+          (prev || []).map((m) => ({
+            ...m,
+            from: normalizeUsername(m.from) === normalizeUsername(oldU) ? newUsername : m.from,
+            toUsername:
+              m.toType === "user" && normalizeUsername(m.toUsername) === normalizeUsername(oldU)
+                ? newUsername
+                : m.toUsername,
+            readBy: (m.readBy || []).map((rb) =>
+              normalizeUsername(rb) === normalizeUsername(oldU) ? newUsername : rb
+            ),
+          }))
+        );
+
+        // 4) Randevularda fromUsername güncelle
+        setAppts((prev) =>
+          (prev || []).map((a) =>
+            normalizeUsername(a.fromUsername) === normalizeUsername(oldU)
+              ? { ...a, fromUsername: newUsername }
+              : a
+          )
+        );
+
+        // 5) Biz başvurularında applicant/ownerUsername güncelle (varsa)
+        setBizApps((prev) =>
+          (prev || []).map((a) => ({
+            ...a,
+            applicant:
+              normalizeUsername(a.applicant) === normalizeUsername(oldU) ? newUsername : a.applicant,
+            ownerUsername:
+              normalizeUsername(a.ownerUsername) === normalizeUsername(oldU)
+                ? newUsername
+                : a.ownerUsername,
+          }))
+        );
+      } catch (e) {
+        console.warn("username remap error:", e);
+      }
 
       // 6) Supabase HUB posts + comments güncelle (kalıcı)
       if (supabase?.from) {
