@@ -209,17 +209,7 @@ export function EditUserModal({
           <div style={{ color: ui.red, fontSize: 12, fontWeight: 700 }}>{editUserError}</div>
         ) : null}
         <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-          <Button
-            ui={ui}
-            variant="solidBlue"
-            onClick={() => {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H1',location:'EditUserModal.jsx:214',message:'save click',data:{saving:!!savingEditUser,hasCtx:!!editUserCtx},timestamp:Date.now()})}).catch(()=>{});
-              // #endregion
-              onSave();
-            }}
-            disabled={savingEditUser}
-          >
+          <Button ui={ui} variant="solidBlue" onClick={onSave} disabled={savingEditUser}>
             {savingEditUser ? "Kaydediliyor..." : "Kaydet"}
           </Button>
           <Button ui={ui} onClick={onClose}>

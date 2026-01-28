@@ -74,9 +74,6 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
       if (!supabase?.from) {
         throw new Error("Supabase client hazır değil.");
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H1',location:'useHub.js:74',message:'fetchHubPosts start',data:{retryOnAuth:!!retryOnAuth,hasUser:!!user?.username},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       console.log("🟣 fetchHubPosts: start");
       const { data, error } = await supabase
         .from("hub_posts")
@@ -86,9 +83,6 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
 
       if (error) throw error;
       console.log("🟣 fetchHubPosts: ok rows=", (data || []).length, "first=", (data || [])[0]);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H1',location:'useHub.js:86',message:'fetchHubPosts ok',data:{count:(data||[]).length},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
 
       const mapped = (data || []).map((r) => {
         const createdAtRaw = r?.created_at ? new Date(r.created_at).getTime() : now();
@@ -112,9 +106,6 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
     } catch (e) {
       console.error("fetchHubPosts error:", e);
       console.log("🟣 fetchHubPosts: catch raw=", e);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H2',location:'useHub.js:104',message:'fetchHubPosts error',data:{msg:String(e?.message||''),status:e?.status||null,code:e?.code||null},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       const msg = String(e?.message || e || "");
       const looksAuthExpired =
         msg.toLowerCase().includes("jwt expired") ||
@@ -123,14 +114,8 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
         e?.status === 401;
       if (retryOnAuth && looksAuthExpired && supabase?.auth?.refreshSession) {
         try {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'useHub.js:112',message:'refreshSession attempt',data:{looksAuthExpired:true},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
           const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
           if (!refreshError && refreshed?.session) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'useHub.js:115',message:'refreshSession ok',data:{hasSession:true},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             await fetchHubPosts(false);
             return;
           }

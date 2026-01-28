@@ -58,17 +58,11 @@ export function useAuthState() {
           return;
         }
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H4',location:'useAuthState.js:34',message:'restoreAndListen start',data:{hasAuth:true},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         // 1) Session restore
         const { data, error } = await supabase.auth.getSession();
         if (!alive) return;
 
         if (error) console.error("❌ getSession error:", error);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/0edbb5eb-9e7b-4f66-bfe6-5ae18010d80e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H4',location:'useAuthState.js:40',message:'getSession result',data:{hasSession:!!data?.session,hasUser:!!data?.session?.user,hasError:!!error},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
 
         let session = data?.session;
         const nowSec = Math.floor(Date.now() / 1000);
