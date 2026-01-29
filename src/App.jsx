@@ -41,7 +41,7 @@ import { SettingsModal } from "./features/settings";
 import { useAuthState, useAuthCallback, useAuth, AuthModal } from "./features/auth";
 
 // Features - Business
-import { useBusiness, useBusinessEdit } from "./features/business";
+import { useBusiness, useBusinessEdit, BizApplyForm } from "./features/business";
 
 // Features - HUB
 import { useHub } from "./features/hub";
@@ -970,6 +970,21 @@ return (
           Contact
         </a>
       </div>
+
+      {/* BUSINESS APPLY MODAL */}
+      <Modal
+        ui={ui}
+        open={business.showBizApply}
+        title="İşletme Başvurusu"
+        onClose={() => business.setShowBizApply(false)}
+      >
+        <BizApplyForm
+          ui={ui}
+          biz={biz}
+          onSubmit={business.submitBizApplication}
+          onCancel={() => business.setShowBizApply(false)}
+        />
+      </Modal>
 
       {/* REJECT MODAL */}
       <Modal ui={ui} open={business.showRejectReason} title="Reddetme Sebebi" onClose={() => business.setShowRejectReason(false)}>

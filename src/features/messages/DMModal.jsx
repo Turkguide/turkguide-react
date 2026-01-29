@@ -21,7 +21,7 @@ export function DMModal({
   return (
     <Modal ui={ui} open={showDm} title="Mesaj" onClose={() => setShowDm(false)} fullScreen>
       {!dmTarget ? null : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0, flex: 1 }}>
           <div style={{ color: ui.muted, fontSize: 13 }}>
             Kime? {dmTarget.type === "user" ? <b>@{dmTarget.username}</b> : <b>İşletme</b>}
           </div>
