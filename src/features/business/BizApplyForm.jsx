@@ -124,18 +124,23 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
     inputRefs.current[idx] = el;
   };
 
-  const focusNext = (idx) => {
-    const next = inputRefs.current[idx + 1];
-    if (next && typeof next.focus === "function") {
-      next.focus();
+  const focusField = (idx) => {
+    const el = inputRefs.current[idx];
+    if (el && typeof el.focus === "function") {
+      el.focus();
+      try {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+      } catch (_) {}
     }
   };
 
-  const onInputKeyDown = (idx) => (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      focusNext(idx);
-    }
+  const onInputPointerDown = (idx) => () => {
+    // iOS: allow tap-to-focus without forcing Done
+    setTimeout(() => focusField(idx), 0);
+  };
+
+  const onInputFocus = (idx) => () => {
+    focusField(idx);
   };
 
   return (
@@ -145,8 +150,8 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         ref={registerInput(0)}
-        enterKeyHint="next"
-        onKeyDown={onInputKeyDown(0)}
+        onPointerDown={onInputPointerDown(0)}
+        onFocus={onInputFocus(0)}
         style={inputStyle(ui)}
       />
 
@@ -155,8 +160,8 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         value={address}
         onChange={(e) => setAddress(e.target.value)}
         ref={registerInput(1)}
-        enterKeyHint="next"
-        onKeyDown={onInputKeyDown(1)}
+        onPointerDown={onInputPointerDown(1)}
+        onFocus={onInputFocus(1)}
         style={inputStyle(ui)}
       />
 
@@ -165,8 +170,8 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         value={apt}
         onChange={(e) => setApt(e.target.value)}
         ref={registerInput(2)}
-        enterKeyHint="next"
-        onKeyDown={onInputKeyDown(2)}
+        onPointerDown={onInputPointerDown(2)}
+        onFocus={onInputFocus(2)}
         style={inputStyle(ui)}
       />
 
@@ -177,8 +182,8 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           onChange={(e) => setZip(e.target.value)}
           ref={registerInput(3)}
           inputMode="numeric"
-          enterKeyHint="next"
-          onKeyDown={onInputKeyDown(3)}
+          onPointerDown={onInputPointerDown(3)}
+          onFocus={onInputFocus(3)}
           style={inputStyle(ui)}
         />
 
@@ -187,8 +192,8 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           value={city}
           onChange={(e) => setCity(e.target.value)}
           ref={registerInput(4)}
-          enterKeyHint="next"
-          onKeyDown={onInputKeyDown(4)}
+          onPointerDown={onInputPointerDown(4)}
+          onFocus={onInputFocus(4)}
           style={inputStyle(ui)}
         />
       </div>
@@ -199,8 +204,8 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           value={state}
           onChange={(e) => setState(e.target.value)}
           ref={registerInput(5)}
-          enterKeyHint="next"
-          onKeyDown={onInputKeyDown(5)}
+          onPointerDown={onInputPointerDown(5)}
+          onFocus={onInputFocus(5)}
           style={inputStyle(ui)}
         />
 
@@ -209,8 +214,8 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           value={country}
           onChange={(e) => setCountry(e.target.value)}
           ref={registerInput(6)}
-          enterKeyHint="next"
-          onKeyDown={onInputKeyDown(6)}
+          onPointerDown={onInputPointerDown(6)}
+          onFocus={onInputFocus(6)}
           style={inputStyle(ui)}
         />
       </div>
@@ -231,8 +236,8 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           onChange={(e) => setPhoneNumber(e.target.value)}
           ref={registerInput(7)}
           inputMode="tel"
-          enterKeyHint="next"
-          onKeyDown={onInputKeyDown(7)}
+          onPointerDown={onInputPointerDown(7)}
+          onFocus={onInputFocus(7)}
           style={inputStyle(ui)}
         />
       </div>
@@ -251,6 +256,8 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         value={desc}
         onChange={(e) => setDesc(e.target.value)}
         ref={registerInput(8)}
+        onPointerDown={onInputPointerDown(8)}
+        onFocus={onInputFocus(8)}
         style={inputStyle(ui, { minHeight: 90 })}
       />
 
