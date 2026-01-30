@@ -51,6 +51,20 @@
 -- $$;
 -- grant execute on function public.is_username_available(text) to anon, authenticated;
 
+-- Email availability check (safe for anon/auth via RPC)
+-- create or replace function public.is_email_available(p_email text)
+-- returns boolean
+-- language sql
+-- security definer
+-- set search_path = public
+-- as $$
+--   select not exists (
+--     select 1 from public.profiles
+--     where lower(email) = lower(p_email)
+--   );
+-- $$;
+-- grant execute on function public.is_email_available(text) to anon, authenticated;
+
 -- Optional: enforce unique usernames at DB level (case-insensitive)
 -- create unique index if not exists profiles_username_lower_unique
 -- on public.profiles (lower(username));

@@ -110,6 +110,25 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
           return;
         }
 
+        // ✅ Email benzersiz mi? (RPC ile güvenli kontrol)
+        if (supabase?.rpc) {
+          const { data: emailAvailable, error: emailErr } = await supabase.rpc(
+            "is_email_available",
+            { p_email: email }
+          );
+
+          if (emailErr) {
+            console.warn("email availability check error:", emailErr);
+            alert("Email kontrol edilemedi. Lütfen tekrar dene.");
+            return;
+          }
+
+          if (emailAvailable === false) {
+            alert("Bu email adresi daha önce kayıt edilmiş.");
+            return;
+          }
+        }
+
         // ✅ Username benzersiz mi? (RPC ile güvenli kontrol)
         if (supabase?.rpc) {
           const { data: available, error } = await supabase.rpc(
