@@ -67,7 +67,9 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
     setApptBizId(null);
     setApptMsg("");
     setApptDateTime("");
-    alert("Randevu talebiniz işletmeye iletildi.");
+    setTimeout(() => {
+      alert("Randevu talebiniz işletmeye iletildi.");
+    }, 0);
   }
 
   return {
