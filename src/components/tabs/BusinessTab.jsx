@@ -163,16 +163,8 @@ export function BusinessTab({
                       </Button>
                       <Button
                         ui={ui}
-                        variant="blue"
                         onClick={() => messages.openDmToBiz(b.id)}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          boxShadow: "none",
-                          padding: "8px 12px",
-                          fontWeight: 900,
-                          color: ui.text,
-                        }}
+                        style={{ background: "transparent", boxShadow: "none" }}
                       >
                         💬 Mesaj Gönder
                       </Button>
