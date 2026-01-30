@@ -9,7 +9,7 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.55)",
+        background: fullScreen ? ui.bg : "rgba(0,0,0,0.55)",
         display: "flex",
         alignItems: fullScreen ? "stretch" : "flex-start",
         justifyContent: fullScreen ? "stretch" : "center",
@@ -26,9 +26,9 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
       <div
         style={{
           width: fullScreen ? "100%" : `min(${width}px, 100%)`,
-          height: fullScreen ? "100dvh" : undefined,
+          height: fullScreen ? "100svh" : undefined,
           maxHeight: fullScreen
-            ? "100dvh"
+            ? "100svh"
             : "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
           borderRadius: fullScreen ? 0 : 22,
           border: fullScreen ? "none" : `1px solid ${ui.border}`,
@@ -92,7 +92,9 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
             flex: "1 1 auto",
             overflowY: "auto",
             WebkitOverflowScrolling: "touch",
-            paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
+            paddingBottom: fullScreen
+              ? "calc(120px + env(safe-area-inset-bottom))"
+              : "calc(8px + env(safe-area-inset-bottom))",
           }}
         >
           {children}
