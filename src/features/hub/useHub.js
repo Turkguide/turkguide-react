@@ -133,7 +133,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Share a HUB post
    */
   async function hubShare() {
-    if (!requireAuth({ requireVerified: true })) return;
+    if (!requireAuth()) return;
     console.log("HUB SHARE ÇALIŞTI");
 
     const text = String(composer || "").trim();
@@ -218,7 +218,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Like/unlike a HUB post
    */
   async function hubLike(postId) {
-    if (!requireAuth({ requireVerified: true })) return;
+    if (!requireAuth()) return;
 
     if (!user || !user.username) {
       alert("Oturum bulunamadı, lütfen tekrar giriş yapın.");
@@ -283,7 +283,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Add comment to a HUB post (or reply to a comment)
    */
   async function hubComment(postId, replyToCommentId = null) {
-    if (!requireAuth({ requireVerified: true })) return;
+    if (!requireAuth()) return;
 
     // Use replyDraft if replying, otherwise use commentDraft
     const text = replyToCommentId
@@ -377,7 +377,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Delete a HUB comment
    */
   async function deleteHubComment(postId, commentId) {
-    if (!requireAuth({ requireVerified: true })) return;
+    if (!requireAuth()) return;
 
     const target = (posts || []).find((p) => p.id === postId);
     if (!target) return;
