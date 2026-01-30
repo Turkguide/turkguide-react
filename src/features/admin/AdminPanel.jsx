@@ -144,10 +144,12 @@ export function AdminPanel({
       <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 16 }}>
         <Card ui={ui} style={{ height: "fit-content" }}>
           <div style={{ fontSize: 16, fontWeight: 950 }}>Admin Menü</div>
-          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+          <div style={{ color: ui.muted2, fontSize: 12, marginTop: 6 }}>
+            Hızlı gezinme
+          </div>
+          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
             {[
-              ["KPI", "admin-kpi"],
-              ["Başvurular", "admin-apps"],
+              ["Dashboard", "admin-kpi"],
               ["İşletmeler", "admin-biz"],
               ["Randevular", "admin-appts"],
               ["Kullanıcılar", "admin-users"],
@@ -161,15 +163,16 @@ export function AdminPanel({
                   el?.scrollIntoView?.({ behavior: "smooth", block: "start" });
                 }}
                 style={{
-                  padding: "8px 10px",
-                  borderRadius: 10,
+                  padding: "10px 12px",
+                  borderRadius: 14,
                   border: `1px solid ${ui.border}`,
-                  background: ui.panel,
-                  fontWeight: 800,
+                  background: ui.panel2,
+                  fontWeight: 900,
                   fontSize: 13,
                   color: ui.text,
                   textAlign: "left",
                   cursor: "pointer",
+                  boxShadow: ui.mode === "light" ? "0 8px 20px rgba(0,0,0,0.06)" : "0 10px 24px rgba(0,0,0,0.22)",
                 }}
               >
                 {label}
@@ -211,69 +214,6 @@ export function AdminPanel({
             </div>
           </Card>
 
-          <Card ui={ui} id="admin-apps">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 950 }}>Bekleyen İşletme Başvuruları</div>
-                <div style={{ color: ui.muted, marginTop: 4 }}>İnceleme kuyruğu</div>
-              </div>
-              <input
-                value={appQuery}
-                onChange={(e) => {
-                  setAppQuery(e.target.value);
-                  setAppsPage(1);
-                }}
-                placeholder="Başvuru ara..."
-                style={inputStyle(ui, { minWidth: 220 })}
-              />
-            </div>
-            {appsPageData.total === 0 ? (
-              <div style={{ color: ui.muted, marginTop: 12 }}>Bekleyen başvuru yok.</div>
-            ) : (
-              <>
-                <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
-                  {appsPageData.items.map((a) => (
-                    <div
-                      key={a.id}
-                      style={{
-                        border: `1px solid ${ui.border}`,
-                        borderRadius: 16,
-                        padding: 12,
-                        background:
-                          ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                        <div>
-                          <div style={{ fontSize: 16, fontWeight: 950 }}>{a.name}</div>
-                          <div style={{ color: ui.muted, marginTop: 4 }}>
-                            {a.city} • {a.category} • Başvuran: @{a.applicant}
-                          </div>
-                          <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>{fmt(a.createdAt)}</div>
-                        </div>
-                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                          <Button ui={ui} variant="ok" onClick={() => business.adminApprove(a)}>
-                            Onayla
-                          </Button>
-                          <Button ui={ui} variant="danger" onClick={() => business.openReject(a)}>
-                            Reddet
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Pagination
-                  ui={ui}
-                  page={appsPageData.page}
-                  pages={appsPageData.pages}
-                  onPrev={() => setAppsPage((p) => Math.max(1, p - 1))}
-                  onNext={() => setAppsPage((p) => Math.min(appsPageData.pages, p + 1))}
-                />
-              </>
-            )}
-          </Card>
-
           <Card ui={ui} id="admin-biz">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
               <div>
@@ -290,6 +230,76 @@ export function AdminPanel({
                 style={inputStyle(ui, { minWidth: 220 })}
               />
             </div>
+            <div
+              style={{
+                marginTop: 12,
+                border: `1px solid ${ui.border}`,
+                borderRadius: 16,
+                padding: 12,
+                background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 900 }}>Bekleyen Başvurular</div>
+                  <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>İşletme onay kuyruğu</div>
+                </div>
+                <input
+                  value={appQuery}
+                  onChange={(e) => {
+                    setAppQuery(e.target.value);
+                    setAppsPage(1);
+                  }}
+                  placeholder="Başvuru ara..."
+                  style={inputStyle(ui, { minWidth: 220 })}
+                />
+              </div>
+              {appsPageData.total === 0 ? (
+                <div style={{ color: ui.muted, marginTop: 10 }}>Bekleyen başvuru yok.</div>
+              ) : (
+                <>
+                  <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                    {appsPageData.items.map((a) => (
+                      <div
+                        key={a.id}
+                        style={{
+                          border: `1px solid ${ui.border}`,
+                          borderRadius: 14,
+                          padding: 10,
+                          background:
+                            ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                          <div>
+                            <div style={{ fontWeight: 900 }}>{a.name}</div>
+                            <div style={{ color: ui.muted, marginTop: 4, fontSize: 12 }}>
+                              {a.city} • {a.category} • @{a.applicant}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <Button ui={ui} variant="ok" onClick={() => business.adminApprove(a)}>
+                              Onayla
+                            </Button>
+                            <Button ui={ui} variant="danger" onClick={() => business.openReject(a)}>
+                              Reddet
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Pagination
+                    ui={ui}
+                    page={appsPageData.page}
+                    pages={appsPageData.pages}
+                    onPrev={() => setAppsPage((p) => Math.max(1, p - 1))}
+                    onNext={() => setAppsPage((p) => Math.min(appsPageData.pages, p + 1))}
+                  />
+                </>
+              )}
+            </div>
+
             {bizPageData.total === 0 ? (
               <div style={{ color: ui.muted, marginTop: 12 }}>Kayıtlı işletme yok.</div>
             ) : (
