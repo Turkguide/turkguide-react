@@ -301,6 +301,62 @@ useEffect(() => {
   };
 }, [admin.adminMode]);
 
+useEffect(() => {
+  if (active !== "admin" || !admin.adminMode || !supabase?.from) return;
+  let cancelled = false;
+
+  supabase
+    .from("biz_apps")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200)
+    .then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) {
+        console.warn("admin biz_apps fetch error:", error);
+        alert("Basvurular yuklenemedi: " + (error.message || ""));
+        return;
+      }
+
+      const mapped = (data || []).map((r) => ({
+        id: r.id,
+        createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
+        status: r.status || "pending",
+        applicant: r.applicant || r.applicant_username || "",
+        ownerUsername: r.owner_username || r.ownerUsername || r.applicant || "",
+        name: r.name || "",
+        category: r.category || "",
+        desc: r.desc || "",
+        country: r.country || "",
+        state: r.state || "",
+        zip: r.zip || "",
+        apt: r.apt || "",
+        address1: r.address1 || r.address_1 || "",
+        address: r.address || "",
+        city: r.city || "",
+        phoneDial: r.phone_dial || r.phoneDial || "",
+        phoneLocal: r.phone_local || r.phoneLocal || "",
+        phone: r.phone || "",
+        avatar: r.avatar || "",
+        approvedAt: r.approved_at ? new Date(r.approved_at).getTime() : null,
+        approvedBy: r.approved_by || "",
+        rejectedAt: r.rejected_at ? new Date(r.rejected_at).getTime() : null,
+        rejectedBy: r.rejected_by || "",
+        rejectReason: r.reject_reason || "",
+      }));
+      setBizApps(mapped);
+    })
+    .catch((e) => {
+      if (cancelled) return;
+      console.warn("admin biz_apps fetch crash:", e);
+      alert("Basvurular yuklenemedi.");
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, [active, admin.adminMode]);
+
   // Data
   const [users, setUsers] = useState([]);
   const [biz, setBiz] = useState([]);
