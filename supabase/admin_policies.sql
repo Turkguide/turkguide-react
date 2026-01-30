@@ -30,6 +30,13 @@
 -- on public.profiles for select
 -- using (auth.uid() = id or (select role from public.profiles p where p.id = auth.uid()) = 'admin');
 
+-- Profiles: allow authenticated users to read public profiles (avatars, username, etc.)
+-- NOTE: This is required so users can see each other's profile photos.
+-- create policy "profiles_read_authenticated"
+-- on public.profiles for select
+-- to authenticated
+-- using (true);
+
 -- Businesses: admin full access; public read approved
 -- create policy "businesses_public_read"
 -- on public.businesses for select
