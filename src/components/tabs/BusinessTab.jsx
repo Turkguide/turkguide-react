@@ -1,4 +1,5 @@
 import { Card, Button, Chip, Avatar, BizCta } from "../ui";
+import { trackMetric } from "../../utils/helpers";
 import { CategoryGrid } from "../layout/CategoryGrid";
 
 export function BusinessTab({
@@ -89,6 +90,11 @@ export function BusinessTab({
                 const badge = null;
                 const canEditAvatar = canEditBizAvatar(b);
 
+                const openBizProfile = () => {
+                  trackMetric("biz_click");
+                  profile.openProfileBiz(b.id);
+                };
+
                 return (
                   <div
                     key={b.id}
@@ -102,7 +108,7 @@ export function BusinessTab({
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <div onClick={() => profile.openProfileBiz(b.id)} style={{ cursor: "pointer" }}>
+                        <div onClick={openBizProfile} style={{ cursor: "pointer" }}>
                           <Avatar ui={ui} src={b.avatar} size={54} label={b.name} />
                         </div>
 
@@ -110,7 +116,7 @@ export function BusinessTab({
                           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                             <div
                               style={{ fontSize: 18, fontWeight: 950, cursor: "pointer" }}
-                              onClick={() => profile.openProfileBiz(b.id)}
+                              onClick={openBizProfile}
                             >
                               {b.name}
                             </div>

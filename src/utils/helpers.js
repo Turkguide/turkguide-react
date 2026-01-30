@@ -1,3 +1,6 @@
+import { lsGet, lsSet } from "./localStorage";
+import { KEY } from "../constants";
+
 export function now() {
   return Date.now();
 }
@@ -23,10 +26,30 @@ export function isAdminUser(username, admins) {
   return (admins || []).map((x) => normalizeUsername(x)).includes(u);
 }
 
+export function trackMetric(name, delta = 1) {
+  const key = String(name || "").trim();
+  if (!key) return 0;
+  const current = lsGet(KEY.METRICS, {});
+  const next = {
+    ...(current || {}),
+    [key]: Number(current?.[key] || 0) + Number(delta || 0),
+  };
+  lsSet(KEY.METRICS, next);
+  return next[key];
+}
+
+export function getMetric(name) {
+  const key = String(name || "").trim();
+  if (!key) return 0;
+  const current = lsGet(KEY.METRICS, {});
+  return Number(current?.[key] || 0);
+}
+
 /**
  * Open Google Maps directions
  */
 export function openDirections(address) {
+  trackMetric("directions_click");
   const q = encodeURIComponent(address || "");
   window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
 }

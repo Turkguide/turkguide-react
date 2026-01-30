@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, Button, Avatar, Chip, inputStyle } from "../../components/ui";
-import { fmt, normalizeUsername } from "../../utils/helpers";
+import { fmt, normalizeUsername, getMetric } from "../../utils/helpers";
 
 const PAGE_SIZE = 8;
 
@@ -137,6 +137,9 @@ export function AdminPanel({
     { label: "Bekleyen Başvuru", value: safePending.length },
     { label: "Randevu Talebi", value: safeAppts.length },
     { label: "Admin Log", value: safeLogs.length },
+    { label: "İşletme Tıklama", value: getMetric("biz_click") },
+    { label: "Arama Tıklama", value: getMetric("search_click") },
+    { label: "Yol Tarifi", value: getMetric("directions_click") },
   ];
 
   return (

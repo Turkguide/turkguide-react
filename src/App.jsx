@@ -6,7 +6,7 @@ import { KEY, DEFAULT_ADMINS } from "./constants";
 
 // Utils
 import { lsGet, lsSet } from "./utils/localStorage";
-import { now, uid, fmt, normalizeUsername, isAdminUser, openDirections, openCall } from "./utils/helpers";
+import { now, uid, fmt, normalizeUsername, isAdminUser, openDirections, openCall, trackMetric } from "./utils/helpers";
 import { ensureSeed } from "./utils/seed";
 
 // Hooks
@@ -743,6 +743,7 @@ const viewAllNotifications = () => {
 
 function landingDoSearch() {
   // şu an sadece filtre input'u kullanıyoruz; buton UX için
+  trackMetric("search_click");
 }
 
 function pickCategory(key) {

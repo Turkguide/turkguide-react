@@ -12,6 +12,7 @@ export const KEY = {
   THEME: "tg_theme_v6", // "system" | "light" | "dark"
   ADMIN_UNLOCK: "tg_admin_unlock_v6",
   SETTINGS: "tg_settings_v6", // mesaj ayarları vs.
+  METRICS: "tg_metrics_v1",
 };
 
 export const DEFAULT_ADMINS = ["vicdan", "turkguide"];
