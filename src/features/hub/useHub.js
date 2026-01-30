@@ -137,7 +137,10 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
     console.log("HUB SHARE ÇALIŞTI");
 
     const text = String(composer || "").trim();
-    if (!text && !hubMedia) return;
+    if (!text && !hubMedia) {
+      alert("Paylaşım boş olamaz.");
+      return;
+    }
 
     const stamp = now();
 

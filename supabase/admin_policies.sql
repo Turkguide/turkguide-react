@@ -122,6 +122,12 @@
 --   or (select role from public.profiles p where p.id = auth.uid()) = 'admin'
 -- );
 
+-- HUB posts: allow authenticated users to read all posts
+-- create policy "hub_posts_read_authenticated"
+-- on public.hub_posts for select
+-- to authenticated
+-- using (true);
+
 -- Admin logs: admin only
 -- create policy "admin_logs_admin_only"
 -- on public.admin_logs for all
