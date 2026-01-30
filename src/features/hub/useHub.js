@@ -590,7 +590,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Delete a post
    */
   async function deletePost(postId, adminMode) {
-    if (!requireAuth({ requireVerified: true })) return;
+    if (!requireAuth({ requireVerified: !adminMode })) return;
 
     const p = posts.find((x) => x.id === postId);
     if (!p || !canEditPost(p, adminMode)) return;
