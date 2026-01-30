@@ -16,15 +16,17 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
         padding: fullScreen ? 0 : "16px",
         paddingTop: fullScreen ? 0 : "calc(16px + env(safe-area-inset-top))",
         paddingBottom: fullScreen ? 0 : "calc(16px + env(safe-area-inset-bottom))",
-        overflowY: "auto",
+        overflowY: fullScreen ? "hidden" : "auto",
         WebkitOverflowScrolling: "touch",
         zIndex,
+        touchAction: "manipulation",
       }}
       onMouseDown={onClose}
     >
       <div
         style={{
           width: fullScreen ? "100%" : `min(${width}px, 100%)`,
+          height: fullScreen ? "100dvh" : undefined,
           maxHeight: fullScreen
             ? "100dvh"
             : "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
@@ -35,7 +37,7 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
           display: "flex",
           flexDirection: "column",
           padding: fullScreen
-            ? "calc(12px + env(safe-area-inset-top)) 16px calc(12px + env(safe-area-inset-bottom))"
+            ? "calc(12px + env(safe-area-inset-top)) 16px calc(120px + env(safe-area-inset-bottom))"
             : 16,
           color: ui.text,
         }}
