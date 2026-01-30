@@ -910,12 +910,24 @@ return (
         {/* ADMIN */}
         {active === "admin" && (
           <div style={{ paddingTop: 26 }}>
-            {!admin.adminMode ? (
+            {admin.adminRoleLoading ? (
+              <Card ui={ui}>
+                <div style={{ fontSize: 18, fontWeight: 950 }}>Yetki kontrol ediliyor</div>
+                <div style={{ color: ui.muted, marginTop: 8 }}>
+                  Lütfen birkaç saniye bekleyin.
+                </div>
+              </Card>
+            ) : !admin.adminMode ? (
               <Card ui={ui}>
                 <div style={{ fontSize: 18, fontWeight: 950 }}>Admin erişimi yok</div>
                 <div style={{ color: ui.muted, marginTop: 8 }}>
                   Bu sayfayı görmek için admin yetkisi gerekiyor.
                 </div>
+                {admin.adminRoleError ? (
+                  <div style={{ color: ui.muted2, marginTop: 8, fontSize: 12 }}>
+                    Yetki kontrol hatası: {admin.adminRoleError}
+                  </div>
+                ) : null}
                 <div style={{ marginTop: 12 }}>
                   <Button ui={ui} onClick={goBackToMainTab}>
                     Geri

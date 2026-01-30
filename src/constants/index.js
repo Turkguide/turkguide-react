@@ -15,6 +15,7 @@ export const KEY = {
 };
 
 export const DEFAULT_ADMINS = ["vicdan", "turkguide"];
+export const DEFAULT_ADMIN_EMAILS = ["vicdanecer@icloud.com", "info@turkguide.net"];
 
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
 export const MAX_VIDEO_BYTES = 12 * 1024 * 1024; // 12MB

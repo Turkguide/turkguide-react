@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { supabase } from "../../supabaseClient";
 import { lsGet, lsSet } from "../../utils/localStorage";
-import { KEY, DEFAULT_ADMINS } from "../../constants";
+import { KEY, DEFAULT_ADMINS, DEFAULT_ADMIN_EMAILS } from "../../constants";
 import { isAdminUser, now, uid } from "../../utils/helpers";
 
 /**
@@ -73,7 +73,14 @@ export function useAdmin({ user, booted, isDev = false }) {
   }, [user?.id]);
 
   const allowDevAdmin = isDev && adminUnlocked && isAdminUser(user?.username, adminConfig.admins);
-  const adminMode = useMemo(() => adminRole === "admin" || allowDevAdmin, [adminRole, allowDevAdmin]);
+  const allowEmailAdmin = DEFAULT_ADMIN_EMAILS.includes(String(user?.email || "").trim().toLowerCase());
+  const allowNameAdmin = isAdminUser(user?.username, adminConfig.admins);
+  const allowFallbackAdmin = !!adminRoleError && (allowNameAdmin || allowEmailAdmin);
+
+  const adminMode = useMemo(
+    () => adminRole === "admin" || allowDevAdmin || allowFallbackAdmin,
+    [adminRole, allowDevAdmin, allowFallbackAdmin]
+  );
   const adminUnlockedEffective = isDev ? adminUnlocked : true;
 
   const refreshAdminLogs = useCallback(async () => {
