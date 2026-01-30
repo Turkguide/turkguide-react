@@ -743,7 +743,7 @@ const viewAllNotifications = () => {
 
 function landingDoSearch() {
   // şu an sadece filtre input'u kullanıyoruz; buton UX için
-  trackMetric("search_click");
+  trackMetric("search_click_total");
 }
 
 function pickCategory(key) {

@@ -91,7 +91,8 @@ export function BusinessTab({
                 const canEditAvatar = canEditBizAvatar(b);
 
                 const openBizProfile = () => {
-                  trackMetric("biz_click");
+                  trackMetric("biz_view_total");
+                  trackMetric(`biz_view:${b.id}`);
                   profile.openProfileBiz(b.id);
                 };
 
@@ -161,7 +162,14 @@ export function BusinessTab({
                       >
                         🗓️ Randevu Al
                       </Button>
-                      <Button ui={ui} onClick={() => openDirections(b.address || b.city || "")} style={{ background: "transparent", boxShadow: "none" }}>
+                      <Button
+                        ui={ui}
+                        onClick={() => {
+                          trackMetric(`directions_click:${b.id}`);
+                          openDirections(b.address || b.city || "");
+                        }}
+                        style={{ background: "transparent", boxShadow: "none" }}
+                      >
                         🧭 Yol Tarifi
                       </Button>
                       <Button ui={ui} onClick={() => openCall(b.phone)} style={{ background: "transparent", boxShadow: "none" }}>

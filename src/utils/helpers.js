@@ -49,7 +49,7 @@ export function getMetric(name) {
  * Open Google Maps directions
  */
 export function openDirections(address) {
-  trackMetric("directions_click");
+  trackMetric("directions_click_total");
   const q = encodeURIComponent(address || "");
   window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
 }

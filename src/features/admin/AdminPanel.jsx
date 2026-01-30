@@ -148,16 +148,25 @@ export function AdminPanel({
   const apptsSummaryPage = paginate(apptsSummary, apptsPage);
   const logsPageData = paginate(logsFiltered, logsPage);
 
-  const kpis = [
-    { label: "Toplam Kullanıcı", value: safeUsers.length },
-    { label: "Onaylı İşletme", value: safeBiz.length },
-    { label: "Bekleyen Başvuru", value: safePending.length },
-    { label: "Randevu Talebi", value: safeAppts.length },
-    { label: "Admin Log", value: safeLogs.length },
-    { label: "İşletme Tıklama", value: getMetric("biz_click") },
-    { label: "Arama Tıklama", value: getMetric("search_click") },
-    { label: "Yol Tarifi", value: getMetric("directions_click") },
-  ];
+  const [selectedBizId, setSelectedBizId] = useState("");
+  const selectedBiz = safeBiz.find((b) => String(b.id) === String(selectedBizId)) || null;
+
+  const kpis = selectedBizId
+    ? [
+        { label: "Seçili İşletme", value: selectedBiz?.name || "-" },
+        { label: "İşletme Görüntüleme", value: getMetric(`biz_view:${selectedBizId}`) },
+        { label: "Yol Tarifi", value: getMetric(`directions_click:${selectedBizId}`) },
+      ]
+    : [
+        { label: "Toplam Kullanıcı", value: safeUsers.length },
+        { label: "Onaylı İşletme", value: safeBiz.length },
+        { label: "Bekleyen Başvuru", value: safePending.length },
+        { label: "Randevu Talebi", value: safeAppts.length },
+        { label: "Admin Log", value: safeLogs.length },
+        { label: "İşletme Görüntüleme", value: getMetric("biz_view_total") },
+        { label: "Arama Tıklama", value: getMetric("search_click_total") },
+        { label: "Yol Tarifi", value: getMetric("directions_click_total") },
+      ];
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -173,7 +182,7 @@ export function AdminPanel({
               ["İşletmeler", "businesses"],
               ["Randevular", "appointments"],
               ["Kullanıcılar", "users"],
-              ["Audit Log", "logs"],
+              ["Loglar", "logs"],
             ].map(([label, targetId]) => (
               <button
                 key={label}
@@ -213,7 +222,21 @@ export function AdminPanel({
 
           {activeSection === "dashboard" ? (
             <Card ui={ui} id="admin-kpi">
-              <div style={{ fontSize: 16, fontWeight: 950 }}>KPI Özeti</div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 16, fontWeight: 950 }}>KPI Özeti</div>
+                <select
+                  value={selectedBizId}
+                  onChange={(e) => setSelectedBizId(e.target.value)}
+                  style={inputStyle(ui, { minWidth: 220 })}
+                >
+                  <option value="">Tüm işletmeler</option>
+                  {safeBiz.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div style={{ display: "grid", gap: 12, marginTop: 12, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
                 {kpis.map((k) => (
                   <div
@@ -482,9 +505,9 @@ export function AdminPanel({
                           variant="danger"
                           onClick={() => business.openDelete("user", u)}
                           disabled={normalizeUsername(u.username) === normalizeUsername(currentUser?.username)}
-                          title="Kendini askıya alamazsın"
+                          title="Kendini silemezsin"
                         >
-                          Askıya Al
+                          Sil
                         </Button>
                       </div>
                     </div>
@@ -506,7 +529,7 @@ export function AdminPanel({
           <Card ui={ui} id="admin-logs">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 950 }}>Admin Log</div>
+                <div style={{ fontSize: 16, fontWeight: 950 }}>Loglar</div>
                 <div style={{ color: ui.muted, marginTop: 4 }}>Tüm admin işlemleri burada kayıtlı tutulur.</div>
               </div>
               <input
