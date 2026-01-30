@@ -228,14 +228,15 @@ export function AdminPanel({
                   value={selectedBizId}
                   onChange={(e) => setSelectedBizId(e.target.value)}
                   style={inputStyle(ui, {
-                    minWidth: 260,
-                    padding: "12px 16px",
-                    fontWeight: 800,
+                    minWidth: 300,
+                    padding: "14px 18px",
+                    fontWeight: 900,
+                    fontSize: 14,
                     borderWidth: 2,
                     boxShadow:
                       ui.mode === "light"
-                        ? "0 10px 24px rgba(0,0,0,0.08)"
-                        : "0 12px 28px rgba(0,0,0,0.3)",
+                        ? "0 12px 28px rgba(0,0,0,0.1)"
+                        : "0 14px 32px rgba(0,0,0,0.34)",
                   })}
                 >
                   <option value="">Tüm işletmeler</option>
