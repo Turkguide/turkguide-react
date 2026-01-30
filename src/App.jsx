@@ -180,6 +180,18 @@ useEffect(() => {
 
   async function fetchAdminData() {
     try {
+      if (supabase?.auth?.getSession) {
+        const { data: sData } = await supabase.auth.getSession();
+        if (!sData?.session && supabase.auth.refreshSession) {
+          await supabase.auth.refreshSession();
+        }
+        const { data: sData2 } = await supabase.auth.getSession();
+        if (!sData2?.session) {
+          alert("Admin verisi icin oturum bulunamadi. Lutfen tekrar giris yap.");
+          return;
+        }
+      }
+
       const [appsRes, bizRes, apptRes, profilesRes] = await Promise.all([
         supabase.from("biz_apps").select("*").order("created_at", { ascending: false }).limit(200),
         supabase.from("businesses").select("*").order("created_at", { ascending: false }).limit(200),
