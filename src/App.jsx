@@ -150,6 +150,17 @@ useEffect(() => {
   if (!admin.adminMode || !supabase?.from) return;
   let cancelled = false;
 
+  const mapAppointmentRow = (r) => ({
+    id: r.id,
+    createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
+    status: r.status || "pending",
+    bizId: r.biz_id || r.bizId,
+    bizName: r.biz_name || r.bizName || "",
+    fromUsername: r.from_username || r.fromUsername || "",
+    requestedAt: r.requested_at || r.requestedAt || null,
+    note: r.note || "",
+  });
+
   async function fetchAdminData() {
     try {
       const [appsRes, bizRes, apptRes, profilesRes] = await Promise.all([
@@ -207,16 +218,7 @@ useEffect(() => {
       }
 
       if (!apptRes.error && Array.isArray(apptRes.data)) {
-        const mapped = apptRes.data.map((r) => ({
-          id: r.id,
-          createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
-          status: r.status || "pending",
-          bizId: r.biz_id || r.bizId,
-          bizName: r.biz_name || r.bizName || "",
-          fromUsername: r.from_username || r.fromUsername || "",
-          requestedAt: r.requested_at || r.requestedAt || null,
-          note: r.note || "",
-        }));
+        const mapped = apptRes.data.map(mapAppointmentRow);
         setAppts(mapped);
       }
 
@@ -238,8 +240,42 @@ useEffect(() => {
   }
 
   fetchAdminData();
+
+  let channel = null;
+  if (supabase?.channel) {
+    channel = supabase
+      .channel("realtime:appointments")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "appointments" },
+        (payload) => {
+          if (cancelled) return;
+          const row = payload?.new || payload?.old;
+          if (!row) return;
+          const mapped = mapAppointmentRow(row);
+          setAppts((prev) => {
+            const list = Array.isArray(prev) ? prev : [];
+            const idx = list.findIndex((x) => x.id === mapped.id);
+            if (payload.eventType === "DELETE") {
+              return idx >= 0 ? list.filter((x) => x.id !== mapped.id) : list;
+            }
+            if (idx >= 0) {
+              const copy = [...list];
+              copy[idx] = { ...copy[idx], ...mapped };
+              return copy;
+            }
+            return [mapped, ...list];
+          });
+        }
+      )
+      .subscribe();
+  }
+
   return () => {
     cancelled = true;
+    try {
+      if (channel) supabase.removeChannel(channel);
+    } catch (_) {}
   };
 }, [admin.adminMode]);
 
