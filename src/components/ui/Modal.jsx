@@ -81,7 +81,7 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
           display: "flex",
           flexDirection: "column",
           padding: fullScreen
-            ? "calc(12px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))"
+            ? "calc(28px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))"
             : 16,
           color: ui.text,
         }}
