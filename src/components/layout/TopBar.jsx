@@ -229,6 +229,8 @@ export function TopBar({
                     boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
                     zIndex: 60,
                   }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
                 >
                   <div style={{ fontWeight: 900, marginBottom: 8 }}>Bildirimler</div>
                   <div style={{ display: "grid", gap: 10 }}>

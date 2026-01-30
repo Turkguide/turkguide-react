@@ -822,6 +822,19 @@ const viewAllNotifications = () => {
   setActive("notifications");
 };
 
+useEffect(() => {
+  if (!showNotificationsMenu) return;
+  const handleDocPress = () => {
+    closeNotificationsMenu();
+  };
+  document.addEventListener("mousedown", handleDocPress);
+  document.addEventListener("touchstart", handleDocPress);
+  return () => {
+    document.removeEventListener("mousedown", handleDocPress);
+    document.removeEventListener("touchstart", handleDocPress);
+  };
+}, [showNotificationsMenu]);
+
 function landingDoSearch() {
   // şu an sadece filtre input'u kullanıyoruz; buton UX için
   trackMetric("search_click_total");
