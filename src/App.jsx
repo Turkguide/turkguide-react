@@ -164,7 +164,7 @@ useEffect(() => {
 }, [active]);
 
 useEffect(() => {
-  if (!admin.adminMode || !supabase?.from) return;
+  if (active !== "admin" || !admin.adminMode || !supabase?.from) return;
   let cancelled = false;
 
   const mapAppointmentRow = (r) => ({
@@ -311,7 +311,7 @@ useEffect(() => {
       if (channel) supabase.removeChannel(channel);
     } catch (_) {}
   };
-}, [admin.adminMode]);
+}, [admin.adminMode, active]);
 
 useEffect(() => {
   if (active !== "admin" || !admin.adminMode || !supabase?.from) return;
