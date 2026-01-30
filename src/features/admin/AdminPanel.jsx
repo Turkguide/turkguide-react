@@ -160,7 +160,12 @@ export function AdminPanel({
                     @{a.fromUsername}
                   </span>
                 </div>
-                <div style={{ marginTop: 8 }}>{a.note}</div>
+                {a.requestedAt ? (
+                  <div style={{ marginTop: 6, color: ui.muted }}>
+                    Randevu zamanı: {fmt(a.requestedAt)}
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 8 }}>{a.note || "Not yok."}</div>
               </div>
             ))}
           </div>

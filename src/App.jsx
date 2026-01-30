@@ -1058,6 +1058,8 @@ return (
         setShowAppt={appointment.setShowAppt}
         apptMsg={appointment.apptMsg}
         setApptMsg={appointment.setApptMsg}
+        apptDateTime={appointment.apptDateTime}
+        setApptDateTime={appointment.setApptDateTime}
         submitAppointment={appointment.submitAppointment}
       />
 

@@ -9,11 +9,13 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
   const [showAppt, setShowAppt] = useState(false);
   const [apptBizId, setApptBizId] = useState(null);
   const [apptMsg, setApptMsg] = useState("");
+  const [apptDateTime, setApptDateTime] = useState("");
 
   function openAppointment(bizId) {
     if (!requireAuth()) return;
     setApptBizId(bizId);
     setApptMsg("");
+    setApptDateTime("");
     setShowAppt(true);
   }
 
@@ -21,11 +23,12 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
     if (!requireAuth()) return;
     const bizId = apptBizId;
     const msg = String(apptMsg || "").trim();
+    const requestedAt = String(apptDateTime || "").trim();
     if (!bizId) {
       alert("İşletme seçilmedi.");
       return;
     }
-    if (!msg) return alert("Randevu notu yaz (örn: tarih/saat isteği).");
+    if (!requestedAt) return alert("Lütfen randevu tarih ve saatini seçin.");
 
     const b = biz.find((x) => x.id === bizId);
     const a = {
@@ -35,11 +38,24 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
       bizId,
       bizName: b?.name || "-",
       fromUsername: user.username,
+      requestedAt,
       note: msg,
     };
 
     try {
-      const { error } = await supabase.from("appointments").insert([a]);
+      const noteForDb = requestedAt
+        ? [`Tarih/Saat: ${new Date(requestedAt).toLocaleString()}`, msg].filter(Boolean).join(" — ")
+        : msg;
+      const insertPayload = {
+        id: a.id,
+        createdAt: a.createdAt,
+        status: a.status,
+        bizId: a.bizId,
+        bizName: a.bizName,
+        fromUsername: a.fromUsername,
+        note: noteForDb,
+      };
+      const { error } = await supabase.from("appointments").insert([insertPayload]);
       if (error) throw error;
     } catch (e) {
       console.error("submitAppointment insert error:", e);
@@ -50,6 +66,7 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
     setShowAppt(false);
     setApptBizId(null);
     setApptMsg("");
+    setApptDateTime("");
   }
 
   return {
@@ -59,6 +76,8 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
     setApptBizId,
     apptMsg,
     setApptMsg,
+    apptDateTime,
+    setApptDateTime,
     openAppointment,
     submitAppointment,
   };

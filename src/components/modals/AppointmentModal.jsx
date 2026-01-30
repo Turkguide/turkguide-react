@@ -6,18 +6,30 @@ export function AppointmentModal({
   setShowAppt,
   apptMsg,
   setApptMsg,
+  apptDateTime,
+  setApptDateTime,
   submitAppointment,
 }) {
   return (
     <Modal ui={ui} open={showAppt} title="Randevu Talebi" onClose={() => setShowAppt(false)}>
       <div style={{ color: ui.muted, marginBottom: 10 }}>
-        Tarih/saat isteğini ve kısa notunu yaz (MVP: talep işletmeye iletilmiş sayılır).
+        Randevu tarihi/saatini seç ve kısa not ekle (MVP: talep işletmeye iletilmiş sayılır).
+      </div>
+
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 12, color: ui.muted2, marginBottom: 6 }}>Tarih ve Saat</div>
+        <input
+          type="datetime-local"
+          value={apptDateTime}
+          onChange={(e) => setApptDateTime(e.target.value)}
+          style={inputStyle(ui, { width: "100%" })}
+        />
       </div>
 
       <textarea
         value={apptMsg}
         onChange={(e) => setApptMsg(e.target.value)}
-        placeholder="Örn: Yarın 2pm uygunsa görüşmek istiyorum..."
+        placeholder="Kısa not (isteğe bağlı)"
         style={inputStyle(ui, { minHeight: 110, resize: "vertical" })}
       />
 
