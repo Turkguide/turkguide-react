@@ -58,6 +58,7 @@ export function AdminPanel({
   const safeAppts = Array.isArray(appts) ? appts : [];
   const safeLogs = Array.isArray(adminLog) ? adminLog : [];
 
+  const [activeSection, setActiveSection] = useState("dashboard");
   const [appQuery, setAppQuery] = useState("");
   const [bizQuery, setBizQuery] = useState("");
   const [userQuery, setUserQuery] = useState("");
@@ -114,6 +115,21 @@ export function AdminPanel({
     );
   }, [safeAppts, apptQuery]);
 
+  const apptsSummary = useMemo(() => {
+    const map = new Map();
+    for (const a of apptsFiltered) {
+      const bizKey = String(a.bizName || a.bizId || "Bilinmeyen İşletme");
+      if (!map.has(bizKey)) map.set(bizKey, []);
+      const rawDate = a.requestedAt || a.createdAt || null;
+      const dateLabel = rawDate ? fmt(rawDate) : "Tarih yok";
+      map.get(bizKey).push({
+        dateLabel,
+        fromUsername: a.fromUsername || "-",
+      });
+    }
+    return Array.from(map.entries());
+  }, [apptsFiltered]);
+
   const logsFiltered = useMemo(() => {
     const q = logQuery.trim().toLowerCase();
     if (!q) return safeLogs;
@@ -129,6 +145,7 @@ export function AdminPanel({
   const bizPageData = paginate(bizFiltered, bizPage);
   const usersPageData = paginate(usersFiltered, usersPage);
   const apptsPageData = paginate(apptsFiltered, apptsPage);
+  const apptsSummaryPage = paginate(apptsSummary, apptsPage);
   const logsPageData = paginate(logsFiltered, logsPage);
 
   const kpis = [
@@ -152,24 +169,21 @@ export function AdminPanel({
           </div>
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
             {[
-              ["Dashboard", "admin-kpi"],
-              ["İşletmeler", "admin-biz"],
-              ["Randevular", "admin-appts"],
-              ["Kullanıcılar", "admin-users"],
-              ["Audit Log", "admin-logs"],
+              ["Dashboard", "dashboard"],
+              ["İşletmeler", "businesses"],
+              ["Randevular", "appointments"],
+              ["Kullanıcılar", "users"],
+              ["Audit Log", "logs"],
             ].map(([label, targetId]) => (
               <button
                 key={label}
                 type="button"
-                onClick={() => {
-                  const el = document.getElementById(targetId);
-                  el?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-                }}
+                onClick={() => setActiveSection(targetId)}
                 style={{
                   padding: "10px 12px",
                   borderRadius: 14,
                   border: `1px solid ${ui.border}`,
-                  background: ui.panel2,
+                  background: activeSection === targetId ? ui.panel : ui.panel2,
                   fontWeight: 900,
                   fontSize: 13,
                   color: ui.text,
@@ -197,26 +211,29 @@ export function AdminPanel({
             </div>
           </Card>
 
-          <Card ui={ui} id="admin-kpi">
-            <div style={{ fontSize: 16, fontWeight: 950 }}>KPI Özeti</div>
-            <div style={{ display: "grid", gap: 12, marginTop: 12, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-              {kpis.map((k) => (
-                <div
-                  key={k.label}
-                  style={{
-                    border: `1px solid ${ui.border}`,
-                    borderRadius: 14,
-                    padding: 12,
-                    background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                  }}
-                >
-                  <div style={{ fontSize: 12, color: ui.muted2 }}>{k.label}</div>
-                  <div style={{ fontSize: 22, fontWeight: 950, marginTop: 6 }}>{k.value}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
+          {activeSection === "dashboard" ? (
+            <Card ui={ui} id="admin-kpi">
+              <div style={{ fontSize: 16, fontWeight: 950 }}>KPI Özeti</div>
+              <div style={{ display: "grid", gap: 12, marginTop: 12, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                {kpis.map((k) => (
+                  <div
+                    key={k.label}
+                    style={{
+                      border: `1px solid ${ui.border}`,
+                      borderRadius: 14,
+                      padding: 12,
+                      background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    <div style={{ fontSize: 12, color: ui.muted2 }}>{k.label}</div>
+                    <div style={{ fontSize: 22, fontWeight: 950, marginTop: 6 }}>{k.value}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
 
+          {activeSection === "businesses" ? (
           <Card ui={ui} id="admin-biz">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
               <div>
@@ -352,7 +369,9 @@ export function AdminPanel({
               </>
             )}
           </Card>
+          ) : null}
 
+          {activeSection === "appointments" ? (
           <Card ui={ui} id="admin-appts">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
               <div>
@@ -374,9 +393,9 @@ export function AdminPanel({
             ) : (
               <>
                 <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                  {apptsPageData.items.map((a) => (
+                  {apptsSummaryPage.items.map(([bizName, rows]) => (
                     <div
-                      key={a.id}
+                      key={bizName}
                       style={{
                         border: `1px solid ${ui.border}`,
                         borderRadius: 16,
@@ -384,39 +403,28 @@ export function AdminPanel({
                         background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
                       }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                        <div style={{ fontWeight: 950 }}>
-                          {a.bizName} <span style={{ color: ui.muted }}>({a.status})</span>
+                      <div style={{ fontWeight: 950, marginBottom: 6 }}>{bizName}</div>
+                      {rows.map((r, idx) => (
+                        <div key={`${bizName}-${idx}`} style={{ color: ui.muted, fontSize: 12, marginBottom: 4 }}>
+                          {r.dateLabel} • @{r.fromUsername}
                         </div>
-                        <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(a.createdAt)}</div>
-                      </div>
-                      <div style={{ marginTop: 6, color: ui.muted }}>
-                        Talep eden:{" "}
-                        <span
-                          style={{ textDecoration: "underline", cursor: "pointer" }}
-                          onClick={() => profile.openProfileByUsername(a.fromUsername)}
-                        >
-                          @{a.fromUsername}
-                        </span>
-                      </div>
-                      {a.requestedAt ? (
-                        <div style={{ marginTop: 6, color: ui.muted }}>Randevu zamanı: {fmt(a.requestedAt)}</div>
-                      ) : null}
-                      <div style={{ marginTop: 8 }}>{a.note || "Not yok."}</div>
+                      ))}
                     </div>
                   ))}
                 </div>
                 <Pagination
                   ui={ui}
-                  page={apptsPageData.page}
-                  pages={apptsPageData.pages}
+                  page={apptsSummaryPage.page}
+                  pages={apptsSummaryPage.pages}
                   onPrev={() => setApptsPage((p) => Math.max(1, p - 1))}
-                  onNext={() => setApptsPage((p) => Math.min(apptsPageData.pages, p + 1))}
+                  onNext={() => setApptsPage((p) => Math.min(apptsSummaryPage.pages, p + 1))}
                 />
               </>
             )}
           </Card>
+          ) : null}
 
+          {activeSection === "users" ? (
           <Card ui={ui} id="admin-users">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
               <div>
@@ -492,7 +500,9 @@ export function AdminPanel({
               </>
             )}
           </Card>
+          ) : null}
 
+          {activeSection === "logs" ? (
           <Card ui={ui} id="admin-logs">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
               <div>
@@ -545,6 +555,7 @@ export function AdminPanel({
               </>
             )}
           </Card>
+          ) : null}
         </div>
       </div>
     </div>
