@@ -32,8 +32,12 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
             : "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
           borderRadius: fullScreen ? 0 : 22,
           border: fullScreen ? "none" : `1px solid ${ui.border}`,
-          background: ui.mode === "light" ? "rgba(255,255,255,0.98)" : "rgba(10,12,18,0.96)",
-          boxShadow: "0 40px 120px rgba(0,0,0,0.35)",
+          background: fullScreen
+            ? ui.bg
+            : ui.mode === "light"
+            ? "rgba(255,255,255,0.98)"
+            : "rgba(10,12,18,0.96)",
+          boxShadow: fullScreen ? "none" : "0 40px 120px rgba(0,0,0,0.35)",
           display: "flex",
           flexDirection: "column",
           padding: fullScreen
