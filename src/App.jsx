@@ -873,6 +873,7 @@ return (
       width: "100%",
       background: ui.bg,
       color: ui.text,
+      paddingTop: 64,
       // ✅ Sticky Bottom CTA alanı içerikle çakışmasın
       paddingBottom: active === "biz" ? 96 : 0,
     }}

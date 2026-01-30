@@ -136,15 +136,15 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
 
   const onInputTouchStart = (idx) => () => {
     // iOS: force focus on tap before keyboard blocks it
-    setTimeout(() => focusField(idx), 0);
+    focusField(idx);
   };
 
   const onInputPointerDown = (idx) => () => {
-    setTimeout(() => focusField(idx), 0);
+    focusField(idx);
   };
 
   const onInputMouseDown = (idx) => () => {
-    setTimeout(() => focusField(idx), 0);
+    focusField(idx);
   };
 
   const onInputFocus = (idx) => () => {
