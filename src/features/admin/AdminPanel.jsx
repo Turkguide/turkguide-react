@@ -227,7 +227,16 @@ export function AdminPanel({
                 <select
                   value={selectedBizId}
                   onChange={(e) => setSelectedBizId(e.target.value)}
-                  style={inputStyle(ui, { minWidth: 220 })}
+                  style={inputStyle(ui, {
+                    minWidth: 260,
+                    padding: "12px 16px",
+                    fontWeight: 800,
+                    borderWidth: 2,
+                    boxShadow:
+                      ui.mode === "light"
+                        ? "0 10px 24px rgba(0,0,0,0.08)"
+                        : "0 12px 28px rgba(0,0,0,0.3)",
+                  })}
                 >
                   <option value="">Tüm işletmeler</option>
                   {safeBiz.map((b) => (
