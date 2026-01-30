@@ -65,6 +65,26 @@
 -- $$;
 -- grant execute on function public.is_email_available(text) to anon, authenticated;
 
+-- Auto-create profiles row on auth.users signup
+-- create or replace function public.handle_new_user()
+-- returns trigger
+-- language plpgsql
+-- security definer
+-- set search_path = public
+-- as $$
+-- begin
+--   insert into public.profiles (id, email, username)
+--   values (new.id, new.email, split_part(new.email,'@',1))
+--   on conflict (id) do nothing;
+--   return new;
+-- end;
+-- $$;
+--
+-- drop trigger if exists on_auth_user_created on auth.users;
+-- create trigger on_auth_user_created
+-- after insert on auth.users
+-- for each row execute procedure public.handle_new_user();
+
 -- Optional: enforce unique usernames at DB level (case-insensitive)
 -- create unique index if not exists profiles_username_lower_unique
 -- on public.profiles (lower(username));
