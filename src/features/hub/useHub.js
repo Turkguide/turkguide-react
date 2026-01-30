@@ -282,6 +282,10 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
           });
         }
       }
+
+      try {
+        await fetchHubPosts(false);
+      } catch (_) {}
     } catch (e) {
       console.error("❌ hubLike DB error:", e);
       setPosts((prev) => (prev || []).map((p) => (p.id === postId ? target : p)));
