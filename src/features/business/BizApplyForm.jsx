@@ -81,6 +81,15 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
     return [...base, ...dyn.filter((d) => !base.includes(d))];
   }, [biz]);
 
+  const onFocusScroll = (e) => {
+    const el = e.currentTarget;
+    setTimeout(() => {
+      try {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch (_) {}
+    }, 120);
+  };
+
   const safeSubmit = () => {
     if (typeof onSubmit !== "function") {
       console.error("BizApplyForm: onSubmit function değil:", onSubmit);
@@ -125,6 +134,7 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         placeholder="İşletme adı"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        onFocus={onFocusScroll}
         style={inputStyle(ui)}
       />
 
@@ -132,6 +142,7 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         placeholder="Adres"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
+        onFocus={onFocusScroll}
         style={inputStyle(ui)}
       />
 
@@ -139,6 +150,7 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         placeholder="Apt / Suite (opsiyonel)"
         value={apt}
         onChange={(e) => setApt(e.target.value)}
+        onFocus={onFocusScroll}
         style={inputStyle(ui)}
       />
 
@@ -147,6 +159,7 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           placeholder="ZIP Code"
           value={zip}
           onChange={(e) => setZip(e.target.value)}
+          onFocus={onFocusScroll}
           style={inputStyle(ui)}
         />
 
@@ -154,6 +167,7 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           placeholder="City"
           value={city}
           onChange={(e) => setCity(e.target.value)}
+          onFocus={onFocusScroll}
           style={inputStyle(ui)}
         />
       </div>
@@ -163,6 +177,7 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           placeholder="State"
           value={state}
           onChange={(e) => setState(e.target.value)}
+          onFocus={onFocusScroll}
           style={inputStyle(ui)}
         />
 
@@ -170,13 +185,14 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           placeholder="Country"
           value={country}
           onChange={(e) => setCountry(e.target.value)}
+          onFocus={onFocusScroll}
           style={inputStyle(ui)}
         />
       </div>
 
       {/* 📞 Telefon */}
       <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 10 }}>
-        <select value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} style={inputStyle(ui)}>
+        <select value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} style={inputStyle(ui)} onFocus={onFocusScroll}>
           {(TG_PHONE_CODES || []).map((p) => (
             <option key={p.code} value={p.dial}>
               {p.country} ({p.dial})
@@ -188,12 +204,13 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           placeholder="Telefon numarası"
           value={phoneNumber}
           onChange={(e) => setPhoneNumber(e.target.value)}
+          onFocus={onFocusScroll}
           style={inputStyle(ui)}
         />
       </div>
 
       {/* 🗂️ Kategori */}
-      <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle(ui)}>
+      <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle(ui)} onFocus={onFocusScroll}>
         {categoryOptions.map((c) => (
           <option key={c} value={c}>
             {c}
@@ -205,6 +222,7 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         placeholder="Kısa açıklama"
         value={desc}
         onChange={(e) => setDesc(e.target.value)}
+        onFocus={onFocusScroll}
         style={inputStyle(ui, { minHeight: 90 })}
       />
 
