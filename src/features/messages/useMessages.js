@@ -123,7 +123,7 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
   /**
    * Mark thread as read
    */
-  function markThreadRead(target) {
+  async function markThreadRead(target) {
     if (!user || !target) return;
     const me = normalizeUsername(user.username);
     setDms((prev) =>
@@ -140,6 +140,46 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
         return { ...m, readBy: Array.from(readBy) };
       })
     );
+
+    if (!supabase?.from || !me) return;
+
+    try {
+      let query = supabase.from("dms").select("id, read_by");
+
+      if (target.type === "user") {
+        const other = normalizeUsername(target.username);
+        if (!other) return;
+        query = query
+          .eq("to_type", "user")
+          .or(
+            `and(from_username.ilike.${me},to_username.ilike.${other}),and(from_username.ilike.${other},to_username.ilike.${me})`
+          );
+      } else {
+        query = query.eq("to_type", "biz").eq("to_biz_id", target.bizId);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error("markThreadRead fetch error:", error);
+        return;
+      }
+
+      const rows = Array.isArray(data) ? data : [];
+      for (const row of rows) {
+        const readBy = new Set((row.read_by || []).map(normalizeUsername));
+        if (readBy.has(me)) continue;
+        readBy.add(me);
+        const { error: updErr } = await supabase
+          .from("dms")
+          .update({ read_by: Array.from(readBy) })
+          .eq("id", row.id);
+        if (updErr) {
+          console.error("markThreadRead update error:", updErr);
+        }
+      }
+    } catch (e) {
+      console.error("markThreadRead exception:", e);
+    }
   }
 
   return {
