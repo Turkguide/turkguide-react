@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { inputStyle, Button } from "../../components/ui";
 import { TG_DEFAULT_CATEGORIES, TG_PHONE_CODES } from "../../constants/categories";
 
@@ -8,6 +8,7 @@ import { TG_DEFAULT_CATEGORIES, TG_PHONE_CODES } from "../../constants/categorie
 export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
   const [submitted, setSubmitted] = useState(false);
   const [name, setName] = useState("");
+  const inputRefs = useRef([]);
 
   // Address pieces
   const [address, setAddress] = useState("");
@@ -119,12 +120,33 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
     onCancel();
   };
 
+  const registerInput = (idx) => (el) => {
+    inputRefs.current[idx] = el;
+  };
+
+  const focusNext = (idx) => {
+    const next = inputRefs.current[idx + 1];
+    if (next && typeof next.focus === "function") {
+      next.focus();
+    }
+  };
+
+  const onInputKeyDown = (idx) => (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      focusNext(idx);
+    }
+  };
+
   return (
     <div style={{ display: "grid", gap: 10, paddingBottom: 12 }}>
       <input
         placeholder="İşletme adı"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        ref={registerInput(0)}
+        enterKeyHint="next"
+        onKeyDown={onInputKeyDown(0)}
         style={inputStyle(ui)}
       />
 
@@ -132,6 +154,9 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         placeholder="Adres"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
+        ref={registerInput(1)}
+        enterKeyHint="next"
+        onKeyDown={onInputKeyDown(1)}
         style={inputStyle(ui)}
       />
 
@@ -139,6 +164,9 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         placeholder="Apt / Suite (opsiyonel)"
         value={apt}
         onChange={(e) => setApt(e.target.value)}
+        ref={registerInput(2)}
+        enterKeyHint="next"
+        onKeyDown={onInputKeyDown(2)}
         style={inputStyle(ui)}
       />
 
@@ -147,6 +175,10 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           placeholder="ZIP Code"
           value={zip}
           onChange={(e) => setZip(e.target.value)}
+          ref={registerInput(3)}
+          inputMode="numeric"
+          enterKeyHint="next"
+          onKeyDown={onInputKeyDown(3)}
           style={inputStyle(ui)}
         />
 
@@ -154,6 +186,9 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           placeholder="City"
           value={city}
           onChange={(e) => setCity(e.target.value)}
+          ref={registerInput(4)}
+          enterKeyHint="next"
+          onKeyDown={onInputKeyDown(4)}
           style={inputStyle(ui)}
         />
       </div>
@@ -163,6 +198,9 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           placeholder="State"
           value={state}
           onChange={(e) => setState(e.target.value)}
+          ref={registerInput(5)}
+          enterKeyHint="next"
+          onKeyDown={onInputKeyDown(5)}
           style={inputStyle(ui)}
         />
 
@@ -170,6 +208,9 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           placeholder="Country"
           value={country}
           onChange={(e) => setCountry(e.target.value)}
+          ref={registerInput(6)}
+          enterKeyHint="next"
+          onKeyDown={onInputKeyDown(6)}
           style={inputStyle(ui)}
         />
       </div>
@@ -188,6 +229,10 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
           placeholder="Telefon numarası"
           value={phoneNumber}
           onChange={(e) => setPhoneNumber(e.target.value)}
+          ref={registerInput(7)}
+          inputMode="tel"
+          enterKeyHint="next"
+          onKeyDown={onInputKeyDown(7)}
           style={inputStyle(ui)}
         />
       </div>
@@ -205,6 +250,7 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
         placeholder="Kısa açıklama"
         value={desc}
         onChange={(e) => setDesc(e.target.value)}
+        ref={registerInput(8)}
         style={inputStyle(ui, { minHeight: 90 })}
       />
 
