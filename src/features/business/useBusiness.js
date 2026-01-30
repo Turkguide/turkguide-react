@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "../../supabaseClient";
 import { now, uid } from "../../utils/helpers";
 
 /**
@@ -66,30 +67,60 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
       return;
     }
 
-    setBizApps((prev) => [
-      {
-        id: uid(),
-        createdAt: now(),
-        status: "pending",
-        applicant: user.username,
-        ownerUsername: user.username,
-        name,
-        category,
-        desc,
-        country,
-        state,
-        zip,
-        apt,
-        address1,
-        address: [address1, apt ? `Apt ${apt}` : "", cityOnly, state, zip, country].filter(Boolean).join(", "),
-        city,
-        phoneDial,
-        phoneLocal,
-        phone,
-        avatar: String(data?.avatar || "").trim() || "",
-      },
-      ...prev,
-    ]);
+    const app = {
+      id: uid(),
+      createdAt: now(),
+      status: "pending",
+      applicant: user.username,
+      ownerUsername: user.username,
+      name,
+      category,
+      desc,
+      country,
+      state,
+      zip,
+      apt,
+      address1,
+      address: [address1, apt ? `Apt ${apt}` : "", cityOnly, state, zip, country].filter(Boolean).join(", "),
+      city,
+      phoneDial,
+      phoneLocal,
+      phone,
+      avatar: String(data?.avatar || "").trim() || "",
+    };
+
+    setBizApps((prev) => [app, ...prev]);
+
+    // Best-effort persistence
+    if (supabase?.from) {
+      supabase
+        .from("biz_apps")
+        .insert({
+          id: app.id,
+          created_at: new Date(app.createdAt).toISOString(),
+          status: app.status,
+          applicant: app.applicant,
+          owner_username: app.ownerUsername,
+          name: app.name,
+          category: app.category,
+          desc: app.desc,
+          country: app.country,
+          state: app.state,
+          zip: app.zip,
+          apt: app.apt,
+          address1: app.address1,
+          address: app.address,
+          city: app.city,
+          phone_dial: app.phoneDial,
+          phone_local: app.phoneLocal,
+          phone: app.phone,
+          avatar: app.avatar,
+        })
+        .then(({ error }) => {
+          if (error) console.warn("biz_apps insert error:", error);
+        })
+        .catch((e) => console.warn("biz_apps insert exception:", e));
+    }
 
     alert("✅ Başvurunuz alındı. İncelendikten sonra işletmeler listesinde görünecek.");
     setShowBizApply(false);
@@ -119,6 +150,44 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
     setBiz((prev) => [b, ...prev]);
     setBizApps((prev) => prev.filter((x) => x.id !== app.id));
     addLog("BUSINESS_APPROVE", { appId: app.id, name: app.name });
+
+    if (supabase?.from) {
+      supabase
+        .from("businesses")
+        .insert({
+          id: b.id,
+          created_at: new Date(b.createdAt).toISOString(),
+          status: b.status,
+          name: b.name,
+          city: b.city,
+          address: b.address,
+          phone: b.phone,
+          category: b.category,
+          desc: b.desc,
+          avatar: b.avatar,
+          owner_username: b.ownerUsername,
+          applicant: b.applicant,
+          approved_at: new Date(b.approvedAt).toISOString(),
+          approved_by: b.approvedBy,
+        })
+        .then(({ error }) => {
+          if (error) console.warn("businesses insert error:", error);
+        })
+        .catch((e) => console.warn("businesses insert exception:", e));
+
+      supabase
+        .from("biz_apps")
+        .update({
+          status: "approved",
+          approved_at: new Date().toISOString(),
+          approved_by: user?.username || "",
+        })
+        .eq("id", app.id)
+        .then(({ error }) => {
+          if (error) console.warn("biz_apps approve update error:", error);
+        })
+        .catch((e) => console.warn("biz_apps approve update exception:", e));
+    }
   }
 
   /**
@@ -139,12 +208,29 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
     const reason = String(rejectText || "").trim();
     if (!reason) return alert("Sebep yazmalısın.");
     if (!rejectCtx) return;
+    const ctx = rejectCtx;
 
-    setBizApps((prev) => prev.filter((x) => x.id !== rejectCtx.id));
-    addLog("BUSINESS_REJECT", { appId: rejectCtx.id, name: rejectCtx.name, reason });
+    setBizApps((prev) => prev.filter((x) => x.id !== ctx.id));
+    addLog("BUSINESS_REJECT", { appId: ctx.id, name: ctx.name, reason });
     setShowRejectReason(false);
     setRejectCtx(null);
     setRejectText("");
+
+    if (supabase?.from) {
+      supabase
+        .from("biz_apps")
+        .update({
+          status: "rejected",
+          rejected_at: new Date().toISOString(),
+          rejected_by: user?.username || "",
+          reject_reason: reason,
+        })
+        .eq("id", ctx.id)
+        .then(({ error }) => {
+          if (error) console.warn("biz_apps reject update error:", error);
+        })
+        .catch((e) => console.warn("biz_apps reject update exception:", e));
+    }
   }
 
   /**
@@ -176,12 +262,44 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
         )
       );
       addLog("BUSINESS_DELETE", { id: b.id, name: b.name, reason });
+
+      if (supabase?.from) {
+        supabase
+          .from("businesses")
+          .update({
+            status: "deleted",
+            deleted_at: new Date().toISOString(),
+            deleted_by: user?.username || "",
+            delete_reason: reason,
+          })
+          .eq("id", b.id)
+          .then(({ error }) => {
+            if (error) console.warn("businesses delete update error:", error);
+          })
+          .catch((e) => console.warn("businesses delete update exception:", e));
+      }
     }
 
     if (deleteCtx.type === "user" && setUsers) {
       const u = deleteCtx.item;
       setUsers((prev) => prev.filter((x) => x.id !== u.id));
       addLog("USER_DELETE", { id: u.id, username: u.username, reason });
+
+      if (supabase?.from) {
+        supabase
+          .from("profiles")
+          .update({
+            status: "suspended",
+            suspended_at: new Date().toISOString(),
+            suspended_by: user?.username || "",
+            suspend_reason: reason,
+          })
+          .eq("id", u.id)
+          .then(({ error }) => {
+            if (error) console.warn("profiles suspend update error:", error);
+          })
+          .catch((e) => console.warn("profiles suspend update exception:", e));
+      }
     }
 
     setShowDeleteReason(false);

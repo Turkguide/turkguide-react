@@ -13,7 +13,7 @@ export function AppointmentModal({
   return (
     <Modal ui={ui} open={showAppt} title="Randevu Talebi" onClose={() => setShowAppt(false)}>
       <div style={{ color: ui.muted, marginBottom: 10 }}>
-        Lütfen randevu tarih ve saatini seçin; dilerseniz kısa bir not ekleyebilirsiniz. (MVP: talep işletmeye iletilmiş sayılır.)
+        Lütfen randevu tarih ve saatini seçin; dilerseniz kısa bir not ekleyebilirsiniz.
       </div>
 
       <div style={{ marginBottom: 10 }}>

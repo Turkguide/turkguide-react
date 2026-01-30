@@ -342,7 +342,7 @@ export function TopBar({
             </button>
           ) : null}
 
-          {user && admin.adminMode && admin.adminUnlocked && (
+          {user && admin.adminMode && (
             <button
               type="button"
               aria-label="Admin"

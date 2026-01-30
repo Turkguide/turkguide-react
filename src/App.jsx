@@ -50,7 +50,7 @@ import { useHub } from "./features/hub";
 import { useProfile, useUserManagement } from "./features/profile";
 
 // Features - Admin
-import { useAdmin } from "./features/admin";
+import { useAdmin, AdminPanel } from "./features/admin";
 
 // Features - Messages
 import { useMessages, DMModal } from "./features/messages";
@@ -89,9 +89,11 @@ export default function App() {
   // Tabs
   const [active, setActive] = useState(() => {
     try {
-      return sessionStorage.getItem("tg_active_tab_v1") || "biz";
+      const saved = sessionStorage.getItem("tg_active_tab_v1");
+      if (window.location.pathname === "/admin") return "admin";
+      return saved || "biz";
     } catch (_) {
-      return "biz";
+      return window.location.pathname === "/admin" ? "admin" : "biz";
     }
   });
 
@@ -106,6 +108,25 @@ export default function App() {
     setActive(lastMainTabRef.current || "biz");
   }
 
+useEffect(() => {
+  if (active === "admin") {
+    if (window.location.pathname !== "/admin") {
+      window.history.pushState({}, document.title, "/admin");
+    }
+  } else if (window.location.pathname === "/admin") {
+    window.history.replaceState({}, document.title, "/");
+  }
+}, [active]);
+
+useEffect(() => {
+  const onPopState = () => {
+    if (window.location.pathname === "/admin") setActive("admin");
+    else if (active === "admin") setActive("biz");
+  };
+  window.addEventListener("popstate", onPopState);
+  return () => window.removeEventListener("popstate", onPopState);
+}, [active]);
+
 // 🧪 DEBUG
 useEffect(() => {
   console.log("🧪 ACTIVE CHANGED ->", active);
@@ -117,6 +138,103 @@ useEffect(() => {
     sessionStorage.setItem("tg_active_tab_v1", active);
   } catch (_) {}
 }, [active]);
+
+useEffect(() => {
+  if (!admin.adminMode || !supabase?.from) return;
+  let cancelled = false;
+
+  async function fetchAdminData() {
+    try {
+      const [appsRes, bizRes, apptRes, profilesRes] = await Promise.all([
+        supabase.from("biz_apps").select("*").order("created_at", { ascending: false }).limit(200),
+        supabase.from("businesses").select("*").order("created_at", { ascending: false }).limit(200),
+        supabase.from("appointments").select("*").order("created_at", { ascending: false }).limit(200),
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(200),
+      ]);
+
+      if (cancelled) return;
+
+      if (!appsRes.error && Array.isArray(appsRes.data)) {
+        const mapped = appsRes.data.map((r) => ({
+          id: r.id,
+          createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
+          status: r.status || "pending",
+          applicant: r.applicant || r.applicant_username || "",
+          ownerUsername: r.owner_username || r.ownerUsername || r.applicant || "",
+          name: r.name || "",
+          category: r.category || "",
+          desc: r.desc || "",
+          country: r.country || "",
+          state: r.state || "",
+          zip: r.zip || "",
+          apt: r.apt || "",
+          address1: r.address1 || r.address_1 || "",
+          address: r.address || "",
+          city: r.city || "",
+          phoneDial: r.phone_dial || r.phoneDial || "",
+          phoneLocal: r.phone_local || r.phoneLocal || "",
+          phone: r.phone || "",
+          avatar: r.avatar || "",
+        }));
+        setBizApps(mapped);
+      }
+
+      if (!bizRes.error && Array.isArray(bizRes.data)) {
+        const mapped = bizRes.data.map((r) => ({
+          id: r.id,
+          createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
+          status: r.status || "approved",
+          name: r.name || "",
+          city: r.city || "",
+          address: r.address || "",
+          phone: r.phone || "",
+          category: r.category || "",
+          desc: r.desc || "",
+          avatar: r.avatar || "",
+          ownerUsername: r.owner_username || r.ownerUsername || "",
+          applicant: r.applicant || "",
+          approvedAt: r.approved_at ? new Date(r.approved_at).getTime() : null,
+          approvedBy: r.approved_by || "",
+        }));
+        setBiz(mapped);
+      }
+
+      if (!apptRes.error && Array.isArray(apptRes.data)) {
+        const mapped = apptRes.data.map((r) => ({
+          id: r.id,
+          createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
+          status: r.status || "pending",
+          bizId: r.biz_id || r.bizId,
+          bizName: r.biz_name || r.bizName || "",
+          fromUsername: r.from_username || r.fromUsername || "",
+          requestedAt: r.requested_at || r.requestedAt || null,
+          note: r.note || "",
+        }));
+        setAppts(mapped);
+      }
+
+      if (!profilesRes.error && Array.isArray(profilesRes.data)) {
+        const mapped = profilesRes.data.map((r) => ({
+          id: r.id,
+          username: r.username || r.user_name || "",
+          email: r.email || "",
+          avatar: r.avatar || "",
+          createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
+          Tier: r.tier || r.Tier || "Onaylı",
+          xp: r.xp || r.XP || 0,
+        }));
+        setUsers(mapped);
+      }
+    } catch (e) {
+      console.warn("admin data fetch error:", e);
+    }
+  }
+
+  fetchAdminData();
+  return () => {
+    cancelled = true;
+  };
+}, [admin.adminMode]);
 
   // Data
   const [users, setUsers] = useState([]);
@@ -198,6 +316,7 @@ useEffect(() => {
   const admin = useAdmin({
     user,
     booted,
+    isDev,
   });
 
   // User management hook (needs admin, must be before auth hook)
@@ -785,6 +904,40 @@ return (
     apptsForBiz={apptsForBiz}
   />
 )}
+
+        {/* ADMIN */}
+        {active === "admin" && (
+          <div style={{ paddingTop: 26 }}>
+            {!admin.adminMode ? (
+              <Card ui={ui}>
+                <div style={{ fontSize: 18, fontWeight: 950 }}>Admin erişimi yok</div>
+                <div style={{ color: ui.muted, marginTop: 8 }}>
+                  Bu sayfayı görmek için admin yetkisi gerekiyor.
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <Button ui={ui} onClick={goBackToMainTab}>
+                    Geri
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <AdminPanel
+                ui={ui}
+                adminMode={admin.adminMode}
+                adminLog={admin.adminLog}
+                pendingApps={pendingApps}
+                approvedBiz={approvedBiz}
+                users={users}
+                appts={appts}
+                user={user}
+                business={business}
+                profile={profile}
+                openEditBiz={businessEdit.openEditBiz}
+                openEditUser={userManagement.openEditUser}
+              />
+            )}
+          </div>
+        )}
 
         {/* NEWS */}
         {active === "news" && (
