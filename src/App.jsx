@@ -1228,6 +1228,7 @@ return (
         title="İşletme Başvurusu"
         onClose={() => business.setShowBizApply(false)}
         fullScreen={isMobile}
+        zIndex={40}
       >
         <BizApplyForm
           ui={ui}

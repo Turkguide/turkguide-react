@@ -129,9 +129,22 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
     if (el && typeof el.focus === "function") {
       el.focus();
       try {
-        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        el.scrollIntoView({ block: "nearest", behavior: "auto" });
       } catch (_) {}
     }
+  };
+
+  const focusTargetFromEvent = (e) => {
+    try {
+      const target = e?.target;
+      const inputEl = target?.closest?.("input, textarea, select");
+      if (inputEl && typeof inputEl.focus === "function") {
+        inputEl.focus();
+        try {
+          inputEl.scrollIntoView({ block: "nearest", behavior: "auto" });
+        } catch (_) {}
+      }
+    } catch (_) {}
   };
 
   const onInputTouchStart = (idx) => () => {
@@ -159,7 +172,12 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
   });
 
   return (
-    <div style={{ display: "grid", gap: 10, paddingBottom: 12 }}>
+    <div
+      style={{ display: "grid", gap: 10, paddingBottom: 12 }}
+      onTouchStartCapture={focusTargetFromEvent}
+      onMouseDownCapture={focusTargetFromEvent}
+      onClickCapture={focusTargetFromEvent}
+    >
       <input
         placeholder="İşletme adı"
         value={name}
