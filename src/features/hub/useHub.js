@@ -133,7 +133,14 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Share a HUB post
    */
   async function hubShare() {
-    if (!requireAuth()) return;
+    if (!requireAuth()) {
+      alert("Paylaşım için giriş yapmalısın.");
+      return;
+    }
+    if (!user?.id) {
+      alert("Oturum bulunamadı. Lütfen çıkış yapıp tekrar giriş yap.");
+      return;
+    }
     console.log("HUB SHARE ÇALIŞTI");
 
     const text = String(composer || "").trim();
