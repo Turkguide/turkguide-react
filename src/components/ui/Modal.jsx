@@ -41,6 +41,7 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
       ? `${vvHeight}px`
       : "100svh"
     : undefined;
+  const fullScreenOffset = fullScreen ? 12 : 0;
 
   if (!open) return null;
 
@@ -54,7 +55,7 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
         alignItems: fullScreen ? "stretch" : "flex-start",
         justifyContent: fullScreen ? "stretch" : "center",
         padding: fullScreen ? 0 : "16px",
-        paddingTop: fullScreen ? 0 : "calc(16px + env(safe-area-inset-top))",
+        paddingTop: fullScreen ? `${fullScreenOffset}px` : "calc(16px + env(safe-area-inset-top))",
         paddingBottom: fullScreen ? 0 : "calc(16px + env(safe-area-inset-bottom))",
         overflowY: fullScreen ? "hidden" : "auto",
         WebkitOverflowScrolling: "touch",
@@ -66,9 +67,16 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
       <div
         style={{
           width: fullScreen ? "100%" : `min(${width}px, 100%)`,
-          height: fullScreen ? fullScreenHeight : undefined,
+          height:
+            fullScreen && fullScreenHeight
+              ? `calc(${fullScreenHeight} - ${fullScreenOffset}px)`
+              : fullScreen
+              ? fullScreenHeight
+              : undefined,
           maxHeight: fullScreen
-            ? fullScreenHeight || "100svh"
+            ? fullScreenHeight
+              ? `calc(${fullScreenHeight} - ${fullScreenOffset}px)`
+              : "100svh"
             : "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
           borderRadius: fullScreen ? 0 : 22,
           border: fullScreen ? "none" : `1px solid ${ui.border}`,
