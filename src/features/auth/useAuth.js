@@ -205,7 +205,10 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
   async function logout() {
     console.log("✅ logout() clicked");
     try {
-      await authService.signOut();
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("signOut timeout")), 2500)
+      );
+      await Promise.race([authService.signOut(), timeout]);
     } catch (e) {
       console.log("❌ logout() catch", e);
       console.error("logout error:", e);
@@ -224,7 +227,10 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
     if (!ok) return;
 
     try {
-      await authService.deleteAccount();
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("deleteAccount timeout")), 3500)
+      );
+      await Promise.race([authService.deleteAccount(), timeout]);
       alert("Hesabın silindi.");
       hardResetToHome();
       return;
