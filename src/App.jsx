@@ -141,33 +141,6 @@ useEffect(() => {
   return () => window.removeEventListener("resize", onResize);
 }, []);
 
-useEffect(() => {
-  if (!isMobile || !business?.showBizApply) return;
-
-  try {
-    scrollLockRef.current = window.scrollY || 0;
-    const body = document.body;
-    body.style.position = "fixed";
-    body.style.top = `-${scrollLockRef.current}px`;
-    body.style.left = "0";
-    body.style.right = "0";
-    body.style.width = "100%";
-    body.style.overflow = "hidden";
-  } catch (_) {}
-
-  return () => {
-    try {
-      const body = document.body;
-      body.style.position = "";
-      body.style.top = "";
-      body.style.left = "";
-      body.style.right = "";
-      body.style.width = "";
-      body.style.overflow = "";
-      window.scrollTo(0, scrollLockRef.current || 0);
-    } catch (_) {}
-  };
-}, [isMobile, business?.showBizApply]);
 
 useEffect(() => {
   const onPopState = () => {
@@ -688,6 +661,34 @@ useEffect(() => {
   useEffect(() => {
     setShowBizApplyRef.current = business.setShowBizApply;
   }, [business.setShowBizApply]);
+
+  useEffect(() => {
+    if (!isMobile || !business?.showBizApply) return;
+
+    try {
+      scrollLockRef.current = window.scrollY || 0;
+      const body = document.body;
+      body.style.position = "fixed";
+      body.style.top = `-${scrollLockRef.current}px`;
+      body.style.left = "0";
+      body.style.right = "0";
+      body.style.width = "100%";
+      body.style.overflow = "hidden";
+    } catch (_) {}
+
+    return () => {
+      try {
+        const body = document.body;
+        body.style.position = "";
+        body.style.top = "";
+        body.style.left = "";
+        body.style.right = "";
+        body.style.width = "";
+        body.style.overflow = "";
+        window.scrollTo(0, scrollLockRef.current || 0);
+      } catch (_) {}
+    };
+  }, [isMobile, business?.showBizApply]);
 
   // HUB functions from hook
   const hub = useHub({
