@@ -119,11 +119,8 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
 
           if (emailErr) {
             console.warn("email availability check error:", emailErr);
-            alert("Email kontrol edilemedi. Lütfen tekrar dene.");
-            return;
-          }
-
-          if (emailAvailable === false) {
+            // Fallback to Supabase Auth unique email check
+          } else if (emailAvailable === false) {
             alert("Bu email adresi daha önce kayıt edilmiş.");
             return;
           }
@@ -148,8 +145,18 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
           }
         }
 
-        const data = await authService.signUp(email, pass, username);
-        console.log("✅ signUp ok:", data);
+        let data;
+        try {
+          data = await authService.signUp(email, pass, username);
+          console.log("✅ signUp ok:", data);
+        } catch (e) {
+          const msg = String(e?.message || e?.error_description || "");
+          if (msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("user already")) {
+            alert("Bu email adresi daha önce kayıt edilmiş.");
+            return;
+          }
+          throw e;
+        }
 
         // Confirm email açıksa: session null gelir, bu normal
         if (!data?.session) {
