@@ -162,7 +162,7 @@ export function AdminPanel({
     : [
         { label: "Toplam Kullanıcı", value: safeUsers.length },
         { label: "Onaylı İşletme", value: safeBiz.length },
-        { label: "Bekleyen Başvuru", value: safePending.length },
+        { label: `Bekleyen Başvuru (${safePending.length})`, value: safePending.length },
         { label: "Randevu Talebi", value: safeAppts.length },
         { label: "Admin Log", value: safeLogs.length },
         { label: "İşletme Görüntüleme", value: getMetric("biz_view_total") },
