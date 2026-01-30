@@ -212,9 +212,9 @@ export function TopBar({
               {showNotificationsMenu ? (
                 <div
                   style={{
-                    position: "absolute",
-                    top: 40,
-                    right: 0,
+                    position: "fixed",
+                    top: 64,
+                    right: 12,
                     width: 280,
                     maxHeight: 320,
                     overflowY: "auto",
