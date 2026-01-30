@@ -109,6 +109,7 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
       status: "pending",
       applicant: user.username,
       ownerUsername: user.username,
+      userId: user.id || null,
       name,
       category,
       desc,
@@ -137,6 +138,7 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
           status: app.status,
           applicant: app.applicant,
           owner_username: app.ownerUsername,
+          user_id: app.userId,
           name: app.name,
           category: app.category,
           desc: app.desc,
@@ -153,9 +155,15 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
           avatar: app.avatar,
         })
         .then(({ error }) => {
-          if (error) console.warn("biz_apps insert error:", error);
+          if (error) {
+            console.warn("biz_apps insert error:", error);
+            alert("Basvuru gonderilemedi. Lutfen tekrar deneyin.");
+          }
         })
-        .catch((e) => console.warn("biz_apps insert exception:", e));
+        .catch((e) => {
+          console.warn("biz_apps insert exception:", e);
+          alert("Basvuru gonderilemedi. Lutfen tekrar deneyin.");
+        });
     }
 
     alert("✅ Başvurunuz alındı. İncelendikten sonra işletmeler listesinde görünecek.");
