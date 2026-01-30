@@ -120,7 +120,7 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
   };
 
   return (
-    <div style={{ display: "grid", gap: 10, paddingBottom: 120 }}>
+    <div style={{ display: "grid", gap: 10, paddingBottom: 12 }}>
       <input
         placeholder="İşletme adı"
         value={name}

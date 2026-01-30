@@ -1,7 +1,47 @@
+import { useEffect, useState } from "react";
 import { Button } from "./Button";
 import { IconBase } from "./Icons";
 
 export function Modal({ ui, open, title, onClose, children, width = 860, zIndex = 999, iconClose = false, showBack = false, onBack, fullScreen = false }) {
+  const [vvHeight, setVvHeight] = useState(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+
+  useEffect(() => {
+    if (!open || !fullScreen || !window?.visualViewport) return;
+
+    const updateViewport = () => {
+      try {
+        const vv = window.visualViewport;
+        const h = vv?.height || window.innerHeight;
+        const offsetTop = vv?.offsetTop || 0;
+        const layoutH = window.innerHeight || h;
+        const inset = Math.max(0, layoutH - h - offsetTop);
+
+        setVvHeight(h + offsetTop);
+        setKeyboardInset(inset);
+      } catch (_) {}
+    };
+
+    updateViewport();
+    window.visualViewport.addEventListener("resize", updateViewport);
+    window.visualViewport.addEventListener("scroll", updateViewport);
+    window.addEventListener("orientationchange", updateViewport);
+
+    return () => {
+      try {
+        window.visualViewport.removeEventListener("resize", updateViewport);
+        window.visualViewport.removeEventListener("scroll", updateViewport);
+        window.removeEventListener("orientationchange", updateViewport);
+      } catch (_) {}
+    };
+  }, [open, fullScreen]);
+
+  const fullScreenHeight = fullScreen
+    ? vvHeight
+      ? `${vvHeight}px`
+      : "100svh"
+    : undefined;
+
   if (!open) return null;
 
   return (
@@ -26,9 +66,9 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
       <div
         style={{
           width: fullScreen ? "100%" : `min(${width}px, 100%)`,
-          height: fullScreen ? "100svh" : undefined,
+          height: fullScreen ? fullScreenHeight : undefined,
           maxHeight: fullScreen
-            ? "100svh"
+            ? fullScreenHeight || "100svh"
             : "calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
           borderRadius: fullScreen ? 0 : 22,
           border: fullScreen ? "none" : `1px solid ${ui.border}`,
@@ -41,7 +81,7 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
           display: "flex",
           flexDirection: "column",
           padding: fullScreen
-            ? "calc(12px + env(safe-area-inset-top)) 16px calc(120px + env(safe-area-inset-bottom))"
+            ? "calc(12px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))"
             : 16,
           color: ui.text,
         }}
@@ -97,7 +137,7 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
             overflowY: "auto",
             WebkitOverflowScrolling: "touch",
             paddingBottom: fullScreen
-              ? "calc(120px + env(safe-area-inset-bottom))"
+              ? `calc(${Math.max(0, keyboardInset)}px + 16px + env(safe-area-inset-bottom))`
               : "calc(8px + env(safe-area-inset-bottom))",
           }}
         >
