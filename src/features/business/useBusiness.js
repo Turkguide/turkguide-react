@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { supabase } from "../../supabaseClient";
-import { now, uid } from "../../utils/helpers";
+import { now, uid, normalizeUsername } from "../../utils/helpers";
 
 /**
  * Hook for business operations
  */
-export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requireAuth, adminMode }) {
+export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requireAuth, adminMode, users, createNotification }) {
   const [showBizApply, setShowBizApply] = useState(false);
   const [showRejectReason, setShowRejectReason] = useState(false);
   const [rejectText, setRejectText] = useState("");
@@ -13,6 +13,42 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
   const [showDeleteReason, setShowDeleteReason] = useState(false);
   const [reasonText, setReasonText] = useState("");
   const [deleteCtx, setDeleteCtx] = useState(null);
+
+  async function sendBizStatusEmail({ to, subject, text }) {
+    if (!to) return;
+    if (!supabase?.functions?.invoke) return;
+    try {
+      await supabase.functions.invoke("send-biz-status", {
+        body: { to, subject, text },
+      });
+    } catch (e) {
+      console.warn("sendBizStatusEmail error:", e);
+    }
+  }
+
+  function notifyBizStatus({ type, toUsername, bizName, reason }) {
+    if (!createNotification) return;
+    if (!toUsername) return;
+    createNotification({
+      type,
+      fromUsername: user?.username || "admin",
+      toUsername,
+      postId: null,
+      commentId: null,
+      metadata: {
+        bizName: bizName || "",
+        reason: reason || "",
+      },
+    });
+  }
+
+  function resolveApplicantEmail(app) {
+    const owner = normalizeUsername(app?.ownerUsername || app?.applicant || "");
+    if (!owner) return "";
+    const list = Array.isArray(users) ? users : [];
+    const found = list.find((u) => normalizeUsername(u?.username) === owner);
+    return found?.email || "";
+  }
 
   /**
    * Submit business application
@@ -131,6 +167,8 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
    */
   function adminApprove(app) {
     if (!adminMode) return;
+    const ownerUsername = app.ownerUsername || app.applicant || "";
+    const toEmail = resolveApplicantEmail(app);
     const b = {
       id: uid(),
       createdAt: now(),
@@ -150,6 +188,18 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
     setBiz((prev) => [b, ...prev]);
     setBizApps((prev) => prev.filter((x) => x.id !== app.id));
     addLog("BUSINESS_APPROVE", { appId: app.id, name: app.name });
+
+    notifyBizStatus({
+      type: "biz_approved",
+      toUsername: ownerUsername,
+      bizName: app.name,
+    });
+
+    sendBizStatusEmail({
+      to: toEmail,
+      subject: "Tebrikler! Isletmeniz onaylandi",
+      text: `Tebrikler! Isletmeniz onaylandi.\n\nIsletme: ${app.name}\n\nTurkGuide ekibi`,
+    });
 
     if (supabase?.from) {
       supabase
@@ -209,12 +259,27 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
     if (!reason) return alert("Sebep yazmalısın.");
     if (!rejectCtx) return;
     const ctx = rejectCtx;
+    const ownerUsername = ctx.ownerUsername || ctx.applicant || "";
+    const toEmail = resolveApplicantEmail(ctx);
 
     setBizApps((prev) => prev.filter((x) => x.id !== ctx.id));
     addLog("BUSINESS_REJECT", { appId: ctx.id, name: ctx.name, reason });
     setShowRejectReason(false);
     setRejectCtx(null);
     setRejectText("");
+
+    notifyBizStatus({
+      type: "biz_rejected",
+      toUsername: ownerUsername,
+      bizName: ctx.name,
+      reason,
+    });
+
+    sendBizStatusEmail({
+      to: toEmail,
+      subject: "Uzgunuz, isletmenizi onaylayamiyoruz",
+      text: `Uzgunuz, isletmenizi onaylayamiyoruz.\n\nIsletme: ${ctx.name}\nSebep: ${reason}\n\nTurkGuide ekibi`,
+    });
 
     if (supabase?.from) {
       supabase

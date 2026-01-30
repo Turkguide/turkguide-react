@@ -210,6 +210,11 @@ useEffect(() => {
           phoneLocal: r.phone_local || r.phoneLocal || "",
           phone: r.phone || "",
           avatar: r.avatar || "",
+          approvedAt: r.approved_at ? new Date(r.approved_at).getTime() : null,
+          approvedBy: r.approved_by || "",
+          rejectedAt: r.rejected_at ? new Date(r.rejected_at).getTime() : null,
+          rejectedBy: r.rejected_by || "",
+          rejectReason: r.reject_reason || "",
         }));
         setBizApps(mapped);
       }
@@ -655,6 +660,8 @@ useEffect(() => {
     addLog: admin.addLog,
     requireAuth,
     adminMode: admin.adminMode,
+    users,
+    createNotification: notifications.createNotification,
   });
 
   // Set setShowBizApply ref after business hook is initialized
@@ -853,7 +860,7 @@ function clearFilters() {
   setCategoryFilter("");
 }
 
-function renderNotificationText(n) {
+  function renderNotificationText(n) {
   const from = n.fromUsername ? `@${n.fromUsername}` : "Bir kullanıcı";
   switch (n.type) {
     case "like":
@@ -864,6 +871,12 @@ function renderNotificationText(n) {
       return `${from} yorumunuza cevap verdi.`;
     case "repost":
       return `${from} paylaşımınızı HUB'da yeniden paylaştı.`;
+      case "biz_approved":
+        return `Tebrikler! Isletmeniz onaylandi. ${n.metadata?.bizName ? `(${n.metadata.bizName})` : ""}`.trim();
+      case "biz_rejected":
+        return `Uzgunuz, isletmeniz onaylanamadi. ${
+          n.metadata?.reason ? `Sebep: ${n.metadata.reason}` : ""
+        }`.trim();
     default:
       return `${from} size bir bildirim gönderdi.`;
   }
@@ -1036,6 +1049,7 @@ return (
                 adminMode={admin.adminMode}
                 adminLog={admin.adminLog}
                 pendingApps={pendingApps}
+                allApps={bizApps}
                 approvedBiz={approvedBiz}
                 users={users}
                 appts={appts}

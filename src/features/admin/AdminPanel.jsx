@@ -41,6 +41,7 @@ export function AdminPanel({
   adminMode,
   adminLog,
   pendingApps,
+  allApps,
   approvedBiz,
   users,
   appts,
@@ -53,6 +54,7 @@ export function AdminPanel({
   if (!adminMode) return null;
 
   const safePending = Array.isArray(pendingApps) ? pendingApps : [];
+  const safeApps = Array.isArray(allApps) ? allApps : safePending;
   const safeBiz = Array.isArray(approvedBiz) ? approvedBiz : [];
   const safeUsers = Array.isArray(users) ? users : [];
   const safeAppts = Array.isArray(appts) ? appts : [];
@@ -73,15 +75,15 @@ export function AdminPanel({
 
   const appsFiltered = useMemo(() => {
     const q = appQuery.trim().toLowerCase();
-    if (!q) return safePending;
-    return safePending.filter(
+    if (!q) return safeApps;
+    return safeApps.filter(
       (a) =>
         String(a.name || "").toLowerCase().includes(q) ||
         String(a.category || "").toLowerCase().includes(q) ||
         String(a.city || "").toLowerCase().includes(q) ||
         String(a.applicant || "").toLowerCase().includes(q)
     );
-  }, [safePending, appQuery]);
+  }, [safeApps, appQuery]);
 
   const bizFiltered = useMemo(() => {
     const q = bizQuery.trim().toLowerCase();
@@ -312,7 +314,10 @@ export function AdminPanel({
               ) : (
                 <>
                   <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-                    {appsPageData.items.map((a) => (
+                    {appsPageData.items.map((a) => {
+                      const status = String(a.status || "pending").toLowerCase();
+                      const isPending = status === "pending";
+                      return (
                       <div
                         key={a.id}
                         style={{
@@ -329,18 +334,33 @@ export function AdminPanel({
                             <div style={{ color: ui.muted, marginTop: 4, fontSize: 12 }}>
                               {a.city} • {a.category} • @{a.applicant}
                             </div>
+                            <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
+                              Durum: {status}
+                              {a.rejectReason ? ` • Sebep: ${a.rejectReason}` : ""}
+                            </div>
                           </div>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <Button ui={ui} variant="ok" onClick={() => business.adminApprove(a)}>
+                            <Button
+                              ui={ui}
+                              variant="ok"
+                              onClick={() => business.adminApprove(a)}
+                              disabled={!isPending}
+                            >
                               Onayla
                             </Button>
-                            <Button ui={ui} variant="danger" onClick={() => business.openReject(a)}>
+                            <Button
+                              ui={ui}
+                              variant="danger"
+                              onClick={() => business.openReject(a)}
+                              disabled={!isPending}
+                            >
                               Reddet
                             </Button>
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <Pagination
                     ui={ui}
