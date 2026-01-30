@@ -127,7 +127,11 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
   const focusField = (idx) => {
     const el = inputRefs.current[idx];
     if (el && typeof el.focus === "function") {
-      el.focus();
+      try {
+        el.focus({ preventScroll: true });
+      } catch (_) {
+        el.focus();
+      }
       try {
         el.scrollIntoView({ block: "nearest", behavior: "auto" });
       } catch (_) {}
@@ -139,7 +143,11 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
       const target = e?.target;
       const inputEl = target?.closest?.("input, textarea, select");
       if (inputEl && typeof inputEl.focus === "function") {
-        inputEl.focus();
+        try {
+          inputEl.focus({ preventScroll: true });
+        } catch (_) {
+          inputEl.focus();
+        }
         try {
           inputEl.scrollIntoView({ block: "nearest", behavior: "auto" });
         } catch (_) {}
@@ -175,8 +183,6 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
     <div
       style={{ display: "grid", gap: 10, paddingBottom: 12 }}
       onTouchStartCapture={focusTargetFromEvent}
-      onMouseDownCapture={focusTargetFromEvent}
-      onClickCapture={focusTargetFromEvent}
     >
       <input
         placeholder="İşletme adı"

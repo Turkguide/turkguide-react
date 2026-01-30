@@ -875,7 +875,7 @@ return (
       color: ui.text,
       paddingTop: 64,
       // ✅ Sticky Bottom CTA alanı içerikle çakışmasın
-      paddingBottom: active === "biz" ? 96 : 0,
+      paddingBottom: active === "biz" && !business.showBizApply ? 96 : 0,
     }}
   >
         <style>{`
@@ -927,7 +927,7 @@ return (
     )}
 
     {/* ✅ STICKY BOTTOM CTA (sadece BUSINESS sekmesi) */}
-    {active === "biz" ? (
+    {active === "biz" && !business.showBizApply ? (
       <div
         style={{
           position: "fixed",

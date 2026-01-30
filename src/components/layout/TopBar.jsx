@@ -89,7 +89,7 @@ export function TopBar({
         top: 0,
         left: 0,
         right: 0,
-        zIndex: 50,
+        zIndex: 200,
         backdropFilter: "blur(14px)",
         background: ui.top,
         borderBottom: `1px solid ${ui.border}`,
