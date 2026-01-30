@@ -85,9 +85,9 @@ export function BizApplyForm({ ui, onSubmit, onCancel, biz = [] }) {
     const el = e.currentTarget;
     setTimeout(() => {
       try {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.scrollIntoView({ behavior: "auto", block: "nearest" });
       } catch (_) {}
-    }, 120);
+    }, 60);
   };
 
   const safeSubmit = () => {

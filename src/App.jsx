@@ -82,6 +82,13 @@ export default function App() {
   const { user, setUser, booted } = useAuthState();
 
   const systemTheme = useSystemTheme();
+  const [isMobile, setIsMobile] = useState(() => {
+    try {
+      return window.innerWidth < 720;
+    } catch (_) {
+      return false;
+    }
+  });
   const [themePref, setThemePref] = useState("system");
   const resolvedTheme = themePref === "system" ? systemTheme : themePref;
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
@@ -124,6 +131,14 @@ useEffect(() => {
     window.history.replaceState({}, document.title, "/");
   }
 }, [active]);
+
+useEffect(() => {
+  const onResize = () => {
+    setIsMobile(window.innerWidth < 720);
+  };
+  window.addEventListener("resize", onResize);
+  return () => window.removeEventListener("resize", onResize);
+}, []);
 
 useEffect(() => {
   const onPopState = () => {
@@ -1181,6 +1196,7 @@ return (
         open={business.showBizApply}
         title="İşletme Başvurusu"
         onClose={() => business.setShowBizApply(false)}
+        fullScreen={isMobile}
       >
         <BizApplyForm
           ui={ui}
