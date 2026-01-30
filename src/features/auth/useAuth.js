@@ -206,7 +206,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
     console.log("✅ logout() clicked");
     try {
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("signOut timeout")), 2500)
+        setTimeout(() => reject(new Error("signOut timeout")), 800)
       );
       await Promise.race([authService.signOut(), timeout]);
     } catch (e) {
@@ -228,7 +228,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
 
     try {
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("deleteAccount timeout")), 3500)
+        setTimeout(() => reject(new Error("deleteAccount timeout")), 1500)
       );
       await Promise.race([authService.deleteAccount(), timeout]);
       alert("Hesabın silindi.");
