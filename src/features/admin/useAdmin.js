@@ -49,11 +49,15 @@ export function useAdmin({ user, booted, isDev = false }) {
       setAdminRoleLoading(true);
       setAdminRoleError("");
       try {
-        const { data, error } = await supabase
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("role lookup timeout")), 1500)
+        );
+        const fetchRole = supabase
           .from("profiles")
           .select("role")
           .eq("id", user.id)
           .single();
+        const { data, error } = await Promise.race([fetchRole, timeout]);
         if (error) throw error;
         if (!cancelled) setAdminRole(data?.role || null);
       } catch (e) {
