@@ -128,6 +128,20 @@
 -- to authenticated
 -- using (true);
 
+-- HUB posts: allow authenticated users to insert their own posts
+-- create policy "hub_posts_insert_own"
+-- on public.hub_posts for insert
+-- to authenticated
+-- with check (auth.uid() = user_id);
+
+-- HUB posts: allow authenticated users to update posts (likes/comments)
+-- NOTE: This is needed for likes/comments to be visible to others.
+-- create policy "hub_posts_update_authenticated"
+-- on public.hub_posts for update
+-- to authenticated
+-- using (true)
+-- with check (true);
+
 -- Admin logs: admin only
 -- create policy "admin_logs_admin_only"
 -- on public.admin_logs for all
