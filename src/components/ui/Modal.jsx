@@ -41,7 +41,7 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
       ? `${vvHeight}px`
       : "100svh"
     : undefined;
-  const fullScreenOffset = fullScreen ? 12 : 0;
+  const fullScreenOffset = fullScreen ? 28 : 0;
 
   if (!open) return null;
 
