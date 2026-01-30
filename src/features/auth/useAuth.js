@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { authService } from "./authService";
 import { KEY } from "../../constants";
+import { supabase } from "../../supabaseClient";
+import { normalizeUsername } from "../../utils/helpers";
 
 /**
  * Hook for authentication operations
@@ -99,12 +101,32 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
       const email = String(authEmail || "").trim().toLowerCase();
       const pass = String(authPassword || "").trim();
       const username = String(authUsername || "").trim();
+      const unameKey = normalizeUsername(username);
 
       // 2) REGISTER
       if (mode === "register") {
         if (!email || !pass || !username) {
           alert("Email, şifre ve kullanıcı adı zorunlu.");
           return;
+        }
+
+        // ✅ Username benzersiz mi? (RPC ile güvenli kontrol)
+        if (supabase?.rpc) {
+          const { data: available, error } = await supabase.rpc(
+            "is_username_available",
+            { p_username: unameKey }
+          );
+
+          if (error) {
+            console.warn("username availability check error:", error);
+            alert("Kullanıcı adı kontrol edilemedi. Lütfen tekrar dene.");
+            return;
+          }
+
+          if (available === false) {
+            alert("Bu kullanıcı adı daha önce kayıt edilmiş.");
+            return;
+          }
         }
 
         const data = await authService.signUp(email, pass, username);

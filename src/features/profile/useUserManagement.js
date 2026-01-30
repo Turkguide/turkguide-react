@@ -92,6 +92,37 @@ export function useUserManagement({
 
     // ✅ sadece username değiştiyse çakışma kontrolü
     if (lower !== origLower) {
+      // ✅ Server-side kontrol (RPC)
+      if (supabase?.rpc) {
+        try {
+          const { data: available, error } = await supabase.rpc(
+            "is_username_available",
+            { p_username: lower }
+          );
+
+          if (error) {
+            console.warn("username availability check error:", error);
+            setEditUserError("Kullanıcı adı kontrol edilemedi.");
+            alert("Kullanıcı adı kontrol edilemedi.");
+            setSavingEditUser(false);
+            return;
+          }
+
+          if (available === false) {
+            setEditUserError("Bu kullanıcı adı zaten var.");
+            alert("Bu kullanıcı adı zaten var.");
+            setSavingEditUser(false);
+            return;
+          }
+        } catch (e) {
+          console.warn("username availability check crash:", e);
+          setEditUserError("Kullanıcı adı kontrol edilemedi.");
+          alert("Kullanıcı adı kontrol edilemedi.");
+          setSavingEditUser(false);
+          return;
+        }
+      }
+
       const usersList = Array.isArray(users) ? users : [];
       const clash = usersList.find((x) => {
         const xid = String(x?.id ?? x?.uid ?? x?.user_id ?? "");
