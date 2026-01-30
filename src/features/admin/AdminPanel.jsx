@@ -146,27 +146,34 @@ export function AdminPanel({
           <div style={{ fontSize: 16, fontWeight: 950 }}>Admin Menü</div>
           <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
             {[
-              ["KPI", "#admin-kpi"],
-              ["Başvurular", "#admin-apps"],
-              ["İşletmeler", "#admin-biz"],
-              ["Randevular", "#admin-appts"],
-              ["Kullanıcılar", "#admin-users"],
-              ["Audit Log", "#admin-logs"],
-            ].map(([label, href]) => (
-              <a key={label} href={href} style={{ color: ui.text, textDecoration: "none" }}>
-                <div
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 10,
-                    border: `1px solid ${ui.border}`,
-                    background: ui.panel,
-                    fontWeight: 800,
-                    fontSize: 13,
-                  }}
-                >
-                  {label}
-                </div>
-              </a>
+              ["KPI", "admin-kpi"],
+              ["Başvurular", "admin-apps"],
+              ["İşletmeler", "admin-biz"],
+              ["Randevular", "admin-appts"],
+              ["Kullanıcılar", "admin-users"],
+              ["Audit Log", "admin-logs"],
+            ].map(([label, targetId]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById(targetId);
+                  el?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+                }}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 10,
+                  border: `1px solid ${ui.border}`,
+                  background: ui.panel,
+                  fontWeight: 800,
+                  fontSize: 13,
+                  color: ui.text,
+                  textAlign: "left",
+                  cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
             ))}
           </div>
         </Card>
