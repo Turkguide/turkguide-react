@@ -218,7 +218,7 @@ export function TopBar({
                     width: 280,
                     maxHeight: 320,
                     overflowY: "auto",
-                    background: ui.panel2,
+                    background: ui.mode === "light" ? "#ffffff" : "#0f1219",
                     border: `1px solid ${ui.border}`,
                     borderRadius: 14,
                     padding: 10,
