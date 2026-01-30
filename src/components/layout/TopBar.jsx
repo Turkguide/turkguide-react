@@ -74,6 +74,10 @@ export function TopBar({
       profile.setProfileTarget(null);
     } catch (_) {}
 
+    try {
+      touchNotificationsSeen?.();
+    } catch (_) {}
+
     onToggleNotificationsMenu?.();
   };
 
