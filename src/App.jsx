@@ -86,6 +86,13 @@ export default function App() {
   const resolvedTheme = themePref === "system" ? systemTheme : themePref;
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
 
+  // Admin hook (must be before auth hook for userManagement)
+  const admin = useAdmin({
+    user,
+    booted,
+    isDev,
+  });
+
   // Tabs
   const [active, setActive] = useState(() => {
     try {
@@ -312,12 +319,7 @@ useEffect(() => {
     setThemePref,
   });
 
-  // Admin hook (must be before auth hook for userManagement)
-  const admin = useAdmin({
-    user,
-    booted,
-    isDev,
-  });
+  // Admin hook defined above
 
   // User management hook (needs admin, must be before auth hook)
   const userManagement = useUserManagement({
