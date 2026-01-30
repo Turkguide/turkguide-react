@@ -55,7 +55,9 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
         alignItems: fullScreen ? "stretch" : "flex-start",
         justifyContent: fullScreen ? "stretch" : "center",
         padding: fullScreen ? 0 : "16px",
-        paddingTop: fullScreen ? `${fullScreenOffset}px` : "calc(16px + env(safe-area-inset-top))",
+        paddingTop: fullScreen
+          ? `${fullScreenOffset}px`
+          : "calc(28px + env(safe-area-inset-top))",
         paddingBottom: fullScreen ? 0 : "calc(16px + env(safe-area-inset-bottom))",
         overflowY: fullScreen ? "hidden" : "auto",
         WebkitOverflowScrolling: "touch",
