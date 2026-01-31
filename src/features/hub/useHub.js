@@ -70,6 +70,22 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
   /**
    * Fetch HUB posts from Supabase
    */
+  function mapPostRow(r) {
+    const createdAtRaw = r?.created_at ? new Date(r.created_at).getTime() : now();
+    const createdAt = Number.isFinite(createdAtRaw) ? createdAtRaw : now();
+    return {
+      id: r.id,
+      createdAt,
+      byType: "user",
+      byUsername: r.username || r.by_username || r.bu_username || "",
+      content: r.content || "",
+      media: r.media || null,
+      likes: r.likes || 0,
+      likedBy: Array.isArray(r.liked_by) ? r.liked_by : [],
+      comments: r.comments || [],
+    };
+  }
+
   async function fetchHubPosts(retryOnAuth = true) {
     try {
       if (!supabase?.from) {
@@ -85,21 +101,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
       if (error) throw error;
       console.log("🟣 fetchHubPosts: ok rows=", (data || []).length, "first=", (data || [])[0]);
 
-      const mapped = (data || []).map((r) => {
-        const createdAtRaw = r?.created_at ? new Date(r.created_at).getTime() : now();
-        const createdAt = Number.isFinite(createdAtRaw) ? createdAtRaw : now();
-        return {
-          id: r.id,
-          createdAt,
-          byType: "user",
-          byUsername: r.username || r.by_username || r.bu_username || "",
-          content: r.content || "",
-          media: r.media || null,
-          likes: r.likes || 0,
-          likedBy: Array.isArray(r.liked_by) ? r.liked_by : [],
-          comments: r.comments || [],
-        };
-      });
+      const mapped = (data || []).map(mapPostRow);
 
       console.log("🧪 mapped[0] likes/likedBy =", mapped?.[0]?.likes, mapped?.[0]?.likedBy);
       setPosts(mapped);
@@ -257,7 +259,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
 
     // Save to Supabase
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("hub_posts")
         .update({
           likes: nextLikes,
@@ -283,9 +285,10 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
         }
       }
 
-      try {
-        await fetchHubPosts(false);
-      } catch (_) {}
+      if (Array.isArray(data) && data[0]) {
+        const row = mapPostRow(data[0]);
+        setPosts((prev) => (prev || []).map((p) => (p.id === postId ? { ...p, ...row } : p)));
+      }
     } catch (e) {
       console.error("❌ hubLike DB error:", e);
       setPosts((prev) => (prev || []).map((p) => (p.id === postId ? target : p)));
