@@ -1311,6 +1311,10 @@ return (
           Terms of Use
         </a>
         <span style={{ opacity: 0.6 }}>•</span>
+        <a href="/community-guidelines.html" style={{ color: "inherit", textDecoration: "none" }}>
+          Community Guidelines
+        </a>
+        <span style={{ opacity: 0.6 }}>•</span>
         <a href="/contact.html" style={{ color: "inherit", textDecoration: "none" }}>
           Contact
         </a>
