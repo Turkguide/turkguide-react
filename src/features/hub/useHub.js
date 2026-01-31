@@ -608,7 +608,27 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
 
     // Delete from DB
     try {
-      const { error } = await supabase.from("hub_posts").delete().eq("id", postId);
+      if (supabase?.auth?.getSession) {
+        const { data: sData } = await supabase.auth.getSession();
+        if (!sData?.session && supabase.auth.refreshSession) {
+          await supabase.auth.refreshSession();
+        }
+      }
+
+      let { error } = await supabase.from("hub_posts").delete().eq("id", postId);
+      if (error) {
+        const msg = String(error?.message || "");
+        const looksAuth =
+          msg.toLowerCase().includes("jwt") ||
+          msg.toLowerCase().includes("token") ||
+          msg.toLowerCase().includes("expired") ||
+          error?.status === 401;
+        if (looksAuth && supabase?.auth?.refreshSession) {
+          await supabase.auth.refreshSession();
+          const retry = await supabase.from("hub_posts").delete().eq("id", postId);
+          error = retry.error;
+        }
+      }
 
       if (error) throw error;
 
@@ -616,7 +636,8 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
     } catch (e) {
       console.error("deletePost DB error:", e);
       setPosts((prev) => [...prev, p]);
-      alert("Paylaşım silinemedi.");
+      const msg = String(e?.message || e || "");
+      alert("Paylaşım silinemedi." + (msg ? " " + msg : ""));
     }
   }
 
