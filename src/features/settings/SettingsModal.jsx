@@ -107,6 +107,13 @@ export function SettingsModal({
               </Button>
               <Button
                 ui={ui}
+                onClick={() => window.open("/report-abuse.html", "_blank", "noopener,noreferrer")}
+                size="sm"
+              >
+                Report Abuse / Content Policy
+              </Button>
+              <Button
+                ui={ui}
                 onClick={() => window.open("/contact.html", "_blank", "noopener,noreferrer")}
                 size="sm"
               >

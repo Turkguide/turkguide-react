@@ -1315,6 +1315,10 @@ return (
           Community Guidelines
         </a>
         <span style={{ opacity: 0.6 }}>•</span>
+        <a href="/report-abuse.html" style={{ color: "inherit", textDecoration: "none" }}>
+          Report Abuse / Content Policy
+        </a>
+        <span style={{ opacity: 0.6 }}>•</span>
         <a href="/contact.html" style={{ color: "inherit", textDecoration: "none" }}>
           Contact
         </a>
