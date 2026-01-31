@@ -192,11 +192,12 @@ useEffect(() => {
         }
       }
 
-      const [appsRes, bizRes, apptRes, profilesRes] = await Promise.all([
+      const [appsRes, bizRes, apptRes, profilesRes, reportsRes] = await Promise.all([
         supabase.from("biz_apps").select("*").order("created_at", { ascending: false }).limit(200),
         supabase.from("businesses").select("*").order("created_at", { ascending: false }).limit(200),
         supabase.from("appointments").select("*").order("created_at", { ascending: false }).limit(200),
         supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(200),
+        supabase.from("reports").select("*").order("created_at", { ascending: false }).limit(200),
       ]);
 
       if (cancelled) return;
@@ -267,6 +268,22 @@ useEffect(() => {
           xp: r.xp || r.XP || 0,
         }));
         setUsers(mapped);
+      }
+
+      if (!reportsRes?.error && Array.isArray(reportsRes.data)) {
+        const mapped = reportsRes.data.map((r) => ({
+          id: r.id,
+          createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
+          reporterId: r.reporter_id || null,
+          reporterUsername: r.reporter_username || "",
+          targetType: r.target_type || "",
+          targetId: r.target_id || "",
+          targetOwner: r.target_owner || "",
+          targetLabel: r.target_label || "",
+          reason: r.reason || "",
+          status: r.status || "open",
+        }));
+        setReports(mapped);
       }
     } catch (e) {
       console.warn("admin data fetch error:", e);
@@ -383,7 +400,10 @@ useEffect(() => {
   }, [posts]);
   const [dms, setDms] = useState([]);
   const [appts, setAppts] = useState([]);
+  const [reports, setReports] = useState([]);
   const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
+  const [reportCtx, setReportCtx] = useState(null);
+  const [reportReason, setReportReason] = useState("");
   
   const [infoPage, setInfoPage] = useState(null);
 // infoPage: "about" | "help" | "privacy" | "terms" | "contact" | null
@@ -939,6 +959,8 @@ function clearFilters() {
       return `${from} yorumunuza cevap verdi.`;
     case "repost":
       return `${from} paylaşımınızı HUB'da yeniden paylaştı.`;
+    case "report":
+      return `${from} bir içerik raporladı.`;
       case "biz_approved":
         return `Tebrikler! Isletmeniz onaylandi. ${n.metadata?.bizName ? `(${n.metadata.bizName})` : ""}`.trim();
       case "biz_rejected":
@@ -947,6 +969,65 @@ function clearFilters() {
         }`.trim();
     default:
       return `${from} size bir bildirim gönderdi.`;
+  }
+}
+
+function openReport(ctx) {
+  if (!requireAuth()) return;
+  setReportCtx(ctx || null);
+  setReportReason("");
+}
+
+async function submitReport() {
+  if (!reportCtx) return;
+  const reason = String(reportReason || "").trim();
+  if (!reason) {
+    alert("Şikayet sebebi zorunludur.");
+    return;
+  }
+
+  const payload = {
+    id: uid(),
+    created_at: new Date().toISOString(),
+    reporter_id: user?.id || null,
+    reporter_username: user?.username || "",
+    target_type: reportCtx.type || "",
+    target_id: String(reportCtx.targetId || ""),
+    target_owner: reportCtx.targetOwner || "",
+    target_label: reportCtx.targetLabel || "",
+    reason,
+    status: "open",
+  };
+
+  try {
+    if (supabase?.from) {
+      const { error } = await supabase.from("reports").insert(payload);
+      if (error) throw error;
+    }
+    setReports((prev) => [payload, ...(prev || [])]);
+
+    (DEFAULT_ADMINS || []).forEach((adminU) => {
+      if (!adminU) return;
+      notifications.createNotification?.({
+        type: "report",
+        fromUsername: user?.username || "user",
+        toUsername: adminU,
+        postId: null,
+        commentId: null,
+        metadata: {
+          targetType: reportCtx.type || "",
+          targetId: String(reportCtx.targetId || ""),
+          reason,
+        },
+      });
+    });
+
+    alert("Bildirim alındı. İnceleme için yönlendirildi.");
+    setReportCtx(null);
+    setReportReason("");
+  } catch (e) {
+    console.warn("report submit error:", e);
+    alert("Şikayet gönderilemedi. Lütfen tekrar dene.");
   }
 }
 
@@ -1081,6 +1162,7 @@ return (
     openCall={openCall}
     messages={messages}
     apptsForBiz={apptsForBiz}
+    onReportBiz={openReport}
   />
 )}
 
@@ -1121,6 +1203,7 @@ return (
                 approvedBiz={approvedBiz}
                 users={users}
                 appts={appts}
+                reports={reports}
                 user={user}
                 business={business}
                 profile={profile}
@@ -1157,6 +1240,7 @@ return (
             users={users}
             pickHubMedia={hub.pickHubMedia}
             hubShare={hub.hubShare}
+            onReportPost={openReport}
           />
         )}
 
@@ -1435,7 +1519,43 @@ return (
         openDirections={openDirections}
         openCall={openCall}
         onEditUser={userManagement.openEditUser}
+        onReport={openReport}
       />
+
+      {/* REPORT MODAL */}
+      <Modal
+        ui={ui}
+        open={!!reportCtx}
+        title="Şikayet Et"
+        onClose={() => {
+          setReportCtx(null);
+          setReportReason("");
+        }}
+        width={620}
+      >
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ color: ui.muted, fontSize: 13 }}>
+            Raporlanan:{" "}
+            <b style={{ color: ui.text }}>
+              {reportCtx?.targetLabel || reportCtx?.targetOwner || reportCtx?.targetId || "-"}
+            </b>
+          </div>
+          <textarea
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            placeholder="Şikayet sebebini yazın (zorunlu)..."
+            style={inputStyle(ui, { minHeight: 120, resize: "vertical" })}
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <Button ui={ui} onClick={() => { setReportCtx(null); setReportReason(""); }}>
+              Vazgeç
+            </Button>
+            <Button ui={ui} variant="danger" onClick={submitReport}>
+              Gönder
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* SETTINGS MODAL */}
       <SettingsModal

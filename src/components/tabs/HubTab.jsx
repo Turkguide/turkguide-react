@@ -14,6 +14,7 @@ export function HubTab({
   users,
   pickHubMedia,
   hubShare,
+  onReportPost,
 }) {
   function renderTextWithHashtags(text) {
     const value = String(text || "");
@@ -380,6 +381,31 @@ export function HubTab({
                                         }}
                                       >
                                         🗑️ Sil
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                          e.stopPropagation();
+                                          onReportPost?.({
+                                            type: "hub_post",
+                                            targetId: p.id,
+                                            targetOwner: p.byUsername || "",
+                                            targetLabel: String(p.content || "").slice(0, 120),
+                                          });
+                                          hub.setPostMenuOpenId(null);
+                                        }}
+                                        style={{
+                                          width: "100%",
+                                          padding: "10px 12px",
+                                          textAlign: "left",
+                                          border: "none",
+                                          background: "transparent",
+                                          color: ui.text,
+                                          cursor: "pointer",
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        🚩 Bildir
                                       </button>
                                     </>
                                   )}

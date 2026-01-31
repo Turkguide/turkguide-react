@@ -45,6 +45,7 @@ export function AdminPanel({
   approvedBiz,
   users,
   appts,
+  reports,
   user: currentUser,
   business,
   profile,
@@ -59,6 +60,7 @@ export function AdminPanel({
   const safeUsers = Array.isArray(users) ? users : [];
   const safeAppts = Array.isArray(appts) ? appts : [];
   const safeLogs = Array.isArray(adminLog) ? adminLog : [];
+  const safeReports = Array.isArray(reports) ? reports : [];
 
   const [activeSection, setActiveSection] = useState("dashboard");
   const [appQuery, setAppQuery] = useState("");
@@ -66,12 +68,14 @@ export function AdminPanel({
   const [userQuery, setUserQuery] = useState("");
   const [apptQuery, setApptQuery] = useState("");
   const [logQuery, setLogQuery] = useState("");
+  const [reportQuery, setReportQuery] = useState("");
 
   const [appsPage, setAppsPage] = useState(1);
   const [bizPage, setBizPage] = useState(1);
   const [usersPage, setUsersPage] = useState(1);
   const [apptsPage, setApptsPage] = useState(1);
   const [logsPage, setLogsPage] = useState(1);
+  const [reportsPage, setReportsPage] = useState(1);
 
   const appsFiltered = useMemo(() => {
     const q = appQuery.trim().toLowerCase();
@@ -143,12 +147,26 @@ export function AdminPanel({
     );
   }, [safeLogs, logQuery]);
 
+  const reportsFiltered = useMemo(() => {
+    const q = reportQuery.trim().toLowerCase();
+    if (!q) return safeReports;
+    return safeReports.filter(
+      (r) =>
+        String(r.reporterUsername || "").toLowerCase().includes(q) ||
+        String(r.reason || "").toLowerCase().includes(q) ||
+        String(r.targetOwner || "").toLowerCase().includes(q) ||
+        String(r.targetLabel || "").toLowerCase().includes(q) ||
+        String(r.targetType || "").toLowerCase().includes(q)
+    );
+  }, [safeReports, reportQuery]);
+
   const appsPageData = paginate(appsFiltered, appsPage);
   const bizPageData = paginate(bizFiltered, bizPage);
   const usersPageData = paginate(usersFiltered, usersPage);
   const apptsPageData = paginate(apptsFiltered, apptsPage);
   const apptsSummaryPage = paginate(apptsSummary, apptsPage);
   const logsPageData = paginate(logsFiltered, logsPage);
+  const reportsPageData = paginate(reportsFiltered, reportsPage);
 
   const [selectedBizId, setSelectedBizId] = useState("");
   const selectedBiz = safeBiz.find((b) => String(b.id) === String(selectedBizId)) || null;
@@ -184,6 +202,7 @@ export function AdminPanel({
               ["İşletmeler", "businesses"],
               ["Randevular", "appointments"],
               ["Kullanıcılar", "users"],
+              ["Kötüye Kullanım", "reports"],
               ["Loglar", "logs"],
             ].map(([label, targetId]) => (
               <button
@@ -604,6 +623,76 @@ export function AdminPanel({
                   pages={logsPageData.pages}
                   onPrev={() => setLogsPage((p) => Math.max(1, p - 1))}
                   onNext={() => setLogsPage((p) => Math.min(logsPageData.pages, p + 1))}
+                />
+              </>
+            )}
+          </Card>
+          ) : null}
+
+          {activeSection === "reports" ? (
+          <Card ui={ui} id="admin-reports">
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 950 }}>Kötüye Kullanım</div>
+                <div style={{ color: ui.muted, marginTop: 4 }}>Kullanıcı bildirimleri</div>
+              </div>
+              <input
+                value={reportQuery}
+                onChange={(e) => {
+                  setReportQuery(e.target.value);
+                  setReportsPage(1);
+                }}
+                placeholder="Bildirim ara..."
+                style={inputStyle(ui, { minWidth: 220 })}
+              />
+            </div>
+            {reportsPageData.total === 0 ? (
+              <div style={{ color: ui.muted, marginTop: 12 }}>Bildirim bulunamadı.</div>
+            ) : (
+              <>
+                <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                  {reportsPageData.items.map((r) => {
+                    const typeLabel =
+                      r.targetType === "hub_post"
+                        ? "Hub Paylaşımı"
+                        : r.targetType === "user_profile"
+                        ? "Kullanıcı"
+                        : r.targetType === "business_profile" || r.targetType === "business"
+                        ? "İşletme"
+                        : "Diğer";
+                    return (
+                      <div
+                        key={r.id}
+                        style={{
+                          border: `1px solid ${ui.border}`,
+                          borderRadius: 16,
+                          padding: 12,
+                          background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                          <div>
+                            <div style={{ fontWeight: 950 }}>{typeLabel}</div>
+                            <div style={{ color: ui.muted, marginTop: 4, fontSize: 12 }}>
+                              Raporlayan: @{r.reporterUsername || "-"}
+                            </div>
+                            <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
+                              Hedef: {r.targetLabel || r.targetOwner || r.targetId || "-"}
+                            </div>
+                          </div>
+                          <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(r.createdAt)}</div>
+                        </div>
+                        <div style={{ marginTop: 8, color: ui.text }}>{r.reason || "-"}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Pagination
+                  ui={ui}
+                  page={reportsPageData.page}
+                  pages={reportsPageData.pages}
+                  onPrev={() => setReportsPage((p) => Math.max(1, p - 1))}
+                  onNext={() => setReportsPage((p) => Math.min(reportsPageData.pages, p + 1))}
                 />
               </>
             )}

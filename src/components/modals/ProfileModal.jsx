@@ -14,6 +14,7 @@ export function ProfileModal({
   openDirections,
   openCall,
   onEditUser,
+  onReport,
 }) {
   if (!open || !profileData) return null;
 
@@ -41,6 +42,30 @@ export function ProfileModal({
                 </div>
               ) : null}
             </div>
+            {normalizeUsername(user?.username) !== normalizeUsername(profileData.user.username) ? (
+              <Button
+                ui={ui}
+                variant="blue"
+                onClick={() =>
+                  onReport?.({
+                    type: "user_profile",
+                    targetId: profileData.user.id,
+                    targetOwner: profileData.user.username || "",
+                    targetLabel: `@${profileData.user.username || ""}`,
+                  })
+                }
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  boxShadow: "none",
+                  padding: "8px 12px",
+                  fontWeight: 900,
+                  color: ui.text,
+                }}
+              >
+                🚩 Bildir
+              </Button>
+            ) : null}
           </div>
 
           <div style={{ display: "grid", gap: 4, color: ui.muted2, fontSize: 12 }}>
@@ -91,24 +116,26 @@ export function ProfileModal({
                 ) : null}
               </>
             ) : (
-              <Button
-                ui={ui}
-                variant="blue"
-                onClick={() => {
-                  const opened = messages.openDmToUser(profileData.user.username);
-                  if (opened) onClose();
-                }}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  boxShadow: "none",
-                  padding: "8px 12px",
-                  fontWeight: 900,
-                  color: ui.text,
-                }}
-              >
-                💬 Mesaj Gönder
-              </Button>
+              <>
+                <Button
+                  ui={ui}
+                  variant="blue"
+                  onClick={() => {
+                    const opened = messages.openDmToUser(profileData.user.username);
+                    if (opened) onClose();
+                  }}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    boxShadow: "none",
+                    padding: "8px 12px",
+                    fontWeight: 900,
+                    color: ui.text,
+                  }}
+                >
+                  💬 Mesaj Gönder
+                </Button>
+              </>
             )}
           </div>
 
@@ -241,6 +268,22 @@ export function ProfileModal({
                   >
                     <span style={icon}>💬</span>
                     <span style={{ fontSize: 13 }}>Mesaj</span>
+                  </button>
+                  <button
+                    type="button"
+                    style={act}
+                    onClick={() =>
+                      onReport?.({
+                        type: "business_profile",
+                        targetId: profileData.biz.id,
+                        targetOwner: profileData.biz.ownerUsername || "",
+                        targetLabel: profileData.biz.name || "",
+                      })
+                    }
+                    title="Bildir"
+                  >
+                    <span style={icon}>🚩</span>
+                    <span style={{ fontSize: 13 }}>Bildir</span>
                   </button>
                 </>
               );

@@ -22,6 +22,7 @@ export function BusinessTab({
   openCall,
   messages,
   apptsForBiz,
+  onReportBiz,
 }) {
   return (
     <>
@@ -141,14 +142,32 @@ export function BusinessTab({
                         </div>
                       </div>
 
-                      {canEditAvatar ? (
-                        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                          <BizAvatarInput onBase64={(b64) => setBizAvatar(b.id, b64)} />
-                          <Button ui={ui} variant="blue" onClick={() => bizAvatarPicker.pick()}>
-                            🖼️ İşletme Foto
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        {canEditAvatar ? (
+                          <>
+                            <BizAvatarInput onBase64={(b64) => setBizAvatar(b.id, b64)} />
+                            <Button ui={ui} variant="blue" onClick={() => bizAvatarPicker.pick()}>
+                              🖼️ İşletme Foto
+                            </Button>
+                          </>
+                        ) : null}
+                        {!canEditAvatar ? (
+                          <Button
+                            ui={ui}
+                            onClick={() =>
+                              onReportBiz?.({
+                                type: "business",
+                                targetId: b.id,
+                                targetOwner: b.ownerUsername || "",
+                                targetLabel: b.name || "",
+                              })
+                            }
+                            style={{ background: "transparent", boxShadow: "none" }}
+                          >
+                            🚩 Bildir
                           </Button>
-                        </div>
-                      ) : null}
+                        ) : null}
+                      </div>
                     </div>
 
                     {b.desc ? <div style={{ marginTop: 12, color: ui.muted }}>{b.desc}</div> : null}
