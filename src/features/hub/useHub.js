@@ -6,7 +6,7 @@ import { normalizeImageToFotograf, validateAndLoadVideo } from "../../services/m
 /**
  * Hook for HUB operations
  */
-export function useHub({ user, setPosts, posts, requireAuth, createNotification }) {
+export function useHub({ user, setPosts, posts, requireAuth, createNotification, syncRef }) {
   const isDev = import.meta.env.DEV;
   const [composer, setComposer] = useState("");
   const [commentDraft, setCommentDraft] = useState({});
@@ -247,6 +247,10 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
       : [...likedBy, user.username];
 
     const nextLikes = Math.max(0, Number(target.likes || 0) + (hasLiked ? -1 : 1));
+
+    if (syncRef?.current) {
+      syncRef.current.pauseUntil = Date.now() + 800;
+    }
 
     // Optimistic UI
     setPosts((prev) =>
@@ -597,6 +601,10 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
 
     const ok = confirm("Bu paylaşımı silmek istiyor musun?");
     if (!ok) return;
+
+    if (syncRef?.current) {
+      syncRef.current.pauseUntil = Date.now() + 800;
+    }
 
     // Optimistic UI
     setPosts((prev) => prev.filter((x) => x.id !== postId));

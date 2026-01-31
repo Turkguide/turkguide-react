@@ -766,12 +766,14 @@ useEffect(() => {
   }, [isMobile, business?.showBizApply]);
 
   // HUB functions from hook
+  const hubSyncRef = useRef({ pauseUntil: 0 });
   const hub = useHub({
     user,
     setPosts,
     posts,
     requireAuth,
     createNotification: notifications.createNotification,
+    syncRef: hubSyncRef,
   });
 
   // 🔄 Fetch + Realtime subscribe when HUB tab becomes active
@@ -794,6 +796,9 @@ useEffect(() => {
             "postgres_changes",
             { event: "*", schema: "public", table: "hub_posts" },
             () => {
+              if (hubSyncRef.current?.pauseUntil && Date.now() < hubSyncRef.current.pauseUntil) {
+                return;
+              }
               // keep it simple: re-fetch latest
               Promise.resolve(hub.fetchHubPosts()).catch((e) =>
                 console.error("fetchHubPosts error:", e)
