@@ -986,10 +986,22 @@ async function submitReport() {
     return;
   }
 
+  let reporterId = user?.id || null;
+  if (!reporterId && supabase?.auth?.getSession) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      reporterId = data?.session?.user?.id || null;
+    } catch (_) {}
+  }
+  if (!reporterId) {
+    alert("Oturum bulunamadı. Lütfen çıkış yapıp tekrar giriş yap.");
+    return;
+  }
+
   const payload = {
     id: uid(),
     created_at: new Date().toISOString(),
-    reporter_id: user?.id || null,
+    reporter_id: reporterId,
     reporter_username: user?.username || "",
     target_type: reportCtx.type || "",
     target_id: String(reportCtx.targetId || ""),
@@ -1027,7 +1039,8 @@ async function submitReport() {
     setReportReason("");
   } catch (e) {
     console.warn("report submit error:", e);
-    alert("Şikayet gönderilemedi. Lütfen tekrar dene.");
+    const msg = String(e?.message || e || "");
+    alert("Şikayet gönderilemedi. " + (msg ? msg : "Lütfen tekrar dene."));
   }
 }
 
