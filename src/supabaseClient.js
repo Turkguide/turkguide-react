@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { supabaseAuthStorage } from "./utils/capacitorStorage";
 
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || "").trim();
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
@@ -8,7 +9,13 @@ try {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error("Supabase environment variables eksik");
   }
-  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      storage: supabaseAuthStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
   console.log("✅ SUPABASE URL:", SUPABASE_URL);
   console.log("✅ SUPABASE KEY OK:", !!SUPABASE_ANON_KEY);
 } catch (e) {

@@ -99,6 +99,9 @@ export function useAuthState() {
     ensureSeed();
     let alive = true;
     let authSub = null;
+    const bootTimeout = setTimeout(() => {
+      if (alive) setBooted(true);
+    }, 8000);
 
     // 🧹 DEV ortamında eski seed/login kalıntılarını 1 kere temizle
     if (import.meta.env.DEV && !localStorage.getItem("tg_clean_v1")) {
@@ -233,6 +236,7 @@ export function useAuthState() {
         console.error("💥 restore/auth crash:", e);
         setUser(null);
       } finally {
+        clearTimeout(bootTimeout);
         if (alive) setBooted(true);
       }
     };
@@ -241,6 +245,7 @@ export function useAuthState() {
 
     return () => {
       alive = false;
+      clearTimeout(bootTimeout);
       try {
         authSub?.unsubscribe?.();
       } catch (_) {}

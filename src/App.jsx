@@ -1391,14 +1391,31 @@ function getDmOtherUsername(message, me) {
   return message.from || "";
 }
 
-if (!booted) return null;
+if (!booted) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        width: "100%",
+        background: ui.bg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: ui.muted,
+        fontSize: 15,
+      }}
+    >
+      Yükleniyor…
+    </div>
+  );
+}
 
 return (
   <div
-    style={{
-      minHeight: "100vh",
-      width: "100%",
-      background: ui.bg,
+  style={{
+    minHeight: "100vh",
+    width: "100%",
+    background: ui.bg,
       color: ui.text,
       paddingTop: 64,
       // ✅ Sticky Bottom CTA alanı içerikle çakışmasın
