@@ -20,6 +20,23 @@ export function useNotifications({ user, booted }) {
 
     setLoading(true);
     try {
+      if (supabase?.auth?.getSession) {
+        try {
+          const { data: sData } = await supabase.auth.getSession();
+          if (!sData?.session && supabase.auth.refreshSession) {
+            await supabase.auth.refreshSession();
+          }
+          const { data: sData2 } = await supabase.auth.getSession();
+          if (!sData2?.session) {
+            setLoading(false);
+            return;
+          }
+        } catch (_) {
+          setLoading(false);
+          return;
+        }
+      }
+
       const me = normalizeUsername(user.username);
       if (!me) {
         setLoading(false);
@@ -33,6 +50,40 @@ export function useNotifications({ user, booted }) {
         .limit(100);
 
       if (error) {
+        const msg = String(error?.message || "");
+        const looksAuth =
+          error?.status === 401 ||
+          error?.status === 403 ||
+          msg.toLowerCase().includes("jwt") ||
+          msg.toLowerCase().includes("auth");
+        if (looksAuth && supabase?.auth?.refreshSession) {
+          try {
+            await supabase.auth.refreshSession();
+            const retry = await supabase
+              .from("notifications")
+              .select("*")
+              .ilike("to_username", me)
+              .order("created_at", { ascending: false })
+              .limit(100);
+            if (retry?.error) {
+              console.error("fetchNotifications error:", retry.error);
+              return;
+            }
+            const mappedRetry = (retry.data || []).map((n) => ({
+              id: n.id,
+              type: n.type,
+              fromUsername: n.from_username || "",
+              toUsername: n.to_username || "",
+              postId: n.post_id || null,
+              commentId: n.comment_id || null,
+              read: n.read || false,
+              createdAt: n.created_at ? new Date(n.created_at).getTime() : Date.now(),
+              metadata: n.metadata || {},
+            }));
+            setNotifications(mappedRetry);
+            return;
+          } catch (_) {}
+        }
         console.error("fetchNotifications error:", error);
         return;
       }

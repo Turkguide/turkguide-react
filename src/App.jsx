@@ -573,29 +573,75 @@ useEffect(() => {
   // 🔄 Fetch DMs from Supabase when user is ready
   useEffect(() => {
     if (!booted || !user || !supabase?.from) return;
-    const me = normalizeUsername(user.username);
-    if (!me) return;
+    let cancelled = false;
 
-    const ownedBizIds = (biz || [])
-      .filter((b) => normalizeUsername(b.ownerUsername) === me)
-      .map((b) => b.id)
-      .filter(Boolean);
+    async function fetchDms() {
+      const me = normalizeUsername(user.username);
+      if (!me) return;
 
-    let query = supabase
-      .from("dms")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200);
+      if (supabase?.auth?.getSession) {
+        try {
+          const { data: sData } = await supabase.auth.getSession();
+          if (!sData?.session && supabase.auth.refreshSession) {
+            await supabase.auth.refreshSession();
+          }
+          const { data: sData2 } = await supabase.auth.getSession();
+          if (!sData2?.session) return;
+        } catch (_) {
+          return;
+        }
+      }
 
-    const orParts = [`from_username.ilike.${me}`, `to_username.ilike.${me}`];
-    if (ownedBizIds.length > 0) {
-      orParts.push(`to_biz_id.in.(${ownedBizIds.join(",")})`);
-    }
+      const ownedBizIds = (biz || [])
+        .filter((b) => normalizeUsername(b.ownerUsername) === me)
+        .map((b) => b.id)
+        .filter(Boolean);
 
-    query = query.or(orParts.join(","));
+      let query = supabase
+        .from("dms")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
 
-    query.then(({ data, error }) => {
+      const orParts = [`from_username.ilike.${me}`, `to_username.ilike.${me}`];
+      if (ownedBizIds.length > 0) {
+        orParts.push(`to_biz_id.in.(${ownedBizIds.join(",")})`);
+      }
+
+      query = query.or(orParts.join(","));
+
+      const { data, error } = await query;
+      if (cancelled) return;
       if (error) {
+        const msg = String(error?.message || "");
+        const looksAuth =
+          error?.status === 401 ||
+          error?.status === 403 ||
+          msg.toLowerCase().includes("jwt") ||
+          msg.toLowerCase().includes("auth");
+        if (looksAuth && supabase?.auth?.refreshSession) {
+          try {
+            await supabase.auth.refreshSession();
+            const retry = await query;
+            if (cancelled) return;
+            if (retry?.error) {
+              console.error("fetchDms error:", retry.error);
+              return;
+            }
+            const mapped = (retry.data || []).map((m) => ({
+              id: m.id,
+              createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
+              from: m.from_username,
+              toType: m.to_type,
+              toUsername: m.to_username,
+              toBizId: m.to_biz_id,
+              text: m.text || "",
+              readBy: Array.isArray(m.read_by) ? m.read_by : [],
+            }));
+            setDms(mapped);
+            return;
+          } catch (_) {}
+        }
         console.error("fetchDms error:", error);
         return;
       }
@@ -612,7 +658,13 @@ useEffect(() => {
       }));
 
       setDms(mapped);
-    });
+    }
+
+    fetchDms();
+
+    return () => {
+      cancelled = true;
+    };
   }, [booted, user?.username, biz]);
 
   // 🔔 Realtime: DMs insert/update
