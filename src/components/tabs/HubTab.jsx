@@ -250,7 +250,7 @@ export function HubTab({
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(p.createdAt)}</span>
 
-                          {hub.canEditPost(p, admin.adminMode) ? (
+                          {(hub.canEditPost(p, admin.adminMode) || user) ? (
                             <div style={{ position: "relative" }}>
                               <button
                                 type="button"
@@ -297,7 +297,7 @@ export function HubTab({
                                     zIndex: 20,
                                   }}
                                 >
-                                  {hub.editingPostId === p.id ? (
+                                  {hub.canEditPost(p, admin.adminMode) && hub.editingPostId === p.id ? (
                                     <>
                                       <button
                                         type="button"
@@ -340,7 +340,7 @@ export function HubTab({
                                         İptal
                                       </button>
                                     </>
-                                  ) : (
+                                  ) : hub.canEditPost(p, admin.adminMode) ? (
                                     <>
                                       <button
                                         type="button"
@@ -374,7 +374,7 @@ export function HubTab({
                                           padding: "10px 12px",
                                           textAlign: "left",
                                           border: "none",
-                                          background: "transparent",
+                                        background: "transparent",
                                           color: ui.text,
                                           cursor: "pointer",
                                           fontWeight: 900,
@@ -408,6 +408,32 @@ export function HubTab({
                                         🚩 Bildir
                                       </button>
                                     </>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        onReportPost?.({
+                                          type: "hub_post",
+                                          targetId: p.id,
+                                          targetOwner: p.byUsername || "",
+                                          targetLabel: String(p.content || "").slice(0, 120),
+                                        });
+                                        hub.setPostMenuOpenId(null);
+                                      }}
+                                      style={{
+                                        width: "100%",
+                                        padding: "10px 12px",
+                                        textAlign: "left",
+                                        border: "none",
+                                        background: "transparent",
+                                        color: ui.text,
+                                        cursor: "pointer",
+                                        fontWeight: 900,
+                                      }}
+                                    >
+                                      🚩 Şikayet et / Bildir
+                                    </button>
                                   )}
                                 </div>
                               ) : null}
@@ -673,7 +699,7 @@ export function HubTab({
                                     Cevapla
                                   </button>
 
-                                  {isOwner ? (
+                                  {user ? (
                                     <div
                                       style={{
                                         marginLeft: "auto",
@@ -730,91 +756,124 @@ export function HubTab({
                                             zIndex: 50,
                                           }}
                                         >
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              hub.setEditingCommentKey(key);
-                                              hub.setEditCommentDraft(String(c.text || ""));
-                                              hub.setCommentMenuOpenKey(null);
-                                            }}
-                                            style={{
-                                              width: "100%",
-                                              textAlign: "left",
-                                              border: "none",
-                                              background: "transparent",
-                                              cursor: "pointer",
-                                              padding: "10px 10px",
-                                              borderRadius: 12,
-                                              fontWeight: 900,
-                                              color: ui.text,
-                                            }}
-                                            title="Yorumu düzenle"
-                                          >
-                                            ✏️ Düzenle
-                                          </button>
+                                          {isOwner ? (
+                                            <>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  hub.setEditingCommentKey(key);
+                                                  hub.setEditCommentDraft(String(c.text || ""));
+                                                  hub.setCommentMenuOpenKey(null);
+                                                }}
+                                                style={{
+                                                  width: "100%",
+                                                  textAlign: "left",
+                                                  border: "none",
+                                                  background: "transparent",
+                                                  cursor: "pointer",
+                                                  padding: "10px 10px",
+                                                  borderRadius: 12,
+                                                  fontWeight: 900,
+                                                  color: ui.text,
+                                                }}
+                                                title="Yorumu düzenle"
+                                              >
+                                                ✏️ Düzenle
+                                              </button>
 
-                                          <div
-                                            style={{
-                                              height: 1,
-                                              background:
-                                                ui.mode === "light"
-                                                  ? "rgba(0,0,0,0.08)"
-                                                  : "rgba(255,255,255,0.10)",
-                                              margin: "4px 6px",
-                                            }}
-                                          />
+                                              <div
+                                                style={{
+                                                  height: 1,
+                                                  background:
+                                                    ui.mode === "light"
+                                                      ? "rgba(0,0,0,0.08)"
+                                                      : "rgba(255,255,255,0.10)",
+                                                  margin: "4px 6px",
+                                                }}
+                                              />
 
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              hub.setCommentMenuOpenKey(null);
-                                              hub.deleteHubComment(p.id, c.id);
-                                            }}
-                                            style={{
-                                              width: "100%",
-                                              textAlign: "left",
-                                              border: "none",
-                                              background: "transparent",
-                                              cursor: "pointer",
-                                              padding: "10px 10px",
-                                              borderRadius: 12,
-                                              fontWeight: 900,
-                                              color: "#ff4d4f",
-                                            }}
-                                            title="Yorumu sil"
-                                          >
-                                            🗑️ Sil
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              onReportPost?.({
-                                                type: "hub_comment",
-                                                targetId: c.id,
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  hub.setCommentMenuOpenKey(null);
+                                                  hub.deleteHubComment(p.id, c.id);
+                                                }}
+                                                style={{
+                                                  width: "100%",
+                                                  textAlign: "left",
+                                                  border: "none",
+                                                  background: "transparent",
+                                                  cursor: "pointer",
+                                                  padding: "10px 10px",
+                                                  borderRadius: 12,
+                                                  fontWeight: 900,
+                                                  color: "#ff4d4f",
+                                                }}
+                                                title="Yorumu sil"
+                                              >
+                                                🗑️ Sil
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  onReportPost?.({
+                                                    type: "hub_comment",
+                                                    targetId: c.id,
+                                                    targetParentId: p.id,
+                                                    targetOwner: c.byUsername || "",
+                                                    targetLabel: String(c.text || "").slice(0, 120),
+                                                  });
+                                                  hub.setCommentMenuOpenKey(null);
+                                                }}
+                                                style={{
+                                                  width: "100%",
+                                                  textAlign: "left",
+                                                  border: "none",
+                                                  background: "transparent",
+                                                  cursor: "pointer",
+                                                  padding: "10px 10px",
+                                                  borderRadius: 12,
+                                                  fontWeight: 900,
+                                                  color: ui.text,
+                                                }}
+                                                title="Yorumu bildir"
+                                              >
+                                                🚩 Bildir
+                                              </button>
+                                            </>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                onReportPost?.({
+                                                  type: "hub_comment",
+                                                  targetId: c.id,
                                                   targetParentId: p.id,
-                                                targetOwner: c.byUsername || "",
-                                                targetLabel: String(c.text || "").slice(0, 120),
-                                              });
-                                              hub.setCommentMenuOpenKey(null);
-                                            }}
-                                            style={{
-                                              width: "100%",
-                                              textAlign: "left",
-                                              border: "none",
-                                              background: "transparent",
-                                              cursor: "pointer",
-                                              padding: "10px 10px",
-                                              borderRadius: 12,
-                                              fontWeight: 900,
-                                              color: ui.text,
-                                            }}
-                                            title="Yorumu bildir"
-                                          >
-                                            🚩 Bildir
-                                          </button>
+                                                  targetOwner: c.byUsername || "",
+                                                  targetLabel: String(c.text || "").slice(0, 120),
+                                                });
+                                                hub.setCommentMenuOpenKey(null);
+                                              }}
+                                              style={{
+                                                width: "100%",
+                                                textAlign: "left",
+                                                border: "none",
+                                                background: "transparent",
+                                                cursor: "pointer",
+                                                padding: "10px 10px",
+                                                borderRadius: 12,
+                                                fontWeight: 900,
+                                                color: ui.text,
+                                              }}
+                                              title="Yorumu bildir"
+                                            >
+                                              🚩 Şikayet et / Bildir
+                                            </button>
+                                          )}
                                         </div>
                                       ) : null}
                                     </div>

@@ -143,12 +143,17 @@ export function useAuthState() {
         }
         if (session?.user) {
           const md = session.user.user_metadata || {};
-          // İlk yüklemede DB'den terms/banned oku; requireAuth null görmeden modal açılmasın
-          const flags = await fetchProfileFlags(session.user.id);
+          // DB'den terms/banned oku; hata olursa girişi iptal etme, sadece null kullan
+          let flags = { acceptedTermsAt: null, bannedAt: null };
+          try {
+            flags = await fetchProfileFlags(session.user.id) || flags;
+          } catch (flagErr) {
+            console.warn("fetchProfileFlags restore:", flagErr);
+          }
           if (!alive) return;
           const nextUser = {
             id: session.user.id,
-            email: session.user.email,
+            email: session.user.email ?? null,
             username: md.username ?? null,
             avatar: md.avatar ?? "",
             Tier: md.tier ?? md.Tier ?? null,
@@ -178,35 +183,48 @@ export function useAuthState() {
         // 2) Auth listener (login/logout/refresh değişimlerinde state güncelle)
         const { data: subData } = supabase.auth.onAuthStateChange((_event, s) => {
           if (!alive) return;
-
-          if (s?.user) {
-            const md = s.user.user_metadata || {};
-            const nextUser = {
-              id: s.user.id,
-              email: s.user.email,
-              username: md.username ?? null,
-              avatar: md.avatar ?? "",
-              Tier: md.tier ?? md.Tier ?? null,
-              XP: Number(md.xp ?? md.XP ?? 0),
-              createdAt: md.createdAt ?? null,
-              age: md.age ?? "",
-              city: md.city ?? "",
-              state: md.state ?? "",
-              country: md.country ?? "",
-              bio: md.bio ?? "",
-              emailConfirmedAt: s.user.email_confirmed_at ?? s.user.confirmed_at ?? null,
-              emailVerified:
-                !!(s.user.email_confirmed_at ?? s.user.confirmed_at) && !s.user.new_email,
-              newEmailPending: s.user.new_email ?? null,
-              acceptedTermsAt: null,
-              bannedAt: null,
-            };
-            applyProfileFlags(nextUser);
-            setUser(nextUser);
-            syncPublicProfile(nextUser);
-            hydrateProfileFlags(nextUser);
-          } else {
-            setUser(null);
+          try {
+            if (s?.user) {
+              const md = s.user.user_metadata || {};
+              const nextUser = {
+                id: s.user.id,
+                email: s.user.email ?? null,
+                username: md.username ?? null,
+                avatar: md.avatar ?? "",
+                Tier: md.tier ?? md.Tier ?? null,
+                XP: Number(md.xp ?? md.XP ?? 0),
+                createdAt: md.createdAt ?? null,
+                age: md.age ?? "",
+                city: md.city ?? "",
+                state: md.state ?? "",
+                country: md.country ?? "",
+                bio: md.bio ?? "",
+                emailConfirmedAt: s.user.email_confirmed_at ?? s.user.confirmed_at ?? null,
+                emailVerified:
+                  !!(s.user.email_confirmed_at ?? s.user.confirmed_at) && !s.user.new_email,
+                newEmailPending: s.user.new_email ?? null,
+                acceptedTermsAt: null,
+                bannedAt: null,
+              };
+              applyProfileFlags(nextUser);
+              setUser(nextUser);
+              syncPublicProfile(nextUser);
+              hydrateProfileFlags(nextUser);
+            } else {
+              setUser(null);
+            }
+          } catch (e) {
+            console.error("💥 onAuthStateChange handler:", e);
+            if (s?.user) {
+              setUser({
+                id: s.user.id,
+                email: s.user.email ?? null,
+                username: s.user.user_metadata?.username ?? null,
+                avatar: s.user.user_metadata?.avatar ?? "",
+                acceptedTermsAt: null,
+                bannedAt: null,
+              });
+            } else setUser(null);
           }
         });
 
