@@ -48,3 +48,28 @@ create policy "reports_admin_delete"
 on public.reports for delete
 to authenticated
 using ((select role from public.profiles p where p.id = auth.uid()) = 'admin');
+
+-- RPC: reporter_id sunucuda auth.uid() ile set edilir; user/admin ayrımı yok, JWT kim ise o yazar.
+create or replace function public.insert_report(
+  p_reporter_username text,
+  p_target_type text,
+  p_target_id text,
+  p_target_owner text,
+  p_target_label text,
+  p_reason text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+begin
+  insert into public.reports (reporter_id, reporter_username, target_type, target_id, target_owner, target_label, reason, status)
+  values (auth.uid(), coalesce(p_reporter_username,''), p_target_type, p_target_id, coalesce(p_target_owner,''), coalesce(p_target_label,''), p_reason, 'open')
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+grant execute on function public.insert_report(text, text, text, text, text, text) to authenticated;

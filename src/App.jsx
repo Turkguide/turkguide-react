@@ -1146,29 +1146,22 @@ async function submitReport() {
     status: "open",
   };
 
-  // Insert payload: only columns that exist in public.reports (report_policies.sql)
-  const insertPayload = {
-    reporter_id: payload.reporter_id,
-    reporter_username: payload.reporter_username,
-    target_type: payload.target_type,
-    target_id: payload.target_id,
-    target_owner: payload.target_owner,
-    target_label: payload.target_label,
-    reason: payload.reason,
-    status: payload.status,
-  };
-
   try {
     if (!supabase?.from) throw new Error("Bağlantı yok.");
-    const { data: insertedRow, error } = await supabase
-      .from("reports")
-      .insert(insertPayload)
-      .select("id, created_at")
-      .single();
-    if (error) throw error;
-    const createdAt = insertedRow?.created_at ? new Date(insertedRow.created_at).getTime() : Date.now();
+    // RPC ile insert: reporter_id sunucuda auth.uid() ile set edilir, user/admin aynı şekilde çalışır
+    const { data: newId, error: rpcError } = await supabase.rpc("insert_report", {
+      p_reporter_username: payload.reporter_username,
+      p_target_type: payload.target_type,
+      p_target_id: payload.target_id,
+      p_target_owner: payload.target_owner,
+      p_target_label: payload.target_label,
+      p_reason: payload.reason,
+    });
+    if (rpcError) throw rpcError;
+    const insertedId = newId ?? payload.id;
+    const createdAt = Date.now();
     const reportItem = {
-      id: insertedRow?.id ?? payload.id,
+      id: insertedId,
       createdAt,
       reporterId: payload.reporter_id,
       reporterUsername: payload.reporter_username,
