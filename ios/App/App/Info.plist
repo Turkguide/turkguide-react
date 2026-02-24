@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>TurkGuide</string>
+	<string>TurkGuide</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -44,6 +44,12 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+	<!-- App Store / TestFlight: Export compliance - only standard HTTPS (Supabase) -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- iPad: single window (recommended for Capacitor webview apps) -->
+	<key>UIRequiresFullScreen</key>
 	<true/>
 </dict>
 </plist>

@@ -1127,46 +1127,42 @@ async function submitReport() {
     status: "open",
   };
 
+  // Insert payload: only columns that exist in public.reports (report_policies.sql)
+  const insertPayload = {
+    reporter_id: payload.reporter_id,
+    reporter_username: payload.reporter_username,
+    target_type: payload.target_type,
+    target_id: payload.target_id,
+    target_owner: payload.target_owner,
+    target_label: payload.target_label,
+    reason: payload.reason,
+    status: payload.status,
+  };
+
   try {
-    if (supabase?.from) {
-      let inserted = false;
-      try {
-        const { error } = await supabase.from("reports").insert(payload);
-        if (error) throw error;
-        inserted = true;
-      } catch (e) {
-        const msg = String(e?.message || e || "");
-        const looksColumnError =
-          msg.toLowerCase().includes("column") ||
-          msg.toLowerCase().includes("does not exist") ||
-          msg.toLowerCase().includes("unknown");
-        if (looksColumnError) {
-          const fallbackPayload = {
-            id: payload.id,
-            created_at: payload.created_at,
-            reporter_id: payload.reporter_id,
-            reporter_username: payload.reporter_username,
-            target_type: payload.target_type,
-            target_id: payload.target_id,
-            target_owner: payload.target_owner,
-            target_label: payload.target_label,
-            reason: payload.reason,
-            status: payload.status,
-          };
-          const { error: fallbackError } = await supabase
-            .from("reports")
-            .insert(fallbackPayload);
-          if (fallbackError) throw fallbackError;
-          inserted = true;
-        } else {
-          throw e;
-        }
-      }
-      if (!inserted) {
-        throw new Error("Report insert başarısız.");
-      }
-    }
-    setReports((prev) => [payload, ...(prev || [])]);
+    if (!supabase?.from) throw new Error("Bağlantı yok.");
+    const { data: insertedRow, error } = await supabase
+      .from("reports")
+      .insert(insertPayload)
+      .select("id, created_at")
+      .single();
+    if (error) throw error;
+    const createdAt = insertedRow?.created_at ? new Date(insertedRow.created_at).getTime() : Date.now();
+    const reportItem = {
+      id: insertedRow?.id ?? payload.id,
+      createdAt,
+      reporterId: payload.reporter_id,
+      reporterUsername: payload.reporter_username,
+      targetType: payload.target_type,
+      targetId: payload.target_id,
+      targetParentId: payload.target_parent_id || "",
+      targetOwner: payload.target_owner,
+      targetOwnerId: payload.target_owner_id || "",
+      targetLabel: payload.target_label,
+      reason: payload.reason,
+      status: payload.status,
+    };
+    setReports((prev) => [reportItem, ...(prev || [])]);
 
     // Hide reported content locally for reporter
     if (reportCtx.type === "hub_post") {
@@ -1220,48 +1216,59 @@ async function submitReport() {
   }
 }
 
+/**
+ * Accept terms and persist to DB. Returns true if saved successfully (so UI can close modal).
+ */
 async function acceptTerms() {
-  if (!supabase?.from || !supabase?.auth?.getSession) return;
+  if (!supabase?.from || !supabase?.auth?.getSession) return false;
   let userId = user?.id || null;
   try {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      console.error("acceptTerms session error:", sessionError);
-    }
+    if (sessionError) console.error("acceptTerms session error:", sessionError);
     userId = userId || sessionData?.session?.user?.id || null;
     if (!userId) {
       alert("Oturum bulunamadı. Lütfen tekrar giriş yap.");
-      return;
+      return false;
     }
 
     const acceptedAt = new Date().toISOString();
 
-    // Prefer users table if exists, fallback to profiles
-    let usersUpdated = false;
+    // Primary: profiles (source of truth for accepted_terms_at in this app)
+    let updated = false;
     try {
-      const { error: usersError } = await supabase
-        .from("users")
-        .update({ termsAccepted: true, accepted_terms_at: acceptedAt })
-        .eq("id", userId);
-      if (usersError) throw usersError;
-      usersUpdated = true;
-    } catch (e) {
-      console.error("acceptTerms users update error:", e);
-    }
-
-    if (!usersUpdated) {
       const { error: profilesError } = await supabase
         .from("profiles")
         .update({ accepted_terms_at: acceptedAt })
         .eq("id", userId);
-      if (profilesError) throw profilesError;
+      if (!profilesError) updated = true;
+    } catch (e) {
+      console.warn("acceptTerms profiles update:", e);
+    }
+
+    if (!updated) {
+      try {
+        const { error: usersError } = await supabase
+          .from("users")
+          .update({ termsAccepted: true, accepted_terms_at: acceptedAt })
+          .eq("id", userId);
+        if (!usersError) updated = true;
+      } catch (e) {
+        console.warn("acceptTerms users update:", e);
+      }
+    }
+
+    if (!updated) {
+      alert("Kabul kaydedilemedi. Lütfen tekrar deneyin veya çıkış yapıp giriş yapın.");
+      return false;
     }
 
     setUser((prev) => (prev ? { ...prev, acceptedTermsAt: acceptedAt } : prev));
     alert("Kullanım Şartları kabul edildi.");
+    return true;
   } catch (e) {
     console.error("acceptTerms error:", e);
     alert("Kabul işlemi başarısız oldu.");
+    return false;
   }
 }
 
@@ -1276,6 +1283,48 @@ async function blockUser(targetUser) {
     });
     if (error) throw error;
     setBlockedUsernames((prev) => Array.from(new Set([...(prev || []), targetUser.username])));
+
+    // Notify developer (Apple Guideline 1.2: blocking must notify developer of inappropriate content)
+    const reportPayload = {
+      reporter_id: user.id,
+      reporter_username: user.username || "",
+      target_type: "user_block",
+      target_id: String(targetUser.id),
+      target_owner: targetUser.username || "",
+      target_label: "User blocked (reported as abusive/inappropriate)",
+      reason: "Blocked by user; developer notified for review.",
+      status: "open",
+    };
+    try {
+      const { data: reportRow, error: reportErr } = await supabase
+        .from("reports")
+        .insert(reportPayload)
+        .select("id, created_at")
+        .single();
+      if (!reportErr && reportRow) {
+        const createdAt = reportRow.created_at ? new Date(reportRow.created_at).getTime() : Date.now();
+        setReports((prev) => [
+          {
+            id: reportRow.id,
+            createdAt,
+            reporterId: reportPayload.reporter_id,
+            reporterUsername: reportPayload.reporter_username,
+            targetType: reportPayload.target_type,
+            targetId: reportPayload.target_id,
+            targetParentId: "",
+            targetOwner: reportPayload.target_owner,
+            targetOwnerId: "",
+            targetLabel: reportPayload.target_label,
+            reason: reportPayload.reason,
+            status: reportPayload.status,
+          },
+          ...(prev || []),
+        ]);
+      }
+    } catch (reportE) {
+      console.warn("blockUser: report insert failed", reportE);
+    }
+
     alert("Kullanıcı engellendi.");
   } catch (e) {
     console.warn("blockUser error:", e);
@@ -1873,8 +1922,8 @@ return (
               variant="ok"
               disabled={!termsChecked}
               onClick={async () => {
-                await acceptTerms();
-                setShowTermsGate(false);
+                const ok = await acceptTerms();
+                if (ok) setShowTermsGate(false);
               }}
             >
               Accept

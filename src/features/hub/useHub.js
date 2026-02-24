@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { supabase } from "../../supabaseClient";
 import { now, uid, normalizeUsername } from "../../utils/helpers";
 import { normalizeImageToFotograf, validateAndLoadVideo } from "../../services/media";
+import { containsBlockedContent } from "../../utils/contentFilter";
 
 /**
  * Hook for HUB operations
@@ -171,6 +172,10 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
       alert("Paylaşım boş olamaz.");
       return;
     }
+    if (containsBlockedContent(text)) {
+      alert("Bu içerik topluluk kurallarına aykırı. Lütfen paylaşımınızı düzenleyin.");
+      return;
+    }
 
     const stamp = now();
 
@@ -334,6 +339,10 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
       ? String(replyDraft || "").trim()
       : String(commentDraft[postId] || "").trim();
     if (!text) return;
+    if (containsBlockedContent(text)) {
+      alert("Bu içerik topluluk kurallarına aykırı. Lütfen yorumunuzu düzenleyin.");
+      return;
+    }
 
     let commentId = uid();
     try {
@@ -593,6 +602,10 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
 
     if (!text && !target.media) {
       alert("İçerik boş olamaz.");
+      return;
+    }
+    if (text && containsBlockedContent(text)) {
+      alert("Bu içerik topluluk kurallarına aykırı. Lütfen paylaşımınızı düzenleyin.");
       return;
     }
 

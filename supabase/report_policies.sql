@@ -1,5 +1,9 @@
 -- Reports table and RLS policies
 -- Run in Supabase SQL editor
+-- Admin users must have role = 'admin' in public.profiles to see reports (reports_admin_select).
+
+-- Ensure profiles has role column (required for admin reports RLS)
+alter table public.profiles add column if not exists role text default 'user';
 
 -- Table
 create table if not exists public.reports (
