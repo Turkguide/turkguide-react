@@ -1085,8 +1085,42 @@ async function submitReport() {
 
   try {
     if (supabase?.from) {
-      const { error } = await supabase.from("reports").insert(payload);
-      if (error) throw error;
+      let inserted = false;
+      try {
+        const { error } = await supabase.from("reports").insert(payload);
+        if (error) throw error;
+        inserted = true;
+      } catch (e) {
+        const msg = String(e?.message || e || "");
+        const looksColumnError =
+          msg.toLowerCase().includes("column") ||
+          msg.toLowerCase().includes("does not exist") ||
+          msg.toLowerCase().includes("unknown");
+        if (looksColumnError) {
+          const fallbackPayload = {
+            id: payload.id,
+            created_at: payload.created_at,
+            reporter_id: payload.reporter_id,
+            reporter_username: payload.reporter_username,
+            target_type: payload.target_type,
+            target_id: payload.target_id,
+            target_owner: payload.target_owner,
+            target_label: payload.target_label,
+            reason: payload.reason,
+            status: payload.status,
+          };
+          const { error: fallbackError } = await supabase
+            .from("reports")
+            .insert(fallbackPayload);
+          if (fallbackError) throw fallbackError;
+          inserted = true;
+        } else {
+          throw e;
+        }
+      }
+      if (!inserted) {
+        throw new Error("Report insert başarısız.");
+      }
     }
     setReports((prev) => [payload, ...(prev || [])]);
 
