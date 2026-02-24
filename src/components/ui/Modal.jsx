@@ -64,7 +64,7 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
         zIndex,
         touchAction: "manipulation",
       }}
-      onMouseDown={onClose}
+      onClick={onClose}
     >
       <div
         style={{
@@ -95,7 +95,7 @@ export function Modal({ ui, open, title, onClose, children, width = 860, zIndex 
             : 16,
           color: ui.text,
         }}
-        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flex: "0 0 auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>

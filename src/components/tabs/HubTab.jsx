@@ -11,7 +11,7 @@ export function HubTab({
   setShowAuth,
   profile,
   admin,
-  users,
+  users: _users,
   pickHubMedia,
   hubShare,
   onReportPost,
@@ -250,7 +250,9 @@ export function HubTab({
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(p.createdAt)}</span>
 
-                          {(hub?.canEditPost?.(p, admin?.adminMode) || true) ? (
+                          {(() => {
+                            const canShowMenu = !!hub;
+                            return canShowMenu ? (
                             <div style={{ position: "relative" }}>
                               <button
                                 type="button"
@@ -475,12 +477,13 @@ export function HubTab({
                                 </div>
                               ) : null}
                             </div>
-                          ) : null}
+                            ) : null;
+                          })()}
                         </div>
                       </div>
 
                       {/* body */}
-                      {hub.editingPostId === p.id ? (
+                      {hub?.editingPostId === p.id ? (
                         <textarea
                           value={hub.editPostDraft}
                           onChange={(e) => hub.setEditPostDraft(e.target.value)}
@@ -736,7 +739,7 @@ export function HubTab({
                                     Cevapla
                                   </button>
 
-                                  {true ? (
+                                  {hub ? (
                                     <div
                                       style={{
                                         marginLeft: "auto",

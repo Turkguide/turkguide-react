@@ -110,7 +110,8 @@ export function useAdmin({ user, booted, isDev = false }) {
         action: r.action || "-",
         payload: r.payload || {},
       }));
-      setAdminLog(mapped);
+      // Sunucu boş dönerse mevcut (local) logları silme; sadece veri gelirse güncelle
+      if (mapped.length > 0) setAdminLog(mapped);
     } catch (e) {
       console.warn("admin_logs fetch error:", e);
     }

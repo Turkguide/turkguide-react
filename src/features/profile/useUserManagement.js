@@ -10,19 +10,19 @@ export function useUserManagement({
   setUser,
   users,
   setUsers,
-  biz,
+  biz: _biz,
   setBiz,
-  posts,
+  posts: _posts,
   setPosts,
-  dms,
+  dms: _dms,
   setDms,
-  appts,
+  appts: _appts,
   setAppts,
-  bizApps,
+  bizApps: _bizApps,
   setBizApps,
   admin,
   profile,
-  usernameAliases,
+  usernameAliases: _usernameAliases,
   setUsernameAliases,
 }) {
   const [showEditUser, setShowEditUser] = useState(false);
@@ -409,29 +409,30 @@ export function useUserManagement({
     const oldU = String(oldUsername || "").trim();
 
     if (oldU && newUsername && normalizeUsername(oldU) !== normalizeUsername(newUsername)) {
-      try {
-        const oldKey = normalizeUsername(oldU);
-        const replaceUsername = (value) =>
-          normalizeUsername(value || "") === oldKey ? newUsername : value;
+      const oldKey = normalizeUsername(oldU);
+      const replaceUsername = (value) =>
+        normalizeUsername(value || "") === oldKey ? newUsername : value;
 
-        const remapComments = (comments) =>
-          Array.isArray(comments)
-            ? comments.map((c) => {
-                const nextC = {
-                  ...c,
-                  byUsername: replaceUsername(c?.byUsername),
-                  by: replaceUsername(c?.by),
-                };
-                if (Array.isArray(c?.replies)) {
-                  nextC.replies = c.replies.map((r) => ({
-                    ...r,
-                    byUsername: replaceUsername(r?.byUsername),
-                    by: replaceUsername(r?.by),
-                  }));
-                }
-                return nextC;
-              })
-            : comments;
+      const remapComments = (comments) =>
+        Array.isArray(comments)
+          ? comments.map((c) => {
+              const nextC = {
+                ...c,
+                byUsername: replaceUsername(c?.byUsername),
+                by: replaceUsername(c?.by),
+              };
+              if (Array.isArray(c?.replies)) {
+                nextC.replies = c.replies.map((r) => ({
+                  ...r,
+                  byUsername: replaceUsername(r?.byUsername),
+                  by: replaceUsername(r?.by),
+                }));
+              }
+              return nextC;
+            })
+          : comments;
+
+      try {
         // ✅ eski username ile de profile açabilmek için alias map'e ekle
         setUsernameAliases((prev) => ({
           ...(prev || {}),

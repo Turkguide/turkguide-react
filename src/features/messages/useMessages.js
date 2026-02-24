@@ -5,7 +5,7 @@ import { now, uid, normalizeUsername } from "../../utils/helpers";
 /**
  * Hook for Messages/DM operations
  */
-export function useMessages({ user, dms, setDms, settings, requireAuth, blockedIds = [], blockedByIds = [] }) {
+export function useMessages({ user, dms: _dms, setDms, settings, requireAuth, blockedIds = [], blockedByIds = [] }) {
   const [showDm, setShowDm] = useState(false);
   const [dmTarget, setDmTarget] = useState(null);
   const [dmText, setDmText] = useState("");

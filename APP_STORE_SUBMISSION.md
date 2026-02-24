@@ -131,3 +131,13 @@ Raporların admin panelinde “Kötüye Kullanım” bölümünde görünmesi i�
 1. **Supabase:** `public.profiles` tablosunda `role` sütunu olmalı (`supabase/report_policies.sql` içinde `alter table` ile eklenir).
 2. **Admin kullanıcı:** Raporları görebilen kullanıcının `profiles` kaydında `role = 'admin'` olmalı. Supabase SQL Editor’da örnek:  
    `update public.profiles set role = 'admin' where id = 'ADMIN_USER_UUID';`
+
+---
+
+## Admin logları (Admin Log)
+
+Admin panelinde "Admin Log" bölümünün Supabase'ten dolu gelmesi için:
+
+1. **Supabase SQL Editor**'da `supabase/admin_logs.sql` dosyasının içeriğini çalıştırın (tablo + RLS).
+2. Admin kullanıcıların `profiles.role = 'admin'` olduğundan emin olun.
+3. Bundan sonra admin işlemleri `admin_logs` tablosuna yazılır ve tüm adminler aynı listeyi görür.

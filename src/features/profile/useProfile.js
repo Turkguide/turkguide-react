@@ -160,7 +160,7 @@ export function useProfile({ user, users, biz, resolveUsernameAlias }) {
         if (String(prev?.[usernameKey] || "") === av) return prev;
         return { ...(prev || {}), [usernameKey]: av };
       });
-    } catch (_) {
+    } catch (_ignored) {
       // ignore
     } finally {
       inFlightAvatarFetch.current[usernameKey] = false;

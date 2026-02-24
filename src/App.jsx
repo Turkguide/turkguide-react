@@ -115,6 +115,7 @@ export default function App() {
   const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
   const [reportCtx, setReportCtx] = useState(null);
   const [reportReason, setReportReason] = useState("");
+  const reportModalOpenedAtRef = useRef(0);
   const [showTermsGate, setShowTermsGate] = useState(false);
   const [termsChecked, setTermsChecked] = useState(false);
   const [acceptingTerms, setAcceptingTerms] = useState(false);
@@ -1089,6 +1090,7 @@ function openReport(ctx) {
   if (!requireAuth({ requireTerms: true })) return;
   setReportCtx(ctx || null);
   setReportReason("");
+  reportModalOpenedAtRef.current = Date.now();
 }
 
 async function submitReport() {
@@ -1818,10 +1820,11 @@ return (
         showDm={messages.showDm}
         setShowDm={messages.setShowDm}
         dmTarget={messages.dmTarget}
+        setDmTarget={messages.setDmTarget}
         dmText={messages.dmText}
         setDmText={messages.setDmText}
         dms={dms}
-          settings={settingsHook.settings}
+        settings={settingsHook.settings}
         profile={profile}
         resolveUsernameAlias={resolveUsernameAlias}
         sendDm={messages.sendDm}
@@ -1862,12 +1865,13 @@ return (
         blockedUsernames={blockedUsernames}
       />
 
-      {/* REPORT MODAL */}
+      {/* REPORT MODAL — açıldıktan kısa süre backdrop ile kapatma (mobilde aynı dokunuş kapanmayı tetiklemesin) */}
       <Modal
         ui={ui}
         open={!!reportCtx}
         title="Şikayet Et"
         onClose={() => {
+          if (Date.now() - reportModalOpenedAtRef.current < 400) return;
           setReportCtx(null);
           setReportReason("");
         }}

@@ -14,7 +14,7 @@ export function uuid() {
     if (typeof crypto !== "undefined" && crypto.randomUUID) {
       return crypto.randomUUID();
     }
-  } catch (_) {}
+  } catch (_ignored) {}
   // Fallback UUID v4-ish
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;

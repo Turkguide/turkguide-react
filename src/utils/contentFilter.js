@@ -195,7 +195,7 @@ function normalizeForMatch(str) {
   if (typeof str !== "string") return "";
   return str
     .toLowerCase()
-    .replace(/[\s._*\-]+/g, " ")
+    .replace(/[\s._*-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -228,7 +228,7 @@ export function containsBlockedContent(text) {
     try {
       const re = new RegExp("\\b" + escaped + "\\b", "i");
       if (re.test(normalized)) return true;
-    } catch (_) {
+    } catch (_ignored) {
       // Fallback: simple substring if regex fails (e.g. special chars)
       if (normalized.includes(p)) return true;
     }

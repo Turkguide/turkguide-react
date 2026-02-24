@@ -9,6 +9,7 @@ export function DMModal({
   showDm,
   setShowDm,
   dmTarget,
+  setDmTarget,
   dmText,
   setDmText,
   dms,
@@ -136,7 +137,7 @@ export function DMModal({
                 ui={ui}
                 onClick={() => {
                   setShowDm(false);
-                  setDmTarget(null);
+                  setDmTarget?.(null);
                 }}
               >
                 Kapat

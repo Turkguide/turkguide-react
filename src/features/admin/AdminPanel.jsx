@@ -52,8 +52,6 @@ export function AdminPanel({
   openEditBiz,
   openEditUser,
 }) {
-  if (!adminMode) return null;
-
   const safePending = Array.isArray(pendingApps) ? pendingApps : [];
   const safeApps = Array.isArray(allApps) ? allApps : safePending;
   const safeBiz = Array.isArray(approvedBiz) ? approvedBiz : [];
@@ -187,6 +185,8 @@ export function AdminPanel({
         { label: "Arama Tıklama", value: getMetric("search_click_total") },
         { label: "Yol Tarifi", value: getMetric("directions_click_total") },
       ];
+
+  if (!adminMode) return null;
 
   return (
     <div style={{ display: "grid", gap: 16 }}>

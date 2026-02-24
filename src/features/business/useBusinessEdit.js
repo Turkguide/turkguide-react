@@ -5,7 +5,7 @@ import { normalizeUsername } from "../../utils/helpers";
 /**
  * Hook for managing business editing
  */
-export function useBusinessEdit({ user, admin, biz, setBiz }) {
+export function useBusinessEdit({ user, admin, biz: _biz, setBiz }) {
   const [showEditBiz, setShowEditBiz] = useState(false);
   const [editBizCtx, setEditBizCtx] = useState(null);
 
