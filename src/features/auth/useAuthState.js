@@ -101,7 +101,7 @@ export function useAuthState() {
     let authSub = null;
     const bootTimeout = setTimeout(() => {
       if (alive) setBooted(true);
-    }, 8000);
+    }, 4000);
 
     // 🧹 DEV ortamında eski seed/login kalıntılarını 1 kere temizle
     if (import.meta.env.DEV && !localStorage.getItem("tg_clean_v1")) {
@@ -129,31 +129,24 @@ export function useAuthState() {
           return;
         }
 
-        // 1) Session restore
+        // 1) Session restore — önce oturum al, kullanıcıyı hemen göster; flags arka planda
         const { data, error } = await supabase.auth.getSession();
         if (!alive) return;
 
         if (error) console.error("❌ getSession error:", error);
 
         let session = data?.session;
-        const nowSec = Math.floor(Date.now() / 1000);
-        if (session?.expires_at && session.expires_at <= nowSec + 60) {
-          try {
-            const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-            if (!refreshError && refreshed?.session) {
-              session = refreshed.session;
-            }
-          } catch (_) {}
+        if (session?.expires_at) {
+          const nowSec = Math.floor(Date.now() / 1000);
+          if (session.expires_at <= nowSec + 60) {
+            try {
+              const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+              if (!refreshError && refreshed?.session) session = refreshed.session;
+            } catch (_) {}
+          }
         }
         if (session?.user) {
           const md = session.user.user_metadata || {};
-          let flags = { acceptedTermsAt: null, bannedAt: null };
-          try {
-            flags = await fetchProfileFlags(session.user.id) || flags;
-          } catch (flagErr) {
-            console.warn("fetchProfileFlags restore:", flagErr);
-          }
-          if (!alive) return;
           const nextUser = {
             id: session.user.id,
             email: session.user.email ?? null,
@@ -172,23 +165,35 @@ export function useAuthState() {
               !!(session.user.email_confirmed_at ?? session.user.confirmed_at) &&
               !session.user.new_email,
             newEmailPending: session.user.new_email ?? null,
-            acceptedTermsAt: flags.acceptedTermsAt,
-            bannedAt: flags.bannedAt,
+            acceptedTermsAt: null,
+            bannedAt: null,
           };
           applyProfileFlags(nextUser);
           setUser(nextUser);
           userWasSet = true;
+          if (alive) setBooted(true);
+          Promise.resolve()
+            .then(() => fetchProfileFlags(session.user.id))
+            .then((flags) => {
+              if (!alive || !flags) return;
+              setUser((prev) =>
+                prev && String(prev.id) === String(session.user.id)
+                  ? { ...prev, acceptedTermsAt: flags.acceptedTermsAt, bannedAt: flags.bannedAt }
+                  : prev
+              );
+            })
+            .catch(() => {});
           try {
             syncPublicProfile(nextUser);
-            hydrateProfileFlags(nextUser);
           } catch (_) {}
         } else {
           setUser(null);
         }
 
-        // 2) Auth listener (login/logout/refresh değişimlerinde state güncelle)
-        const { data: subData } = supabase.auth.onAuthStateChange((_event, s) => {
+        // 2) Auth listener — sadece SIGNED_OUT'ta çıkış yap; ilk yükleme race'inde user silinmesin
+        const { data: subData } = supabase.auth.onAuthStateChange((event, s) => {
           if (!alive) return;
+          if (!s?.user && event !== "SIGNED_OUT") return;
           try {
             if (s?.user) {
               const md = s.user.user_metadata || {};
@@ -230,7 +235,7 @@ export function useAuthState() {
                 acceptedTermsAt: null,
                 bannedAt: null,
               });
-            } else setUser(null);
+            } else if (event === "SIGNED_OUT") setUser(null);
           }
         });
 
