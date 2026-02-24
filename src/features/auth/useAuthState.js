@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { KEY } from "../../constants";
 import { lsGet, lsSet } from "../../utils/localStorage";
 import { ensureSeed } from "../../utils/seed";
 import { normalizeUsername } from "../../utils/helpers";
+import { consumePendingAcceptedTerms } from "./pendingProfileFlags";
 
 /**
  * Hook for managing auth state and session restoration
@@ -11,6 +12,7 @@ import { normalizeUsername } from "../../utils/helpers";
 export function useAuthState() {
   const [user, setUser] = useState(null);
   const [booted, setBooted] = useState(false);
+  const userRef = useRef(null);
 
   async function syncPublicProfile(nextUser) {
     try {
@@ -69,6 +71,11 @@ export function useAuthState() {
     }
   }
 
+  // Keep ref in sync so auth events don't overwrite acceptedTermsAt/bannedAt with null
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
   useEffect(() => {
     ensureSeed();
     let alive = true;
@@ -79,6 +86,16 @@ export function useAuthState() {
       localStorage.removeItem(KEY.USERS);
       localStorage.removeItem(KEY.USER);
       localStorage.setItem("tg_clean_v1", "done");
+    }
+
+    function applyProfileFlags(nextUser) {
+      const prev = userRef.current;
+      // Pending: Accept tıklandığı anda setUser commit olmadan auth callback çalışabilir; önce pending oku
+      const pendingAccepted = consumePendingAcceptedTerms(nextUser.id);
+      nextUser.acceptedTermsAt =
+        pendingAccepted ?? (prev?.id === nextUser.id ? prev.acceptedTermsAt : null) ?? null;
+      nextUser.bannedAt =
+        prev?.id === nextUser.id ? (prev.bannedAt ?? null) : null;
     }
 
     const restoreAndListen = async () => {
@@ -128,6 +145,7 @@ export function useAuthState() {
             acceptedTermsAt: null,
             bannedAt: null,
           };
+          applyProfileFlags(nextUser);
           setUser(nextUser);
           syncPublicProfile(nextUser);
           hydrateProfileFlags(nextUser);
@@ -161,6 +179,7 @@ export function useAuthState() {
               acceptedTermsAt: null,
               bannedAt: null,
             };
+            applyProfileFlags(nextUser);
             setUser(nextUser);
             syncPublicProfile(nextUser);
             hydrateProfileFlags(nextUser);

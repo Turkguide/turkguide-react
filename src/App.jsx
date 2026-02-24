@@ -39,6 +39,7 @@ import { SettingsModal } from "./features/settings";
 
 // Features - Auth
 import { useAuthState, useAuthCallback, useAuth, AuthModal } from "./features/auth";
+import { setPendingAcceptedTerms } from "./features/auth/pendingProfileFlags";
 
 // Features - Business
 import { useBusiness, useBusinessEdit, BizApplyForm } from "./features/business";
@@ -116,6 +117,7 @@ export default function App() {
   const [reportReason, setReportReason] = useState("");
   const [showTermsGate, setShowTermsGate] = useState(false);
   const [termsChecked, setTermsChecked] = useState(false);
+  const [acceptingTerms, setAcceptingTerms] = useState(false);
 
   const [infoPage, setInfoPage] = useState(null);
   // infoPage: "about" | "help" | "privacy" | "terms" | "contact" | null
@@ -1220,7 +1222,10 @@ async function submitReport() {
  * Accept terms and persist to DB. Returns true if saved successfully (so UI can close modal).
  */
 async function acceptTerms() {
-  if (!supabase?.from || !supabase?.auth?.getSession) return false;
+  if (!supabase?.from || !supabase?.auth?.getSession) {
+    alert("Bağlantı hazır değil. Sayfayı yenileyip tekrar deneyin.");
+    return false;
+  }
   let userId = user?.id || null;
   try {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -1258,10 +1263,12 @@ async function acceptTerms() {
     }
 
     if (!updated) {
-      alert("Kabul kaydedilemedi. Lütfen tekrar deneyin veya çıkış yapıp giriş yapın.");
+      alert("Kabul kaydedilemedi. Sayfayı yenileyip tekrar deneyin; sorun sürerse çıkış yapıp giriş yapın.");
       return false;
     }
 
+    // Auth callback (token refresh) setUser commit'inden önce çalışabilir; pending ile kaybetmeyi önle
+    setPendingAcceptedTerms(userId, acceptedAt);
     setUser((prev) => (prev ? { ...prev, acceptedTermsAt: acceptedAt } : prev));
     alert("Kullanım Şartları kabul edildi.");
     return true;
@@ -1920,13 +1927,18 @@ return (
             <Button
               ui={ui}
               variant="ok"
-              disabled={!termsChecked}
+              disabled={!termsChecked || acceptingTerms}
               onClick={async () => {
-                const ok = await acceptTerms();
-                if (ok) setShowTermsGate(false);
+                setAcceptingTerms(true);
+                try {
+                  const ok = await acceptTerms();
+                  if (ok) setShowTermsGate(false);
+                } finally {
+                  setAcceptingTerms(false);
+                }
               }}
             >
-              Accept
+              {acceptingTerms ? "Kaydediliyor..." : "Accept"}
             </Button>
           </div>
         </div>
