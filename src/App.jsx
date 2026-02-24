@@ -1102,16 +1102,22 @@ async function submitReport() {
   }
 
   let reporterId = user?.id || null;
-  if (!reporterId && supabase?.auth?.getSession) {
+  if (supabase?.auth?.getSession) {
     try {
-      const { data } = await supabase.auth.getSession();
-      reporterId = data?.session?.user?.id || null;
+      const { data: sessionData } = await supabase.auth.getSession();
+      reporterId = sessionData?.session?.user?.id || reporterId;
     } catch (_) {}
   }
   if (!reporterId) {
     alert("Oturum bulunamadı. Lütfen çıkış yapıp tekrar giriş yap.");
     return;
   }
+  // Apple/WebView ortamında RLS geçmesi için oturumu tazele (JWT istekle gitsin)
+  try {
+    await supabase?.auth?.refreshSession?.();
+    const { data: afterRefresh } = await supabase.auth.getSession();
+    if (afterRefresh?.session?.user?.id) reporterId = afterRefresh.session.user.id;
+  } catch (_) {}
 
   const normalizedTargetOwner = normalizeUsername(reportCtx.targetOwner || "");
   const inferredOwnerId =
@@ -1221,7 +1227,14 @@ async function submitReport() {
   } catch (e) {
     console.warn("report submit error:", e);
     const msg = String(e?.message || e || "");
-    alert("Şikayet gönderilemedi. " + (msg ? msg : "Lütfen tekrar dene."));
+    const isRls = /row-level security|violates.*policy/i.test(msg);
+    if (isRls) {
+      alert(
+        "Şikayet gönderilemedi. Oturum sunucuda tanınmıyor olabilir. Lütfen çıkış yapıp tekrar giriş yapın."
+      );
+    } else {
+      alert("Şikayet gönderilemedi. " + (msg ? msg : "Lütfen tekrar dene."));
+    }
   }
 }
 
