@@ -86,6 +86,19 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
       setShowAuth(true);
       return false;
     }
+    if (user?.bannedAt) {
+      alert("Hesabın askıya alındı. Destek için bize ulaş.");
+      return false;
+    }
+    if (options.requireTerms && !user?.acceptedTermsAt) {
+      alert("Devam etmek için Kullanım Şartları'nı kabul etmelisin.");
+      try {
+        if (typeof window !== "undefined" && window.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
+        }
+      } catch (_) {}
+      return false;
+    }
     if (options.requireVerified && user?.emailVerified === false) {
       alert("Email adresini doğrulamalısın. Mailine gelen bağlantıya tıkla.");
       return false;

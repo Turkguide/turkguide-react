@@ -12,7 +12,7 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
   const [apptDateTime, setApptDateTime] = useState("");
 
   function openAppointment(bizId) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireTerms: true })) return;
     setApptBizId(bizId);
     setApptMsg("");
     setApptDateTime("");
@@ -20,7 +20,7 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
   }
 
   async function submitAppointment() {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireTerms: true })) return;
     const bizId = apptBizId;
     const msg = String(apptMsg || "").trim();
     const requestedAt = String(apptDateTime || "").trim();
@@ -31,8 +31,14 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
     if (!requestedAt) return alert("Lütfen randevu tarih ve saatini seçin.");
 
     const b = biz.find((x) => x.id === bizId);
+    let apptId = uid();
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        apptId = crypto.randomUUID();
+      }
+    } catch (_) {}
     const a = {
-      id: uid(),
+      id: apptId,
       createdAt: now(),
       status: "pending",
       bizId,

@@ -44,6 +44,31 @@ export function useAuthState() {
     }
   }
 
+  async function hydrateProfileFlags(nextUser) {
+    try {
+      if (!supabase?.from) return;
+      if (!nextUser?.id) return;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("accepted_terms_at, banned_at")
+        .eq("id", nextUser.id)
+        .single();
+      if (error) return;
+      if (!data) return;
+      setUser((prev) =>
+        prev && String(prev.id) === String(nextUser.id)
+          ? {
+              ...prev,
+              acceptedTermsAt: data.accepted_terms_at || null,
+              bannedAt: data.banned_at || null,
+            }
+          : prev
+      );
+    } catch (e) {
+      console.warn("hydrateProfileFlags error:", e);
+    }
+  }
+
   useEffect(() => {
     ensureSeed();
     let alive = true;
@@ -100,9 +125,12 @@ export function useAuthState() {
               !!(session.user.email_confirmed_at ?? session.user.confirmed_at) &&
               !session.user.new_email,
             newEmailPending: session.user.new_email ?? null,
+            acceptedTermsAt: null,
+            bannedAt: null,
           };
           setUser(nextUser);
           syncPublicProfile(nextUser);
+          hydrateProfileFlags(nextUser);
         } else {
           setUser(null);
         }
@@ -130,9 +158,12 @@ export function useAuthState() {
               emailVerified:
                 !!(s.user.email_confirmed_at ?? s.user.confirmed_at) && !s.user.new_email,
               newEmailPending: s.user.new_email ?? null,
+              acceptedTermsAt: null,
+              bannedAt: null,
             };
             setUser(nextUser);
             syncPublicProfile(nextUser);
+            hydrateProfileFlags(nextUser);
           } else {
             setUser(null);
           }

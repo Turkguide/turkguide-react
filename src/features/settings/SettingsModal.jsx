@@ -14,6 +14,7 @@ export function SettingsModal({
   user,
   deleteAccount,
   logout,
+  onAcceptTerms,
 }) {
   return (
     <Modal
@@ -90,6 +91,9 @@ export function SettingsModal({
             />
 
             <div style={{ fontWeight: 950, fontSize: 14, marginTop: 18 }}>Legal</div>
+            <div style={{ color: ui.muted, marginTop: 6, fontSize: 12 }}>
+              {user?.acceptedTermsAt ? "Terms accepted." : "Terms not accepted yet."}
+            </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <Button
                 ui={ui}
@@ -126,6 +130,11 @@ export function SettingsModal({
               >
                 Contact
               </Button>
+              {!user?.acceptedTermsAt ? (
+                <Button ui={ui} variant="ok" onClick={onAcceptTerms} size="sm">
+                  Accept Terms
+                </Button>
+              ) : null}
             </div>
 
             <div

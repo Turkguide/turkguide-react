@@ -787,6 +787,34 @@ export function HubTab({
                                           >
                                             🗑️ Sil
                                           </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onReportPost?.({
+                                                type: "hub_comment",
+                                                targetId: c.id,
+                                                  targetParentId: p.id,
+                                                targetOwner: c.byUsername || "",
+                                                targetLabel: String(c.text || "").slice(0, 120),
+                                              });
+                                              hub.setCommentMenuOpenKey(null);
+                                            }}
+                                            style={{
+                                              width: "100%",
+                                              textAlign: "left",
+                                              border: "none",
+                                              background: "transparent",
+                                              cursor: "pointer",
+                                              padding: "10px 10px",
+                                              borderRadius: 12,
+                                              fontWeight: 900,
+                                              color: ui.text,
+                                            }}
+                                            title="Yorumu bildir"
+                                          >
+                                            🚩 Bildir
+                                          </button>
                                         </div>
                                       ) : null}
                                     </div>

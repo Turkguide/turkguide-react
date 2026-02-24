@@ -6,7 +6,7 @@ import { KEY, DEFAULT_ADMINS } from "./constants";
 
 // Utils
 import { lsGet, lsSet } from "./utils/localStorage";
-import { now, uid, fmt, normalizeUsername, isAdminUser, openDirections, openCall, trackMetric } from "./utils/helpers";
+import { now, uid, fmt, normalizeUsername, isAdminUser, openDirections, openCall, trackMetric, uuid } from "./utils/helpers";
 import { ensureSeed } from "./utils/seed";
 
 // Hooks
@@ -151,6 +151,12 @@ useEffect(() => {
   return () => window.removeEventListener("popstate", onPopState);
 }, [active]);
 
+useEffect(() => {
+  const handler = () => requestTermsGate();
+  window.addEventListener("tg:requestTermsGate", handler);
+  return () => window.removeEventListener("tg:requestTermsGate", handler);
+}, []);
+
 // 🧪 DEBUG
 useEffect(() => {
   console.log("🧪 ACTIVE CHANGED ->", active);
@@ -278,6 +284,7 @@ useEffect(() => {
           reporterUsername: r.reporter_username || "",
           targetType: r.target_type || "",
           targetId: r.target_id || "",
+          targetParentId: r.target_parent_id || "",
           targetOwner: r.target_owner || "",
           targetLabel: r.target_label || "",
           reason: r.reason || "",
@@ -386,6 +393,37 @@ useEffect(() => {
   };
 }, [active, admin.adminMode]);
 
+useEffect(() => {
+  if (!user?.id || !supabase?.from) return;
+  let cancelled = false;
+
+  async function fetchBlocks() {
+    try {
+      const { data, error } = await supabase
+        .from("user_blocks")
+        .select("blocker_id, blocked_id")
+        .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`)
+        .limit(500);
+      if (error) throw error;
+      if (cancelled) return;
+      const rows = Array.isArray(data) ? data : [];
+      const blockedIds = rows.filter((r) => r.blocker_id === user.id).map((r) => r.blocked_id);
+      const blockedByIds = rows.filter((r) => r.blocked_id === user.id).map((r) => r.blocker_id);
+      const idToUsername = new Map((users || []).map((u) => [String(u.id), u.username]));
+      setBlockedUsernames(blockedIds.map((id) => idToUsername.get(String(id)) || String(id)));
+      setBlockedByUsernames(blockedByIds.map((id) => idToUsername.get(String(id)) || String(id)));
+    } catch (e) {
+      console.warn("fetchBlocks error:", e);
+    }
+  }
+
+  fetchBlocks();
+
+  return () => {
+    cancelled = true;
+  };
+}, [user?.id, users]);
+
   // Data
   const [users, setUsers] = useState([]);
   const [biz, setBiz] = useState([]);
@@ -401,9 +439,13 @@ useEffect(() => {
   const [dms, setDms] = useState([]);
   const [appts, setAppts] = useState([]);
   const [reports, setReports] = useState([]);
+  const [blockedUsernames, setBlockedUsernames] = useState([]);
+  const [blockedByUsernames, setBlockedByUsernames] = useState([]);
   const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
   const [reportCtx, setReportCtx] = useState(null);
   const [reportReason, setReportReason] = useState("");
+  const [showTermsGate, setShowTermsGate] = useState(false);
+  const [termsChecked, setTermsChecked] = useState(false);
   
   const [infoPage, setInfoPage] = useState(null);
 // infoPage: "about" | "help" | "privacy" | "terms" | "contact" | null
@@ -531,6 +573,8 @@ useEffect(() => {
     setDms,
     settings: settingsHook.settings,
     requireAuth: auth.requireAuth,
+    blockedIds: blockedUsernames,
+    blockedByIds: blockedByUsernames,
   });
 
   // 🔄 Fetch DMs from Supabase when user is ready
@@ -736,6 +780,19 @@ useEffect(() => {
     return map;
   }, [appts]);
 
+  const filteredPosts = useMemo(() => {
+    if (!posts || posts.length === 0) return posts;
+    const blockedSet = new Set((blockedUsernames || []).map(normalizeUsername));
+    const blockedBySet = new Set((blockedByUsernames || []).map(normalizeUsername));
+    return posts.filter((p) => {
+      const owner = normalizeUsername(p?.byUsername || "");
+      if (!owner) return true;
+      if (blockedSet.has(owner)) return false;
+      if (blockedBySet.has(owner)) return false;
+      return true;
+    });
+  }, [posts, blockedUsernames, blockedByUsernames]);
+
   // Auth functions from hook
   const { loginNow, logout, deleteAccount, oauthLogin, requireAuth, authUserExists } = auth;
 
@@ -750,6 +807,8 @@ useEffect(() => {
     adminMode: admin.adminMode,
     users,
     createNotification: notifications.createNotification,
+    setReports,
+    setPosts,
   });
 
   // Set setShowBizApply ref after business hook is initialized
@@ -792,6 +851,8 @@ useEffect(() => {
     posts,
     requireAuth,
     createNotification: notifications.createNotification,
+    blockedUsernames,
+    blockedByUsernames,
   });
 
   // 🔄 Fetch + Realtime subscribe when HUB tab becomes active
@@ -973,7 +1034,7 @@ function clearFilters() {
 }
 
 function openReport(ctx) {
-  if (!requireAuth()) return;
+  if (!requireAuth({ requireTerms: true })) return;
   setReportCtx(ctx || null);
   setReportReason("");
 }
@@ -999,7 +1060,7 @@ async function submitReport() {
   }
 
   const payload = {
-    id: uid(),
+    id: uuid(),
     created_at: new Date().toISOString(),
     reporter_id: reporterId,
     reporter_username: user?.username || "",
@@ -1017,6 +1078,32 @@ async function submitReport() {
       if (error) throw error;
     }
     setReports((prev) => [payload, ...(prev || [])]);
+
+    // Hide reported content locally for reporter
+    if (reportCtx.type === "hub_post") {
+      setPosts((prev) => (prev || []).filter((p) => String(p.id) !== String(reportCtx.targetId)));
+    }
+    if (reportCtx.type === "hub_comment") {
+      setPosts((prev) =>
+        (prev || []).map((p) => ({
+          ...p,
+          comments:
+            String(p.id) === String(reportCtx.targetParentId)
+              ? (p.comments || []).filter((c) => String(c.id) !== String(reportCtx.targetId))
+              : p.comments,
+        }))
+      );
+    }
+    if (reportCtx.type === "business" || reportCtx.type === "business_profile") {
+      setBiz((prev) => (prev || []).filter((b) => String(b.id) !== String(reportCtx.targetId)));
+    }
+    if (reportCtx.type === "user_profile") {
+      setUsers((prev) =>
+        (prev || []).map((u) =>
+          String(u.id) === String(reportCtx.targetId) ? { ...u, status: "reported" } : u
+        )
+      );
+    }
 
     (DEFAULT_ADMINS || []).forEach((adminU) => {
       if (!adminU) return;
@@ -1042,6 +1129,65 @@ async function submitReport() {
     const msg = String(e?.message || e || "");
     alert("Şikayet gönderilemedi. " + (msg ? msg : "Lütfen tekrar dene."));
   }
+}
+
+async function acceptTerms() {
+  if (!user?.id) return;
+  if (!supabase?.from) return;
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ accepted_terms_at: new Date().toISOString() })
+      .eq("id", user.id);
+    if (error) throw error;
+    setUser((prev) => (prev ? { ...prev, acceptedTermsAt: new Date().toISOString() } : prev));
+    alert("Kullanım Şartları kabul edildi.");
+  } catch (e) {
+    console.warn("acceptTerms error:", e);
+    alert("Kabul işlemi başarısız oldu.");
+  }
+}
+
+async function blockUser(targetUser) {
+  if (!requireAuth({ requireTerms: true })) return;
+  if (!user?.id || !targetUser?.id) return;
+  try {
+    if (!supabase?.from) return;
+    const { error } = await supabase.from("user_blocks").insert({
+      blocker_id: user.id,
+      blocked_id: targetUser.id,
+    });
+    if (error) throw error;
+    setBlockedUsernames((prev) => Array.from(new Set([...(prev || []), targetUser.username])));
+    alert("Kullanıcı engellendi.");
+  } catch (e) {
+    console.warn("blockUser error:", e);
+    alert("Engelleme başarısız oldu.");
+  }
+}
+
+async function unblockUser(targetUser) {
+  if (!requireAuth({ requireTerms: true })) return;
+  if (!user?.id || !targetUser?.id) return;
+  try {
+    if (!supabase?.from) return;
+    const { error } = await supabase
+      .from("user_blocks")
+      .delete()
+      .eq("blocker_id", user.id)
+      .eq("blocked_id", targetUser.id);
+    if (error) throw error;
+    setBlockedUsernames((prev) => (prev || []).filter((u) => u !== targetUser.username));
+    alert("Engel kaldırıldı.");
+  } catch (e) {
+    console.warn("unblockUser error:", e);
+    alert("Engel kaldırma başarısız oldu.");
+  }
+}
+
+function requestTermsGate() {
+  setTermsChecked(false);
+  setShowTermsGate(true);
 }
 
 function getDmOtherUsername(message, me) {
@@ -1245,7 +1391,7 @@ return (
             ui={ui}
             user={user}
             hub={hub}
-            posts={posts}
+            posts={filteredPosts}
             setPosts={setPosts}
             setShowAuth={setShowAuth}
             profile={profile}
@@ -1533,6 +1679,9 @@ return (
         openCall={openCall}
         onEditUser={userManagement.openEditUser}
         onReport={openReport}
+        onBlockUser={blockUser}
+        onUnblockUser={unblockUser}
+        blockedUsernames={blockedUsernames}
       />
 
       {/* REPORT MODAL */}
@@ -1570,6 +1719,53 @@ return (
         </div>
       </Modal>
 
+      {/* TERMS ACCEPTANCE GATE */}
+      <Modal
+        ui={ui}
+        open={showTermsGate}
+        title="Kullanım Şartları"
+        onClose={() => setShowTermsGate(false)}
+        width={720}
+      >
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ color: ui.muted }}>
+            Devam etmek için Kullanım Şartları'nı kabul etmelisiniz.
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Button ui={ui} onClick={() => window.open("/terms.html", "_blank", "noopener,noreferrer")}>
+              Terms of Service
+            </Button>
+            <Button ui={ui} onClick={() => window.open("/privacy.html", "_blank", "noopener,noreferrer")}>
+              Privacy Policy
+            </Button>
+          </div>
+          <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
+            <input
+              type="checkbox"
+              checked={termsChecked}
+              onChange={(e) => setTermsChecked(e.target.checked)}
+            />
+            I have read and accept the Terms of Service.
+          </label>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <Button ui={ui} onClick={() => setShowTermsGate(false)}>
+              Cancel
+            </Button>
+            <Button
+              ui={ui}
+              variant="ok"
+              disabled={!termsChecked}
+              onClick={async () => {
+                await acceptTerms();
+                setShowTermsGate(false);
+              }}
+            >
+              Accept
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* SETTINGS MODAL */}
       <SettingsModal
         ui={ui}
@@ -1582,6 +1778,7 @@ return (
         user={user}
         deleteAccount={auth.deleteAccount}
         logout={auth.logout}
+        onAcceptTerms={acceptTerms}
       />
 
       {/* AUTH MODAL */}

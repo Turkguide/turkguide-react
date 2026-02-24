@@ -6,7 +6,7 @@ import { normalizeImageToFotograf, validateAndLoadVideo } from "../../services/m
 /**
  * Hook for HUB operations
  */
-export function useHub({ user, setPosts, posts, requireAuth, createNotification }) {
+export function useHub({ user, setPosts, posts, requireAuth, createNotification, blockedUsernames = [], blockedByUsernames = [] }) {
   const isDev = import.meta.env.DEV;
   const [composer, setComposer] = useState("");
   const [commentDraft, setCommentDraft] = useState({});
@@ -101,10 +101,31 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
       if (error) throw error;
       console.log("🟣 fetchHubPosts: ok rows=", (data || []).length, "first=", (data || [])[0]);
 
-      const mapped = (data || []).map(mapPostRow);
+      const mapped = (data || []).map((r) => {
+        const p = mapPostRow(r);
+        const blockedSet = new Set((blockedUsernames || []).map(normalizeUsername));
+        const blockedBySet = new Set((blockedByUsernames || []).map(normalizeUsername));
+        const filteredComments = (p.comments || []).filter((c) => {
+          const owner = normalizeUsername(c?.byUsername || "");
+          if (!owner) return true;
+          if (blockedSet.has(owner)) return false;
+          if (blockedBySet.has(owner)) return false;
+          return true;
+        });
+        return { ...p, comments: filteredComments };
+      });
 
       console.log("🧪 mapped[0] likes/likedBy =", mapped?.[0]?.likes, mapped?.[0]?.likedBy);
-      setPosts(mapped);
+      const blockedSet = new Set((blockedUsernames || []).map(normalizeUsername));
+      const blockedBySet = new Set((blockedByUsernames || []).map(normalizeUsername));
+      const filtered = mapped.filter((p) => {
+        const owner = normalizeUsername(p.byUsername || "");
+        if (!owner) return true;
+        if (blockedSet.has(owner)) return false;
+        if (blockedBySet.has(owner)) return false;
+        return true;
+      });
+      setPosts(filtered);
       console.log("🟣 fetchHubPosts: setPosts mapped len=", mapped.length);
     } catch (e) {
       console.error("fetchHubPosts error:", e);
@@ -135,7 +156,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Share a HUB post
    */
   async function hubShare() {
-    if (!requireAuth()) {
+    if (!requireAuth({ requireTerms: true })) {
       alert("Paylaşım için giriş yapmalısın.");
       return;
     }
@@ -153,8 +174,14 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
 
     const stamp = now();
 
+    let newId = uid();
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        newId = crypto.randomUUID();
+      }
+    } catch (_) {}
     const post = {
-      id: uid(),
+      id: newId,
       createdAt: stamp,
       byType: "user",
       byUsername: user.username,
@@ -230,7 +257,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Like/unlike a HUB post
    */
   async function hubLike(postId) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireTerms: true })) return;
 
     if (!user || !user.username) {
       alert("Oturum bulunamadı, lütfen tekrar giriş yapın.");
@@ -300,7 +327,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Add comment to a HUB post (or reply to a comment)
    */
   async function hubComment(postId, replyToCommentId = null) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireTerms: true })) return;
 
     // Use replyDraft if replying, otherwise use commentDraft
     const text = replyToCommentId
@@ -308,8 +335,14 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
       : String(commentDraft[postId] || "").trim();
     if (!text) return;
 
+    let commentId = uid();
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        commentId = crypto.randomUUID();
+      }
+    } catch (_) {}
     const newComment = {
-      id: uid(),
+      id: commentId,
       createdAt: now(),
       byUsername: user.username,
       text,
@@ -394,7 +427,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Delete a HUB comment
    */
   async function deleteHubComment(postId, commentId) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireTerms: true })) return;
 
     const target = (posts || []).find((p) => p.id === postId);
     if (!target) return;
@@ -443,15 +476,21 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Repost a HUB post
    */
   async function hubRepost(postId) {
-    if (!requireAuth({ requireVerified: true })) return;
+    if (!requireAuth({ requireVerified: true, requireTerms: true })) return;
 
     const target = (posts || []).find((p) => p.id === postId);
     if (!target) return;
 
     // Create a new post with reference to original
     const repostContent = `🌀 HUB'la: ${target.content || ""}`;
+    let postId = uid();
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        postId = crypto.randomUUID();
+      }
+    } catch (_) {}
     const newPost = {
-      id: uid(),
+      id: postId,
       createdAt: now(),
       byType: "user",
       byUsername: user.username,
@@ -528,7 +567,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Start editing a post
    */
   function startEditPost(p, adminMode) {
-    if (!requireAuth({ requireVerified: true })) return;
+    if (!requireAuth({ requireVerified: true, requireTerms: true })) return;
     if (!canEditPost(p, adminMode)) return;
     setEditingPostId(p.id);
     setEditPostDraft(String(p.content || ""));
@@ -546,7 +585,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Save edited post
    */
   async function saveEditPost(postId, adminMode) {
-    if (!requireAuth({ requireVerified: true })) return;
+    if (!requireAuth({ requireVerified: true, requireTerms: true })) return;
     const text = String(editPostDraft || "").trim();
 
     const target = posts.find((x) => x.id === postId);
@@ -593,7 +632,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification 
    * Delete a post
    */
   async function deletePost(postId, adminMode) {
-    if (!requireAuth({ requireVerified: !adminMode })) return;
+    if (!requireAuth({ requireVerified: !adminMode, requireTerms: true })) return;
 
     const p = posts.find((x) => x.id === postId);
     if (!p || !canEditPost(p, adminMode)) return;

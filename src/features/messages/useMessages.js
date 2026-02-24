@@ -5,7 +5,7 @@ import { now, uid, normalizeUsername } from "../../utils/helpers";
 /**
  * Hook for Messages/DM operations
  */
-export function useMessages({ user, dms, setDms, settings, requireAuth }) {
+export function useMessages({ user, dms, setDms, settings, requireAuth, blockedIds = [], blockedByIds = [] }) {
   const [showDm, setShowDm] = useState(false);
   const [dmTarget, setDmTarget] = useState(null);
   const [dmText, setDmText] = useState("");
@@ -14,7 +14,21 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
    * Open DM to user
    */
   function openDmToUser(username) {
-    if (!requireAuth({ requireVerified: true })) return false;
+    if (!requireAuth({ requireVerified: true, requireTerms: true })) return false;
+    if (Array.isArray(blockedByIds) && blockedByIds.length > 0) {
+      const blockedMe = blockedByIds.includes(username);
+      if (blockedMe) {
+        alert("Bu kullanıcı size mesaj göndermeyi engelledi.");
+        return false;
+      }
+    }
+    if (Array.isArray(blockedIds) && blockedIds.length > 0) {
+      const iBlocked = blockedIds.includes(username);
+      if (iBlocked) {
+        alert("Engellediğin kullanıcılara mesaj gönderemezsin.");
+        return false;
+      }
+    }
     if (!settings.chatEnabled) {
       alert("Mesajlar şu anda kapalı.");
       return false;
@@ -30,7 +44,7 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
    * Open DM to business
    */
   function openDmToBiz(bizId) {
-    if (!requireAuth({ requireVerified: true })) return false;
+    if (!requireAuth({ requireVerified: true, requireTerms: true })) return false;
     if (!settings.chatEnabled) {
       alert("Mesajlar şu anda kapalı.");
       return false;
@@ -46,7 +60,17 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
    * Send DM
    */
   async function sendDm() {
-    if (!requireAuth({ requireVerified: true })) return;
+    if (!requireAuth({ requireVerified: true, requireTerms: true })) return;
+    if (dmTarget?.type === "user") {
+      if (Array.isArray(blockedByIds) && blockedByIds.includes(dmTarget.username)) {
+        alert("Bu kullanıcı size mesaj göndermeyi engelledi.");
+        return;
+      }
+      if (Array.isArray(blockedIds) && blockedIds.includes(dmTarget.username)) {
+        alert("Engellediğin kullanıcılara mesaj gönderemezsin.");
+        return;
+      }
+    }
     if (!settings.chatEnabled) {
       alert("Mesajlar şu anda kapalı.");
       return;
@@ -55,8 +79,14 @@ export function useMessages({ user, dms, setDms, settings, requireAuth }) {
     const text = String(dmText || "").trim();
     if (!text) return;
 
+    let msgId = uid();
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        msgId = crypto.randomUUID();
+      }
+    } catch (_) {}
     const msg = {
-      id: uid(),
+      id: msgId,
       createdAt: now(),
       from: user.username,
       toType: dmTarget?.type,

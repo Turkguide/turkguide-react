@@ -15,6 +15,9 @@ export function ProfileModal({
   openCall,
   onEditUser,
   onReport,
+  onBlockUser,
+  onUnblockUser,
+  blockedUsernames = [],
 }) {
   if (!open || !profileData) return null;
 
@@ -43,28 +46,63 @@ export function ProfileModal({
               ) : null}
             </div>
             {normalizeUsername(user?.username) !== normalizeUsername(profileData.user.username) ? (
-              <Button
-                ui={ui}
-                variant="blue"
-                onClick={() =>
-                  onReport?.({
-                    type: "user_profile",
-                    targetId: profileData.user.id,
-                    targetOwner: profileData.user.username || "",
-                    targetLabel: `@${profileData.user.username || ""}`,
-                  })
-                }
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  boxShadow: "none",
-                  padding: "8px 12px",
-                  fontWeight: 900,
-                  color: ui.text,
-                }}
-              >
-                🚩 Bildir
-              </Button>
+              <>
+                <Button
+                  ui={ui}
+                  variant="blue"
+                  onClick={() =>
+                    onReport?.({
+                      type: "user_profile",
+                      targetId: profileData.user.id,
+                      targetOwner: profileData.user.username || "",
+                      targetLabel: `@${profileData.user.username || ""}`,
+                    })
+                  }
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    boxShadow: "none",
+                    padding: "8px 12px",
+                    fontWeight: 900,
+                    color: ui.text,
+                  }}
+                >
+                  🚩 Bildir
+                </Button>
+                {blockedUsernames.includes(profileData.user.username) ? (
+                  <Button
+                    ui={ui}
+                    variant="blue"
+                    onClick={() => onUnblockUser?.(profileData.user)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      boxShadow: "none",
+                      padding: "8px 12px",
+                      fontWeight: 900,
+                      color: ui.text,
+                    }}
+                  >
+                    Engeli Kaldır
+                  </Button>
+                ) : (
+                  <Button
+                    ui={ui}
+                    variant="blue"
+                    onClick={() => onBlockUser?.(profileData.user)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      boxShadow: "none",
+                      padding: "8px 12px",
+                      fontWeight: 900,
+                      color: ui.text,
+                    }}
+                  >
+                    Engelle
+                  </Button>
+                )}
+              </>
             ) : null}
           </div>
 

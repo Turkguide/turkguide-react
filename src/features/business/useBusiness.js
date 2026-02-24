@@ -5,7 +5,7 @@ import { now, uid, normalizeUsername } from "../../utils/helpers";
 /**
  * Hook for business operations
  */
-export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requireAuth, adminMode, users, createNotification }) {
+export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requireAuth, adminMode, users, createNotification, setReports, setPosts }) {
   const [showBizApply, setShowBizApply] = useState(false);
   const [showRejectReason, setShowRejectReason] = useState(false);
   const [rejectText, setRejectText] = useState("");
@@ -54,7 +54,7 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
    * Submit business application
    */
   function submitBizApplication(data) {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireTerms: true })) return;
 
     // ✅ Core fields
     const name = String(data?.name || "").trim();
@@ -103,8 +103,14 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
       return;
     }
 
+    let appId = uid();
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        appId = crypto.randomUUID();
+      }
+    } catch (_) {}
     const app = {
-      id: uid(),
+      id: appId,
       createdAt: now(),
       status: "pending",
       applicant: user.username,
@@ -177,8 +183,14 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
     if (!adminMode) return;
     const ownerUsername = app.ownerUsername || app.applicant || "";
     const toEmail = resolveApplicantEmail(app);
+    let bizId = uid();
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        bizId = crypto.randomUUID();
+      }
+    } catch (_) {}
     const b = {
-      id: uid(),
+      id: bizId,
       createdAt: now(),
       status: "approved",
       name: app.name,
@@ -355,8 +367,9 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
 
     if (deleteCtx.type === "user" && setUsers) {
       const u = deleteCtx.item;
+      const userId = u?.id || u?.user_id || u?.uid || u;
       setUsers((prev) => prev.filter((x) => x.id !== u.id));
-      addLog("USER_DELETE", { id: u.id, username: u.username, reason });
+      addLog("USER_DELETE", { id: userId, username: u.username, reason });
 
       if (supabase?.from) {
         supabase
@@ -366,13 +379,54 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
             suspended_at: new Date().toISOString(),
             suspended_by: user?.username || "",
             suspend_reason: reason,
+            banned_at: new Date().toISOString(),
           })
-          .eq("id", u.id)
+          .eq("id", userId)
           .then(({ error }) => {
             if (error) console.warn("profiles suspend update error:", error);
           })
           .catch((e) => console.warn("profiles suspend update exception:", e));
       }
+      if (setPosts) {
+        setPosts((prev) =>
+          (prev || []).filter((p) => normalizeUsername(p.byUsername) !== normalizeUsername(u.username))
+        );
+      }
+    }
+
+    if (deleteCtx.type === "hub_post") {
+      const r = deleteCtx.item;
+      if (supabase?.from) {
+        supabase
+          .from("hub_posts")
+          .delete()
+          .eq("id", r?.targetId || r?.target_id || "")
+          .then(({ error }) => {
+            if (error) console.warn("hub_posts delete error:", error);
+          })
+          .catch((e) => console.warn("hub_posts delete exception:", e));
+      }
+      if (setPosts) {
+        setPosts((prev) => (prev || []).filter((p) => String(p.id) !== String(r?.targetId || r?.target_id || "")));
+      }
+    }
+
+    if (deleteCtx.type === "report") {
+      const r = deleteCtx.item;
+      if (supabase?.from) {
+        supabase
+          .from("reports")
+          .update({ status: "resolved" })
+          .eq("id", r?.id || "")
+          .then(({ error }) => {
+            if (error) console.warn("reports resolve error:", error);
+          })
+          .catch((e) => console.warn("reports resolve exception:", e));
+      }
+      if (setReports) {
+        setReports((prev) => (prev || []).map((x) => (x.id === r.id ? { ...x, status: "resolved" } : x)));
+      }
+      setReasonText("");
     }
 
     setShowDeleteReason(false);
@@ -384,7 +438,7 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
    * Open business apply modal
    */
   function openBizApply() {
-    if (!requireAuth()) return;
+    if (!requireAuth({ requireTerms: true })) return;
     setShowBizApply(true);
   }
 

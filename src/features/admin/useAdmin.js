@@ -98,7 +98,13 @@ export function useAdmin({ user, booted, isDev = false }) {
       if (error) throw error;
       const rows = Array.isArray(data) ? data : [];
       const mapped = rows.map((r) => ({
-        id: r.id || uid(),
+        id: r.id || (() => {
+          let x = uid();
+          try {
+            if (typeof crypto !== "undefined" && crypto.randomUUID) x = crypto.randomUUID();
+          } catch (_) {}
+          return x;
+        })(),
         createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
         admin: r.admin_username || r.admin || "-",
         action: r.action || "-",
@@ -120,7 +126,13 @@ export function useAdmin({ user, booted, isDev = false }) {
    */
   function addLog(action, payload = {}) {
     if (!adminMode) return;
-    const entry = { id: uid(), createdAt: now(), admin: user?.username || "-", action, payload };
+    let entryId = uid();
+    try {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        entryId = crypto.randomUUID();
+      }
+    } catch (_) {}
+    const entry = { id: entryId, createdAt: now(), admin: user?.username || "-", action, payload };
     setAdminLog((prev) => [
       entry,
       ...prev,

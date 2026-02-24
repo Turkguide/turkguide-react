@@ -655,6 +655,8 @@ export function AdminPanel({
                     const typeLabel =
                       r.targetType === "hub_post"
                         ? "Hub Paylaşımı"
+                        : r.targetType === "hub_comment"
+                        ? "Hub Yorumu"
                         : r.targetType === "user_profile"
                         ? "Kullanıcı"
                         : r.targetType === "business_profile" || r.targetType === "business"
@@ -683,6 +685,30 @@ export function AdminPanel({
                           <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(r.createdAt)}</div>
                         </div>
                         <div style={{ marginTop: 8, color: ui.text }}>{r.reason || "-"}</div>
+                        <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {r.targetType === "hub_post" ? (
+                            <Button
+                              ui={ui}
+                              variant="danger"
+                              onClick={() => business.openDelete("hub_post", r)}
+                            >
+                              İçeriği Kaldır
+                            </Button>
+                          ) : null}
+                          <Button
+                            ui={ui}
+                            variant="ok"
+                            onClick={() => business.openDelete("user", { id: r.targetOwnerId || r.targetOwner })}
+                          >
+                            Kullanıcıyı Askıya Al
+                          </Button>
+                          <Button
+                            ui={ui}
+                            onClick={() => business.openDelete("report", r)}
+                          >
+                            Çözüldü Olarak İşaretle
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}
