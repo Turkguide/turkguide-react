@@ -394,37 +394,6 @@ useEffect(() => {
   };
 }, [active, admin.adminMode]);
 
-useEffect(() => {
-  if (!user?.id || !supabase?.from) return;
-  let cancelled = false;
-
-  async function fetchBlocks() {
-    try {
-      const { data, error } = await supabase
-        .from("user_blocks")
-        .select("blocker_id, blocked_id")
-        .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`)
-        .limit(500);
-      if (error) throw error;
-      if (cancelled) return;
-      const rows = Array.isArray(data) ? data : [];
-      const blockedIds = rows.filter((r) => r.blocker_id === user.id).map((r) => r.blocked_id);
-      const blockedByIds = rows.filter((r) => r.blocked_id === user.id).map((r) => r.blocker_id);
-      const idToUsername = new Map((users || []).map((u) => [String(u.id), u.username]));
-      setBlockedUsernames(blockedIds.map((id) => idToUsername.get(String(id)) || String(id)));
-      setBlockedByUsernames(blockedByIds.map((id) => idToUsername.get(String(id)) || String(id)));
-    } catch (e) {
-      console.warn("fetchBlocks error:", e);
-    }
-  }
-
-  fetchBlocks();
-
-  return () => {
-    cancelled = true;
-  };
-}, [user?.id, users]);
-
   // Data
   const [users, setUsers] = useState([]);
   const [biz, setBiz] = useState([]);
@@ -474,6 +443,37 @@ useEffect(() => {
   // Landing search (UI)
   const [landingSearch, setLandingSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+
+useEffect(() => {
+  if (!user?.id || !supabase?.from) return;
+  let cancelled = false;
+
+  async function fetchBlocks() {
+    try {
+      const { data, error } = await supabase
+        .from("user_blocks")
+        .select("blocker_id, blocked_id")
+        .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`)
+        .limit(500);
+      if (error) throw error;
+      if (cancelled) return;
+      const rows = Array.isArray(data) ? data : [];
+      const blockedIds = rows.filter((r) => r.blocker_id === user.id).map((r) => r.blocked_id);
+      const blockedByIds = rows.filter((r) => r.blocked_id === user.id).map((r) => r.blocker_id);
+      const idToUsername = new Map((users || []).map((u) => [String(u.id), u.username]));
+      setBlockedUsernames(blockedIds.map((id) => idToUsername.get(String(id)) || String(id)));
+      setBlockedByUsernames(blockedByIds.map((id) => idToUsername.get(String(id)) || String(id)));
+    } catch (e) {
+      console.warn("fetchBlocks error:", e);
+    }
+  }
+
+  fetchBlocks();
+
+  return () => {
+    cancelled = true;
+  };
+}, [user?.id, users]);
 
   // ✅ Username değişince eski username'lerden profile açabilmek için alias map
   const [usernameAliases, setUsernameAliases] = useState({});
