@@ -483,14 +483,14 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
 
     // Create a new post with reference to original
     const repostContent = `🌀 HUB'la: ${target.content || ""}`;
-    let postId = uid();
+    let newPostId = uid();
     try {
       if (typeof crypto !== "undefined" && crypto.randomUUID) {
-        postId = crypto.randomUUID();
+        newPostId = crypto.randomUUID();
       }
     } catch (_) {}
     const newPost = {
-      id: postId,
+      id: newPostId,
       createdAt: now(),
       byType: "user",
       byUsername: user.username,
