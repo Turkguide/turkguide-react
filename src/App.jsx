@@ -286,6 +286,7 @@ useEffect(() => {
           targetId: r.target_id || "",
           targetParentId: r.target_parent_id || "",
           targetOwner: r.target_owner || "",
+          targetOwnerId: r.target_owner_id || "",
           targetLabel: r.target_label || "",
           reason: r.reason || "",
           status: r.status || "open",
@@ -1059,6 +1060,14 @@ async function submitReport() {
     return;
   }
 
+  const normalizedTargetOwner = normalizeUsername(reportCtx.targetOwner || "");
+  const inferredOwnerId =
+    reportCtx.targetOwnerId ||
+    (reportCtx.type === "user_profile" ? reportCtx.targetId : null) ||
+    (normalizedTargetOwner
+      ? (users || []).find((u) => normalizeUsername(u.username) === normalizedTargetOwner)?.id || null
+      : null);
+
   const payload = {
     id: uuid(),
     created_at: new Date().toISOString(),
@@ -1066,7 +1075,9 @@ async function submitReport() {
     reporter_username: user?.username || "",
     target_type: reportCtx.type || "",
     target_id: String(reportCtx.targetId || ""),
+    target_parent_id: reportCtx.targetParentId ? String(reportCtx.targetParentId) : null,
     target_owner: reportCtx.targetOwner || "",
+    target_owner_id: inferredOwnerId ? String(inferredOwnerId) : null,
     target_label: reportCtx.targetLabel || "",
     reason,
     status: "open",
@@ -1697,7 +1708,7 @@ return (
       >
         <div style={{ display: "grid", gap: 12 }}>
           <div style={{ color: ui.muted, fontSize: 13 }}>
-            Raporlanan:{" "}
+            Raporlanan :{" "}
             <b style={{ color: ui.text }}>
               {reportCtx?.targetLabel || reportCtx?.targetOwner || reportCtx?.targetId || "-"}
             </b>
