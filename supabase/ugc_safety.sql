@@ -1,10 +1,34 @@
 -- UGC safety: terms acceptance, user blocks, moderation flags
 -- Run in Supabase SQL editor
 
+-- (İsteğe bağlı) Yeni auth kullanıcısı için profiles satırı (Apple email gizleyebilir)
+-- create or replace function public.handle_new_user()
+-- returns trigger language plpgsql security definer set search_path = public as $$
+-- begin
+--   insert into public.profiles (id, email, username)
+--   values (
+--     new.id,
+--     coalesce(nullif(trim(new.email), ''), new.id::text || '@apple.placeholder'),
+--     coalesce(nullif(trim(new.raw_user_meta_data->>'username'), ''), 'user_' || left(new.id::text, 8))
+--   )
+--   on conflict (id) do nothing;
+--   return new;
+-- end; $$;
+-- drop trigger if exists on_auth_user_created on auth.users;
+-- create trigger on_auth_user_created after insert on auth.users
+-- for each row execute procedure public.handle_new_user();
+
 -- Profiles: terms acceptance + ban flag
 alter table public.profiles
   add column if not exists accepted_terms_at timestamptz,
   add column if not exists banned_at timestamptz;
+
+-- Allow authenticated users to insert their own profile row (Apple/OAuth yeni kullanıcı)
+drop policy if exists "profiles_insert_own" on public.profiles;
+create policy "profiles_insert_own"
+on public.profiles for insert
+to authenticated
+with check (auth.uid() = id);
 
 -- Allow users to update their own profile (for terms acceptance)
 drop policy if exists "profiles_update_own" on public.profiles;

@@ -197,6 +197,11 @@ useEffect(() => {
   return () => window.removeEventListener("tg:requestTermsGate", handler);
 }, []);
 
+// DB'den veya restore'dan acceptedTermsAt gelince modal açıksa kapat
+useEffect(() => {
+  if (user?.acceptedTermsAt && showTermsGate) setShowTermsGate(false);
+}, [user?.acceptedTermsAt, showTermsGate]);
+
 // 🧪 DEBUG
 useEffect(() => {
   console.log("🧪 ACTIVE CHANGED ->", active);

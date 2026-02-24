@@ -182,22 +182,29 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
           setShowAuth(true); // doğrulama için modal açık kalsın
         } else {
           alert("Kayıt alındı ve giriş yapıldı.");
-          setUser({
-            id: data.user.id,
-            email: data.user.email,
-            username: data.user.user_metadata?.username || null,
-            Tier: data.user.user_metadata?.tier ?? data.user.user_metadata?.Tier ?? null,
-            XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
-            avatar: data.user.user_metadata?.avatar ?? "",
-            createdAt: data.user.user_metadata?.createdAt ?? null,
-            age: data.user.user_metadata?.age ?? "",
-            city: data.user.user_metadata?.city ?? "",
-            state: data.user.user_metadata?.state ?? "",
-            bio: data.user.user_metadata?.bio ?? "",
-            emailConfirmedAt: data.user.email_confirmed_at ?? data.user.confirmed_at ?? null,
-            emailVerified:
-              !!(data.user.email_confirmed_at ?? data.user.confirmed_at) && !data.user.new_email,
-            newEmailPending: data.user.new_email ?? null,
+          setUser((prev) => {
+            const next = {
+              id: data.user.id,
+              email: data.user.email,
+              username: data.user.user_metadata?.username || null,
+              Tier: data.user.user_metadata?.tier ?? data.user.user_metadata?.Tier ?? null,
+              XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
+              avatar: data.user.user_metadata?.avatar ?? "",
+              createdAt: data.user.user_metadata?.createdAt ?? null,
+              age: data.user.user_metadata?.age ?? "",
+              city: data.user.user_metadata?.city ?? "",
+              state: data.user.user_metadata?.state ?? "",
+              bio: data.user.user_metadata?.bio ?? "",
+              emailConfirmedAt: data.user.email_confirmed_at ?? data.user.confirmed_at ?? null,
+              emailVerified:
+                !!(data.user.email_confirmed_at ?? data.user.confirmed_at) && !data.user.new_email,
+              newEmailPending: data.user.new_email ?? null,
+            };
+            if (prev?.id === data.user.id) {
+              next.acceptedTermsAt = prev.acceptedTermsAt ?? null;
+              next.bannedAt = prev.bannedAt ?? null;
+            }
+            return next;
           });
           // ✅ Login olduysa da ana sayfa: İşletmeler
           setActive("biz");
@@ -222,22 +229,29 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
         const data = await authService.signIn(email, pass);
         console.log("✅ login ok:", data);
 
-        setUser({
-          id: data.user.id,
-          email: data.user.email,
-          username: data.user.user_metadata?.username ?? (data.user.email ? data.user.email.split("@")[0] : null),
-          Tier: data.user.user_metadata?.tier ?? data.user.user_metadata?.Tier ?? null,
-          XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
-          avatar: data.user.user_metadata?.avatar ?? "",
-          createdAt: data.user.user_metadata?.createdAt ?? null,
-          age: data.user.user_metadata?.age ?? "",
-          city: data.user.user_metadata?.city ?? "",
-          state: data.user.user_metadata?.state ?? "",
-          bio: data.user.user_metadata?.bio ?? "",
-          emailConfirmedAt: data.user.email_confirmed_at ?? data.user.confirmed_at ?? null,
-          emailVerified:
-            !!(data.user.email_confirmed_at ?? data.user.confirmed_at) && !data.user.new_email,
-          newEmailPending: data.user.new_email ?? null,
+        setUser((prev) => {
+          const next = {
+            id: data.user.id,
+            email: data.user.email,
+            username: data.user.user_metadata?.username ?? (data.user.email ? data.user.email.split("@")[0] : null),
+            Tier: data.user.user_metadata?.tier ?? data.user.user_metadata?.Tier ?? null,
+            XP: Number(data.user.user_metadata?.xp ?? data.user.user_metadata?.XP ?? 0),
+            avatar: data.user.user_metadata?.avatar ?? "",
+            createdAt: data.user.user_metadata?.createdAt ?? null,
+            age: data.user.user_metadata?.age ?? "",
+            city: data.user.user_metadata?.city ?? "",
+            state: data.user.user_metadata?.state ?? "",
+            bio: data.user.user_metadata?.bio ?? "",
+            emailConfirmedAt: data.user.email_confirmed_at ?? data.user.confirmed_at ?? null,
+            emailVerified:
+              !!(data.user.email_confirmed_at ?? data.user.confirmed_at) && !data.user.new_email,
+            newEmailPending: data.user.new_email ?? null,
+          };
+          if (prev?.id === data.user.id) {
+            next.acceptedTermsAt = prev.acceptedTermsAt ?? null;
+            next.bannedAt = prev.bannedAt ?? null;
+          }
+          return next;
         });
 
         // ✅ Login sonrası ana sayfa: İşletmeler

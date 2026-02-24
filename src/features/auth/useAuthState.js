@@ -18,20 +18,18 @@ export function useAuthState() {
     try {
       if (!supabase?.from) return;
       if (!nextUser?.id) return;
+      // Apple (ve bazı OAuth) bazen email/username döndürmez; yine de profil satırı oluştur
       const unameRaw = String(nextUser?.username || "").trim();
-      if (!unameRaw) return;
       const emailValue = String(nextUser?.email || "").trim();
-      if (!emailValue) {
-        console.warn("syncPublicProfile skipped: email missing");
-        return;
-      }
-      const unameKey = normalizeUsername(unameRaw);
+      const fallbackUname = "user_" + String(nextUser.id).slice(0, 8);
+      const fallbackEmail = emailValue || nextUser.id + "@apple.placeholder";
+      const unameKey = normalizeUsername(unameRaw || fallbackUname);
       const avatarStr = typeof nextUser.avatar === "string" ? nextUser.avatar : "";
-      await supabase.from("profiles").upsert(
+      const { error } = await supabase.from("profiles").upsert(
         {
           id: nextUser.id,
           username: unameKey,
-          email: emailValue,
+          email: emailValue || fallbackEmail,
           avatar: avatarStr || null,
           age: nextUser?.age ?? null,
           city: String(nextUser?.city || "").trim() || null,
@@ -41,8 +39,29 @@ export function useAuthState() {
         },
         { onConflict: "id" }
       );
+      if (error) throw error;
     } catch (e) {
       console.warn("syncPublicProfile error:", e);
+    }
+  }
+
+  /** Fetch accepted_terms_at, banned_at from profiles for a user id (for sync use on restore). */
+  async function fetchProfileFlags(userId) {
+    try {
+      if (!supabase?.from || !userId) return { acceptedTermsAt: null, bannedAt: null };
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("accepted_terms_at, banned_at")
+        .eq("id", userId)
+        .single();
+      if (error || !data) return { acceptedTermsAt: null, bannedAt: null };
+      return {
+        acceptedTermsAt: data.accepted_terms_at || null,
+        bannedAt: data.banned_at || null,
+      };
+    } catch (e) {
+      console.warn("fetchProfileFlags error:", e);
+      return { acceptedTermsAt: null, bannedAt: null };
     }
   }
 
@@ -124,6 +143,9 @@ export function useAuthState() {
         }
         if (session?.user) {
           const md = session.user.user_metadata || {};
+          // İlk yüklemede DB'den terms/banned oku; requireAuth null görmeden modal açılmasın
+          const flags = await fetchProfileFlags(session.user.id);
+          if (!alive) return;
           const nextUser = {
             id: session.user.id,
             email: session.user.email,
@@ -142,8 +164,8 @@ export function useAuthState() {
               !!(session.user.email_confirmed_at ?? session.user.confirmed_at) &&
               !session.user.new_email,
             newEmailPending: session.user.new_email ?? null,
-            acceptedTermsAt: null,
-            bannedAt: null,
+            acceptedTermsAt: flags.acceptedTermsAt,
+            bannedAt: flags.bannedAt,
           };
           applyProfileFlags(nextUser);
           setUser(nextUser);

@@ -127,6 +127,8 @@ export function useAuthCallback({ setUser, setShowAuth, setActive, setLandingSea
               city: md.city ?? prev?.city ?? "",
               state: md.state ?? prev?.state ?? "",
               bio: md.bio ?? prev?.bio ?? "",
+              acceptedTermsAt: prev?.acceptedTermsAt ?? null,
+              bannedAt: prev?.bannedAt ?? null,
             }));
           }
         }

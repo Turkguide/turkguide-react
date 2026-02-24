@@ -194,7 +194,7 @@ export function useUserManagement({
       ];
     });
 
-    // kendi profiliyse user state'i de güncelle
+    // kendi profiliyse user state'i de güncelle (acceptedTermsAt/bannedAt silinmesin)
     if (me && u.id === me.id) {
       setUser((p) => ({
         ...(p || {}),
@@ -210,6 +210,8 @@ export function useUserManagement({
         state: u.state ?? p?.state ?? "",
         country: u.country ?? p?.country ?? "",
         bio: u.bio ?? p?.bio ?? "",
+        acceptedTermsAt: p?.acceptedTermsAt ?? null,
+        bannedAt: p?.bannedAt ?? null,
       }));
     }
 
@@ -359,7 +361,7 @@ export function useUserManagement({
           )
         );
 
-        // 👤 kendi hesabıysa user state'i de güncelle
+        // 👤 kendi hesabıysa user state'i de güncelle (acceptedTermsAt/bannedAt silinmesin)
         if (user && String(user?.id) === String(u?.id)) {
           setUser((p) => ({
             ...(p || {}),
@@ -371,6 +373,8 @@ export function useUserManagement({
             state: u?.state ?? p?.state ?? "",
             country: u?.country ?? p?.country ?? "",
             bio: u?.bio ?? p?.bio ?? "",
+            acceptedTermsAt: p?.acceptedTermsAt ?? null,
+            bannedAt: p?.bannedAt ?? null,
           }));
         }
       } catch (e) {
