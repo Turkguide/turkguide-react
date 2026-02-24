@@ -94,6 +94,44 @@ export default function App() {
   const resolvedTheme = themePref === "system" ? systemTheme : themePref;
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
 
+  // Data
+  const [users, setUsers] = useState([]);
+  const [biz, setBiz] = useState([]);
+  const [bizApps, setBizApps] = useState([]);
+  const [posts, setPosts] = useState([]);
+
+  // 🧪 DEBUG: posts state gerçekten güncelleniyor mu?
+  useEffect(() => {
+    try {
+      console.log("🧪 POSTS STATE CHANGED -> len=", (posts || []).length, "first=", (posts || [])[0]);
+    } catch (_) {}
+  }, [posts]);
+  const [dms, setDms] = useState([]);
+  const [appts, setAppts] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [blockedUsernames, setBlockedUsernames] = useState([]);
+  const [blockedByUsernames, setBlockedByUsernames] = useState([]);
+  const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
+  const [reportCtx, setReportCtx] = useState(null);
+  const [reportReason, setReportReason] = useState("");
+  const [showTermsGate, setShowTermsGate] = useState(false);
+  const [termsChecked, setTermsChecked] = useState(false);
+
+  const [infoPage, setInfoPage] = useState(null);
+  // infoPage: "about" | "help" | "privacy" | "terms" | "contact" | null
+
+  // Modals
+  const [showAuth, setShowAuth] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+
+  // Landing search (UI)
+  const [landingSearch, setLandingSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+
+  // ✅ Username değişince eski username'lerden profile açabilmek için alias map
+  const [usernameAliases, setUsernameAliases] = useState({});
+  // örn: { "oldname": "newname" } (hepsi normalize edilmiş tutulacak)
+
   // Admin hook (must be before auth hook for userManagement)
   const admin = useAdmin({
     user,
@@ -394,49 +432,11 @@ useEffect(() => {
   };
 }, [active, admin.adminMode]);
 
-  // Data
-  const [users, setUsers] = useState([]);
-  const [biz, setBiz] = useState([]);
-  const [bizApps, setBizApps] = useState([]);
-  const [posts, setPosts] = useState([]);
-
-  // 🧪 DEBUG: posts state gerçekten güncelleniyor mu?
-  useEffect(() => {
-    try {
-      console.log("🧪 POSTS STATE CHANGED -> len=", (posts || []).length, "first=", (posts || [])[0]);
-    } catch (_) {}
-  }, [posts]);
-  const [dms, setDms] = useState([]);
-  const [appts, setAppts] = useState([]);
-  const [reports, setReports] = useState([]);
-  const [blockedUsernames, setBlockedUsernames] = useState([]);
-  const [blockedByUsernames, setBlockedByUsernames] = useState([]);
-  const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
-  const [reportCtx, setReportCtx] = useState(null);
-  const [reportReason, setReportReason] = useState("");
-  const [showTermsGate, setShowTermsGate] = useState(false);
-  const [termsChecked, setTermsChecked] = useState(false);
-  
-  const [infoPage, setInfoPage] = useState(null);
-// infoPage: "about" | "help" | "privacy" | "terms" | "contact" | null
-
-
-  // Modals
-  const [showAuth, setShowAuth] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
-
   // HUB
 
 
 
   // HUB comment input refs ("Yorum" tıklayınca input'a focus)
-
-
-
-
-
-
-
 
   
 
