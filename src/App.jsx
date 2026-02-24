@@ -1177,18 +1177,46 @@ async function submitReport() {
 }
 
 async function acceptTerms() {
-  if (!user?.id) return;
-  if (!supabase?.from) return;
+  if (!supabase?.from || !supabase?.auth?.getSession) return;
+  let userId = user?.id || null;
   try {
-    const { error } = await supabase
-      .from("profiles")
-      .update({ accepted_terms_at: new Date().toISOString() })
-      .eq("id", user.id);
-    if (error) throw error;
-    setUser((prev) => (prev ? { ...prev, acceptedTermsAt: new Date().toISOString() } : prev));
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error("acceptTerms session error:", sessionError);
+    }
+    userId = userId || sessionData?.session?.user?.id || null;
+    if (!userId) {
+      alert("Oturum bulunamadı. Lütfen tekrar giriş yap.");
+      return;
+    }
+
+    const acceptedAt = new Date().toISOString();
+
+    // Prefer users table if exists, fallback to profiles
+    let usersUpdated = false;
+    try {
+      const { error: usersError } = await supabase
+        .from("users")
+        .update({ termsAccepted: true, accepted_terms_at: acceptedAt })
+        .eq("id", userId);
+      if (usersError) throw usersError;
+      usersUpdated = true;
+    } catch (e) {
+      console.error("acceptTerms users update error:", e);
+    }
+
+    if (!usersUpdated) {
+      const { error: profilesError } = await supabase
+        .from("profiles")
+        .update({ accepted_terms_at: acceptedAt })
+        .eq("id", userId);
+      if (profilesError) throw profilesError;
+    }
+
+    setUser((prev) => (prev ? { ...prev, acceptedTermsAt: acceptedAt } : prev));
     alert("Kullanım Şartları kabul edildi.");
   } catch (e) {
-    console.warn("acceptTerms error:", e);
+    console.error("acceptTerms error:", e);
     alert("Kabul işlemi başarısız oldu.");
   }
 }
