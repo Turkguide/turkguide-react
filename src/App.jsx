@@ -1559,7 +1559,9 @@ return (
             <Card ui={ui}>
               <div style={{ fontSize: 18, fontWeight: 950 }}>Haberler</div>
               <div style={{ color: ui.muted, marginTop: 8 }}>
-                MVP demo. (Sonraki adım: haber kaynağı + detay sayfası)
+                TurkGuide deneyimi genişliyor.
+                <br />
+                Yakında haber kaynağı entegrasyonu ve detaylı içerik sayfaları eklenecek.
               </div>
             </Card>
           </div>
