@@ -239,7 +239,7 @@ useEffect(() => {
         }
         const { data: sData2 } = await supabase.auth.getSession();
         if (!sData2?.session) {
-          alert("Admin verisi icin oturum bulunamadi. Lutfen tekrar giris yap.");
+          console.warn("Admin fetch: oturum yok, veri çekilmedi.");
           return;
         }
       }

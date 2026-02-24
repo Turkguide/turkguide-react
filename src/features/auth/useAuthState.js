@@ -121,6 +121,7 @@ export function useAuthState() {
     }
 
     const restoreAndListen = async () => {
+      let userWasSet = false;
       try {
         // 🔐 Supabase yoksa sadece booted true
         if (!supabase?.auth) {
@@ -146,7 +147,6 @@ export function useAuthState() {
         }
         if (session?.user) {
           const md = session.user.user_metadata || {};
-          // DB'den terms/banned oku; hata olursa girişi iptal etme, sadece null kullan
           let flags = { acceptedTermsAt: null, bannedAt: null };
           try {
             flags = await fetchProfileFlags(session.user.id) || flags;
@@ -177,8 +177,11 @@ export function useAuthState() {
           };
           applyProfileFlags(nextUser);
           setUser(nextUser);
-          syncPublicProfile(nextUser);
-          hydrateProfileFlags(nextUser);
+          userWasSet = true;
+          try {
+            syncPublicProfile(nextUser);
+            hydrateProfileFlags(nextUser);
+          } catch (_) {}
         } else {
           setUser(null);
         }
@@ -234,7 +237,7 @@ export function useAuthState() {
         authSub = subData?.subscription || null;
       } catch (e) {
         console.error("💥 restore/auth crash:", e);
-        setUser(null);
+        if (!userWasSet) setUser(null);
       } finally {
         clearTimeout(bootTimeout);
         if (alive) setBooted(true);
