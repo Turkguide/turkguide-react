@@ -211,8 +211,13 @@ export function HubTab({
                         ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
                     }}
                   >
-                    {/* outside click closes menu */}
-                    <div onMouseDown={() => hub.setPostMenuOpenId(null)}>
+                    {/* outside click closes post and comment menus */}
+                    <div
+                      onMouseDown={() => {
+                        hub.setPostMenuOpenId(null);
+                        hub.setCommentMenuOpenKey(null);
+                      }}
+                    >
                       {/* header row */}
                       <div
                         style={{
@@ -258,10 +263,7 @@ export function HubTab({
                                 type="button"
                                 aria-label="Post menüsü"
                                 title="Seçenekler"
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  hub.setPostMenuOpenId((cur) => (cur === p.id ? null : p.id));
-                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   e.preventDefault();
@@ -750,11 +752,8 @@ export function HubTab({
                                     >
                                       <button
                                         type="button"
+                                        onMouseDown={(e) => e.stopPropagation()}
                                         onClick={(e) => {
-                                          e.stopPropagation();
-                                          hub.setCommentMenuOpenKey(menuOpen ? null : key);
-                                        }}
-                                        onMouseDown={(e) => {
                                           e.stopPropagation();
                                           hub.setCommentMenuOpenKey(menuOpen ? null : key);
                                         }}
