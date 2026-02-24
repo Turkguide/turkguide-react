@@ -21,7 +21,7 @@ create table if not exists public.reports (
 
 alter table public.reports enable row level security;
 
--- Allow authenticated users to insert reports
+-- Allow ANY authenticated user (admin veya normal user) to insert their own report.
 drop policy if exists "reports_insert_authenticated" on public.reports;
 create policy "reports_insert_authenticated"
 on public.reports for insert

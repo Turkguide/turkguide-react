@@ -1101,23 +1101,27 @@ async function submitReport() {
     return;
   }
 
-  let reporterId = user?.id || null;
-  if (supabase?.auth?.getSession) {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      reporterId = sessionData?.session?.user?.id || reporterId;
-    } catch (_) {}
-  }
-  if (!reporterId) {
-    alert("Oturum bulunamadı. Lütfen çıkış yapıp tekrar giriş yap.");
+  // RLS: auth.uid() = reporter_id olmalı; sadece oturumdaki kullanıcıyı kullan (admin/user aynı kural)
+  if (!supabase?.auth?.getSession) {
+    alert("Bağlantı hazır değil. Lütfen sayfayı yenileyin.");
     return;
   }
-  // Apple/WebView ortamında RLS geçmesi için oturumu tazele (JWT istekle gitsin)
+  let reporterId = null;
+  let reporterUsername = user?.username ?? "";
   try {
-    await supabase?.auth?.refreshSession?.();
-    const { data: afterRefresh } = await supabase.auth.getSession();
-    if (afterRefresh?.session?.user?.id) reporterId = afterRefresh.session.user.id;
-  } catch (_) {}
+    await supabase.auth.refreshSession();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const sessionUser = sessionData?.session?.user;
+    if (!sessionUser?.id) {
+      alert("Oturum bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.");
+      return;
+    }
+    reporterId = sessionUser.id;
+    reporterUsername = (sessionUser.user_metadata?.username ?? sessionUser.email ?? reporterUsername) || "user";
+  } catch (_) {
+    alert("Oturum doğrulanamadı. Lütfen çıkış yapıp tekrar giriş yapın.");
+    return;
+  }
 
   const normalizedTargetOwner = normalizeUsername(reportCtx.targetOwner || "");
   const inferredOwnerId =
@@ -1131,7 +1135,7 @@ async function submitReport() {
     id: uuid(),
     created_at: new Date().toISOString(),
     reporter_id: reporterId,
-    reporter_username: user?.username || "",
+    reporter_username: reporterUsername || "",
     target_type: reportCtx.type || "",
     target_id: String(reportCtx.targetId || ""),
     target_parent_id: reportCtx.targetParentId ? String(reportCtx.targetParentId) : null,
