@@ -224,7 +224,7 @@ export function HubTab({
                         }}
                       >
                         <div
-  onClick={() => profile.openProfileByUsername(hub.hubPostAuthor(p))}
+  onClick={() => profile?.openProfileByUsername?.(hub?.hubPostAuthor?.(p))}
   style={{
     display: "inline-flex",
     alignItems: "center",
@@ -233,7 +233,7 @@ export function HubTab({
     userSelect: "none",
   }}
 >
-  <Avatar ui={ui} src={profile.avatarByUsername(hub.hubPostAuthor(p))} size={28} label={hub.hubPostAuthor(p)} />
+  <Avatar ui={ui} src={profile?.avatarByUsername?.(hub?.hubPostAuthor?.(p))} size={28} label={hub?.hubPostAuthor?.(p)} />
 
   <span
     style={{
@@ -243,14 +243,14 @@ export function HubTab({
       letterSpacing: 0.1,
     }}
   >
-    @{hub.hubPostAuthor(p)}
+    @{hub?.hubPostAuthor?.(p) ?? ""}
   </span>
 </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: ui.muted2, fontSize: 12 }}>{fmt(p.createdAt)}</span>
 
-                          {(hub.canEditPost(p, admin.adminMode) || user) ? (
+                          {(hub?.canEditPost?.(p, admin?.adminMode) || true) ? (
                             <div style={{ position: "relative" }}>
                               <button
                                 type="button"
@@ -260,9 +260,16 @@ export function HubTab({
                                   e.stopPropagation();
                                   hub.setPostMenuOpenId((cur) => (cur === p.id ? null : p.id));
                                 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  hub.setPostMenuOpenId((cur) => (cur === p.id ? null : p.id));
+                                }}
                                 style={{
                                   width: 34,
                                   height: 34,
+                                  minWidth: 44,
+                                  minHeight: 44,
                                   borderRadius: 10,
                                   display: "inline-flex",
                                   alignItems: "center",
@@ -294,16 +301,16 @@ export function HubTab({
                                     background: ui.mode === "light" ? "#ffffff" : "#0f1219",
                                     boxShadow: `0 18px 40px ${ui.glow}`,
                                     overflow: "hidden",
-                                    zIndex: 20,
+                                    zIndex: 9999,
                                   }}
                                 >
-                                  {hub.canEditPost(p, admin.adminMode) && hub.editingPostId === p.id ? (
+                                  {hub?.canEditPost?.(p, admin?.adminMode) && hub?.editingPostId === p.id ? (
                                     <>
                                       <button
                                         type="button"
                                         onMouseDown={(e) => {
                                           e.stopPropagation();
-                                          hub.saveEditPost(p.id, admin.adminMode);
+                                          hub.saveEditPost(p.id, admin?.adminMode);
                                           hub.setPostMenuOpenId(null);
                                         }}
                                         style={{
@@ -340,13 +347,13 @@ export function HubTab({
                                         İptal
                                       </button>
                                     </>
-                                  ) : hub.canEditPost(p, admin.adminMode) ? (
+                                  ) : hub?.canEditPost?.(p, admin?.adminMode) ? (
                                     <>
                                       <button
                                         type="button"
                                         onMouseDown={(e) => {
                                           e.stopPropagation();
-                                          hub.startEditPost(p, admin.adminMode);
+                                          hub.startEditPost(p, admin?.adminMode);
                                           hub.setPostMenuOpenId(null);
                                         }}
                                         style={{
@@ -366,7 +373,7 @@ export function HubTab({
                                         type="button"
                                         onMouseDown={(e) => {
                                           e.stopPropagation();
-                                          hub.deletePost(p.id, admin.adminMode);
+                                          hub.deletePost(p.id, admin?.adminMode);
                                           hub.setPostMenuOpenId(null);
                                         }}
                                         style={{
@@ -385,6 +392,16 @@ export function HubTab({
                                       <button
                                         type="button"
                                         onMouseDown={(e) => {
+                                          e.stopPropagation();
+                                          onReportPost?.({
+                                            type: "hub_post",
+                                            targetId: p.id,
+                                            targetOwner: p.byUsername || "",
+                                            targetLabel: String(p.content || "").slice(0, 120),
+                                          });
+                                          hub.setPostMenuOpenId(null);
+                                        }}
+                                        onClick={(e) => {
                                           e.stopPropagation();
                                           onReportPost?.({
                                             type: "hub_post",
@@ -413,6 +430,26 @@ export function HubTab({
                                       type="button"
                                       onMouseDown={(e) => {
                                         e.stopPropagation();
+                                        if (!user) {
+                                          setShowAuth?.(true);
+                                          hub.setPostMenuOpenId(null);
+                                          return;
+                                        }
+                                        onReportPost?.({
+                                          type: "hub_post",
+                                          targetId: p.id,
+                                          targetOwner: p.byUsername || "",
+                                          targetLabel: String(p.content || "").slice(0, 120),
+                                        });
+                                        hub.setPostMenuOpenId(null);
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!user) {
+                                          setShowAuth?.(true);
+                                          hub.setPostMenuOpenId(null);
+                                          return;
+                                        }
                                         onReportPost?.({
                                           type: "hub_post",
                                           targetId: p.id,
@@ -646,11 +683,11 @@ export function HubTab({
                                   }}
                                 >
                                   {(() => {
-                                    const avatarSrc = profile.avatarByUsername(c.byUsername);
+                                    const avatarSrc = profile?.avatarByUsername?.(c.byUsername);
 
                                     return (
                                       <div
-                                        onClick={() => profile.openProfileByUsername(c.byUsername)}
+                                        onClick={() => profile?.openProfileByUsername?.(c.byUsername)}
                                         style={{
                                           display: "inline-flex",
                                           alignItems: "center",
@@ -699,7 +736,7 @@ export function HubTab({
                                     Cevapla
                                   </button>
 
-                                  {user ? (
+                                  {true ? (
                                     <div
                                       style={{
                                         marginLeft: "auto",
@@ -711,6 +748,10 @@ export function HubTab({
                                       <button
                                         type="button"
                                         onClick={(e) => {
+                                          e.stopPropagation();
+                                          hub.setCommentMenuOpenKey(menuOpen ? null : key);
+                                        }}
+                                        onMouseDown={(e) => {
                                           e.stopPropagation();
                                           hub.setCommentMenuOpenKey(menuOpen ? null : key);
                                         }}
@@ -753,7 +794,7 @@ export function HubTab({
                                                 : "rgba(10,12,18,0.98)",
                                             boxShadow: "0 18px 60px rgba(0,0,0,0.25)",
                                             padding: 6,
-                                            zIndex: 50,
+                                            zIndex: 9999,
                                           }}
                                         >
                                           {isOwner ? (
@@ -817,6 +858,17 @@ export function HubTab({
                                               </button>
                                               <button
                                                 type="button"
+                                                onMouseDown={(e) => {
+                                                  e.stopPropagation();
+                                                  onReportPost?.({
+                                                    type: "hub_comment",
+                                                    targetId: c.id,
+                                                    targetParentId: p.id,
+                                                    targetOwner: c.byUsername || "",
+                                                    targetLabel: String(c.text || "").slice(0, 120),
+                                                  });
+                                                  hub.setCommentMenuOpenKey(null);
+                                                }}
                                                 onClick={(e) => {
                                                   e.stopPropagation();
                                                   onReportPost?.({
@@ -849,6 +901,11 @@ export function HubTab({
                                               type="button"
                                               onClick={(e) => {
                                                 e.stopPropagation();
+                                                if (!user) {
+                                                  setShowAuth?.(true);
+                                                  hub.setCommentMenuOpenKey(null);
+                                                  return;
+                                                }
                                                 onReportPost?.({
                                                   type: "hub_comment",
                                                   targetId: c.id,
@@ -970,7 +1027,7 @@ export function HubTab({
                                         <>
                                           {replyToUsername ? (
                                             <span
-                                              onClick={() => profile.openProfileByUsername(replyToUsername)}
+                                              onClick={() => profile?.openProfileByUsername?.(replyToUsername)}
                                               style={{
                                                 color: ui.blue,
                                                 fontWeight: 800,
