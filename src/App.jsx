@@ -440,10 +440,6 @@ useEffect(() => {
 
   
 
-  // Landing search (UI)
-  const [landingSearch, setLandingSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-
 useEffect(() => {
   if (!user?.id || !supabase?.from) return;
   let cancelled = false;
@@ -474,10 +470,6 @@ useEffect(() => {
     cancelled = true;
   };
 }, [user?.id, users]);
-
-  // ✅ Username değişince eski username'lerden profile açabilmek için alias map
-  const [usernameAliases, setUsernameAliases] = useState({});
-  // örn: { "oldname": "newname" } (hepsi normalize edilmiş tutulacak)
 
   function resolveUsernameAlias(uname) {
     const key = normalizeUsername(uname);
