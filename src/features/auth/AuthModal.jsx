@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Modal, Button, inputStyle } from "../../components/ui";
 
 /**
  * Auth Modal Component - Login and Register forms
  */
 export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegister, authEmail, setAuthEmail, authPassword, setAuthPassword, authUsername, setAuthUsername, loginNow, oauthLogin }) {
+  const [registerTermsAccepted, setRegisterTermsAccepted] = useState(false);
   return (
     <>
       {/* LOGIN MODAL */}
@@ -111,12 +113,26 @@ export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegi
           style={{ ...inputStyle(ui), marginTop: 10 }}
         />
 
+        <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, marginTop: 12, color: ui.muted }}>
+          <input
+            type="checkbox"
+            checked={registerTermsAccepted}
+            onChange={(e) => setRegisterTermsAccepted(e.target.checked)}
+          />
+          <span>
+            <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: ui.text }}>Kullanım Şartları</a>
+            {" "}ve{" "}
+            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: ui.text }}>Gizlilik Politikası</a>
+            ’nı okudum ve kabul ediyorum.
+          </span>
+        </label>
+
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
           <Button
             ui={ui}
             variant="solidBlue"
-            onClick={() => loginNow("email", "register")}
-            disabled={!authUsername.trim() || !authEmail.trim() || !authPassword.trim()}
+            onClick={() => loginNow("email", "register", { termsAccepted: registerTermsAccepted })}
+            disabled={!authUsername.trim() || !authEmail.trim() || !authPassword.trim() || !registerTermsAccepted}
             style={{ width: "100%" }}
           >
             Kaydı Tamamla

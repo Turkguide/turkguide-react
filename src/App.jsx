@@ -541,6 +541,8 @@ useEffect(() => {
     setUser,
     setShowAuth,
     setShowRegister,
+    setShowTermsGate,
+    setTermsChecked,
     setActive,
     setShowSettings: settingsHook.setShowSettings,
     setShowBizApply: (value) => {
@@ -1237,6 +1239,7 @@ async function submitReport() {
 
 /**
  * Accept terms and persist to DB. Returns true if saved successfully (so UI can close modal).
+ * Timeout 12s so "Kaydediliyor" never sticks.
  */
 async function acceptTerms() {
   if (!supabase?.from || !supabase?.auth?.getSession) {
@@ -1244,7 +1247,8 @@ async function acceptTerms() {
     return false;
   }
   let userId = user?.id || null;
-  try {
+  const timeoutMs = 12000;
+  const run = async () => {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) console.error("acceptTerms session error:", sessionError);
     userId = userId || sessionData?.session?.user?.id || null;
@@ -1252,21 +1256,13 @@ async function acceptTerms() {
       alert("Oturum bulunamadı. Lütfen tekrar giriş yap.");
       return false;
     }
-
     const acceptedAt = new Date().toISOString();
-
-    // Primary: profiles (source of truth for accepted_terms_at in this app)
     let updated = false;
-    try {
-      const { error: profilesError } = await supabase
-        .from("profiles")
-        .update({ accepted_terms_at: acceptedAt })
-        .eq("id", userId);
-      if (!profilesError) updated = true;
-    } catch (e) {
-      console.warn("acceptTerms profiles update:", e);
-    }
-
+    const { error: profilesError } = await supabase
+      .from("profiles")
+      .update({ accepted_terms_at: acceptedAt })
+      .eq("id", userId);
+    if (!profilesError) updated = true;
     if (!updated) {
       try {
         const { error: usersError } = await supabase
@@ -1274,24 +1270,29 @@ async function acceptTerms() {
           .update({ termsAccepted: true, accepted_terms_at: acceptedAt })
           .eq("id", userId);
         if (!usersError) updated = true;
-      } catch (e) {
-        console.warn("acceptTerms users update:", e);
-      }
+      } catch (_) {}
     }
-
     if (!updated) {
-      alert("Kabul kaydedilemedi. Sayfayı yenileyip tekrar deneyin; sorun sürerse çıkış yapıp giriş yapın.");
+      alert("Kabul kaydedilemedi. Sayfayı yenileyip tekrar deneyin.");
       return false;
     }
-
-    // Auth callback (token refresh) setUser commit'inden önce çalışabilir; pending ile kaybetmeyi önle
     setPendingAcceptedTerms(userId, acceptedAt);
     setUser((prev) => (prev ? { ...prev, acceptedTermsAt: acceptedAt } : prev));
-    alert("Kullanım Şartları kabul edildi.");
     return true;
+  };
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("timeout")), timeoutMs)
+  );
+  try {
+    const ok = await Promise.race([run(), timeout]);
+    return ok === true;
   } catch (e) {
-    console.error("acceptTerms error:", e);
-    alert("Kabul işlemi başarısız oldu.");
+    if (String(e?.message) === "timeout") {
+      alert("Kayıt zaman aşımına uğradı. Lütfen tekrar deneyin.");
+    } else {
+      console.error("acceptTerms error:", e);
+      alert("Kabul işlemi başarısız oldu.");
+    }
     return false;
   }
 }

@@ -42,6 +42,8 @@ export function useAuthState() {
       if (error) throw error;
     } catch (e) {
       console.warn("syncPublicProfile error:", e);
+      const msg = String(e?.message || e?.error_description || e || "");
+      alert("Profil kaydedilemedi. " + (msg ? msg : "Lütfen tekrar giriş yapın veya destek ile iletişime geçin."));
     }
   }
 

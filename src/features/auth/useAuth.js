@@ -7,7 +7,7 @@ import { normalizeUsername } from "../../utils/helpers";
 /**
  * Hook for authentication operations
  */
-export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive, setShowSettings, setShowBizApply, setProfileOpen, setProfileTarget, setShowEditUser, setEditUserCtx, setShowDm, setDmTarget, setDmText, setShowAppt, setApptBizId, setApptMsg }) {
+export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTermsGate, setTermsChecked, setActive, setShowSettings, setShowBizApply, setProfileOpen, setProfileTarget, setShowEditUser, setEditUserCtx, setShowDm, setDmTarget, setDmText, setShowAppt, setApptBizId, setApptMsg }) {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authUsername, setAuthUsername] = useState("");
@@ -91,7 +91,8 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
       return false;
     }
     if (options.requireTerms && !user?.acceptedTermsAt) {
-      alert("Devam etmek için Kullanım Şartları'nı kabul etmelisin.");
+      if (setShowTermsGate) setShowTermsGate(true);
+      if (setTermsChecked) setTermsChecked(false);
       try {
         if (typeof window !== "undefined" && window.dispatchEvent) {
           window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
@@ -109,7 +110,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
   /**
    * Login or Register
    */
-  async function loginNow(provider = "email", mode = "login") {
+  async function loginNow(provider = "email", mode = "login", options = {}) {
     try {
       const email = String(authEmail || "").trim().toLowerCase();
       const pass = String(authPassword || "").trim();
@@ -118,6 +119,10 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
 
       // 2) REGISTER
       if (mode === "register") {
+        if (options.termsAccepted !== true) {
+          alert("Devam etmek için Kullanım Şartları ve Gizlilik Politikası'nı kabul etmelisiniz.");
+          return;
+        }
         if (!email || !pass || !username) {
           alert("Email, şifre ve kullanıcı adı zorunlu.");
           return;
@@ -181,6 +186,17 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
           } catch (_) {}
           setShowAuth(true); // doğrulama için modal açık kalsın
         } else {
+          const userId = data.user.id;
+          let acceptedTermsAt = null;
+          if (options.termsAccepted === true) {
+            acceptedTermsAt = new Date().toISOString();
+            try {
+              await supabase.from("profiles").update({ accepted_terms_at: acceptedTermsAt }).eq("id", userId);
+              try {
+                await supabase.from("users").update({ termsAccepted: true, accepted_terms_at: acceptedTermsAt }).eq("id", userId);
+              } catch (_) {}
+            } catch (_) {}
+          }
           alert("Kayıt alındı ve giriş yapıldı.");
           setUser((prev) => {
             const next = {
@@ -199,13 +215,14 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive
               emailVerified:
                 !!(data.user.email_confirmed_at ?? data.user.confirmed_at) && !data.user.new_email,
               newEmailPending: data.user.new_email ?? null,
+              acceptedTermsAt: acceptedTermsAt ?? prev?.acceptedTermsAt ?? null,
             };
             if (prev?.id === data.user.id) {
-              next.acceptedTermsAt = prev.acceptedTermsAt ?? null;
               next.bannedAt = prev.bannedAt ?? null;
             }
             return next;
           });
+          if (setTermsChecked) setTermsChecked(true);
           // ✅ Login olduysa da ana sayfa: İşletmeler
           setActive("biz");
           try {
