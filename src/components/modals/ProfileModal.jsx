@@ -158,8 +158,8 @@ export function ProfileModal({
                 <Button
                   ui={ui}
                   variant="blue"
-                  onClick={() => {
-                    const opened = messages.openDmToUser(profileData.user.username);
+                  onClick={async () => {
+                    const opened = await messages.openDmToUser(profileData.user.username);
                     if (opened) onClose();
                   }}
                   style={{
@@ -298,8 +298,8 @@ export function ProfileModal({
                   <button
                     type="button"
                     style={{ ...act, color: ui.blue }}
-                    onClick={() => {
-                      const opened = messages.openDmToBiz(profileData.biz.id);
+                    onClick={async () => {
+                      const opened = await messages.openDmToBiz(profileData.biz.id);
                       if (opened) onClose();
                     }}
                     title="Mesaj"

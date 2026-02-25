@@ -79,9 +79,10 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
   }
 
   /**
-   * Require authentication - shows auth modal if not logged in
+   * Require authentication - shows auth modal if not logged in.
+   * When requireTerms is set, if in-memory acceptedTermsAt is missing, fetches once from DB so actions stay stable after token refresh.
    */
-  function requireAuth(options = {}) {
+  async function requireAuth(options = {}) {
     if (!user) {
       setShowAuth(true);
       return false;
@@ -91,6 +92,23 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
       return false;
     }
     if (options.requireTerms && !user?.acceptedTermsAt) {
+      if (user?.id && supabase?.from) {
+        try {
+          const { data } = await supabase
+            .from("profiles")
+            .select("accepted_terms_at, banned_at")
+            .eq("id", user.id)
+            .single();
+          if (data?.accepted_terms_at) {
+            setUser((prev) =>
+              prev?.id === user.id
+                ? { ...prev, acceptedTermsAt: data.accepted_terms_at, bannedAt: data.banned_at ?? prev?.bannedAt }
+                : prev
+            );
+            return true;
+          }
+        } catch (_) {}
+      }
       if (setShowTermsGate) setShowTermsGate(true);
       if (setTermsChecked) setTermsChecked(false);
       try {

@@ -1088,8 +1088,8 @@ function clearFilters() {
   }
 }
 
-function openReport(ctx) {
-  if (!requireAuth({ requireTerms: true })) return;
+async function openReport(ctx) {
+  if (!(await requireAuth({ requireTerms: true }))) return;
   setReportCtx(ctx || null);
   setReportReason("");
   reportModalOpenedAtRef.current = Date.now();
@@ -1298,7 +1298,7 @@ async function acceptTerms() {
 }
 
 async function blockUser(targetUser) {
-  if (!requireAuth({ requireTerms: true })) return;
+  if (!(await requireAuth({ requireTerms: true }))) return;
   if (!user?.id || !targetUser?.id) return;
   try {
     if (!supabase?.from) return;
@@ -1358,7 +1358,7 @@ async function blockUser(targetUser) {
 }
 
 async function unblockUser(targetUser) {
-  if (!requireAuth({ requireTerms: true })) return;
+  if (!(await requireAuth({ requireTerms: true }))) return;
   if (!user?.id || !targetUser?.id) return;
   try {
     if (!supabase?.from) return;

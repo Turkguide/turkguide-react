@@ -11,8 +11,8 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
   const [apptMsg, setApptMsg] = useState("");
   const [apptDateTime, setApptDateTime] = useState("");
 
-  function openAppointment(bizId) {
-    if (!requireAuth({ requireTerms: true })) return;
+  async function openAppointment(bizId) {
+    if (!(await requireAuth({ requireTerms: true }))) return;
     setApptBizId(bizId);
     setApptMsg("");
     setApptDateTime("");
@@ -20,7 +20,7 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
   }
 
   async function submitAppointment() {
-    if (!requireAuth({ requireTerms: true })) return;
+    if (!(await requireAuth({ requireTerms: true }))) return;
     const bizId = apptBizId;
     const msg = String(apptMsg || "").trim();
     const requestedAt = String(apptDateTime || "").trim();

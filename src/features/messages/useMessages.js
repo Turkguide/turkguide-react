@@ -13,8 +13,8 @@ export function useMessages({ user, dms: _dms, setDms, settings, requireAuth, bl
   /**
    * Open DM to user
    */
-  function openDmToUser(username) {
-    if (!requireAuth({ requireVerified: true, requireTerms: true })) return false;
+  async function openDmToUser(username) {
+    if (!(await requireAuth({ requireVerified: true, requireTerms: true }))) return false;
     if (Array.isArray(blockedByIds) && blockedByIds.length > 0) {
       const blockedMe = blockedByIds.includes(username);
       if (blockedMe) {
@@ -43,8 +43,8 @@ export function useMessages({ user, dms: _dms, setDms, settings, requireAuth, bl
   /**
    * Open DM to business
    */
-  function openDmToBiz(bizId) {
-    if (!requireAuth({ requireVerified: true, requireTerms: true })) return false;
+  async function openDmToBiz(bizId) {
+    if (!(await requireAuth({ requireVerified: true, requireTerms: true }))) return false;
     if (!settings.chatEnabled) {
       alert("Mesajlar şu anda kapalı.");
       return false;
@@ -60,7 +60,7 @@ export function useMessages({ user, dms: _dms, setDms, settings, requireAuth, bl
    * Send DM
    */
   async function sendDm() {
-    if (!requireAuth({ requireVerified: true, requireTerms: true })) return;
+    if (!(await requireAuth({ requireVerified: true, requireTerms: true }))) return;
     if (dmTarget?.type === "user") {
       if (Array.isArray(blockedByIds) && blockedByIds.includes(dmTarget.username)) {
         alert("Bu kullanıcı size mesaj göndermeyi engelledi.");

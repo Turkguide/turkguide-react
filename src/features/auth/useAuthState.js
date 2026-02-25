@@ -220,7 +220,14 @@ export function useAuthState() {
                 bannedAt: null,
               };
               applyProfileFlags(nextUser);
-              setUser(nextUser);
+              setUser((prev) => {
+                const next = { ...nextUser };
+                if (prev?.id === next.id) {
+                  next.acceptedTermsAt = next.acceptedTermsAt ?? prev.acceptedTermsAt ?? null;
+                  next.bannedAt = next.bannedAt ?? prev.bannedAt ?? null;
+                }
+                return next;
+              });
               syncPublicProfile(nextUser);
               hydrateProfileFlags(nextUser);
             } else {
@@ -229,13 +236,20 @@ export function useAuthState() {
           } catch (e) {
             console.error("💥 onAuthStateChange handler:", e);
             if (s?.user) {
-              setUser({
-                id: s.user.id,
-                email: s.user.email ?? null,
-                username: s.user.user_metadata?.username ?? null,
-                avatar: s.user.user_metadata?.avatar ?? "",
-                acceptedTermsAt: null,
-                bannedAt: null,
+              setUser((prev) => {
+                const next = {
+                  id: s.user.id,
+                  email: s.user.email ?? null,
+                  username: s.user.user_metadata?.username ?? null,
+                  avatar: s.user.user_metadata?.avatar ?? "",
+                  acceptedTermsAt: null,
+                  bannedAt: null,
+                };
+                if (prev?.id === next.id) {
+                  next.acceptedTermsAt = prev.acceptedTermsAt ?? null;
+                  next.bannedAt = prev.bannedAt ?? null;
+                }
+                return next;
               });
             } else if (event === "SIGNED_OUT") setUser(null);
           }

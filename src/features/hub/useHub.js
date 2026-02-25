@@ -157,7 +157,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
    * Share a HUB post
    */
   async function hubShare() {
-    if (!requireAuth({ requireTerms: true })) {
+    if (!(await requireAuth({ requireTerms: true }))) {
       alert("Paylaşım için giriş yapmalısın.");
       return;
     }
@@ -262,7 +262,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
    * Like/unlike a HUB post
    */
   async function hubLike(postId) {
-    if (!requireAuth({ requireTerms: true })) return;
+    if (!(await requireAuth({ requireTerms: true }))) return;
 
     if (!user || !user.username) {
       alert("Oturum bulunamadı, lütfen tekrar giriş yapın.");
@@ -332,7 +332,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
    * Add comment to a HUB post (or reply to a comment)
    */
   async function hubComment(postId, replyToCommentId = null) {
-    if (!requireAuth({ requireTerms: true })) return;
+    if (!(await requireAuth({ requireTerms: true }))) return;
 
     // Use replyDraft if replying, otherwise use commentDraft
     const text = replyToCommentId
@@ -436,7 +436,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
    * Delete a HUB comment
    */
   async function deleteHubComment(postId, commentId) {
-    if (!requireAuth({ requireTerms: true })) return;
+    if (!(await requireAuth({ requireTerms: true }))) return;
 
     const target = (posts || []).find((p) => p.id === postId);
     if (!target) return;
@@ -485,7 +485,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
    * Repost a HUB post
    */
   async function hubRepost(postId) {
-    if (!requireAuth({ requireVerified: true, requireTerms: true })) return;
+    if (!(await requireAuth({ requireVerified: true, requireTerms: true }))) return;
 
     const target = (posts || []).find((p) => p.id === postId);
     if (!target) return;
@@ -575,8 +575,8 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
   /**
    * Start editing a post
    */
-  function startEditPost(p, adminMode) {
-    if (!requireAuth({ requireVerified: true, requireTerms: true })) return;
+  async function startEditPost(p, adminMode) {
+    if (!(await requireAuth({ requireVerified: true, requireTerms: true }))) return;
     if (!canEditPost(p, adminMode)) return;
     setEditingPostId(p.id);
     setEditPostDraft(String(p.content || ""));
@@ -594,7 +594,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
    * Save edited post
    */
   async function saveEditPost(postId, adminMode) {
-    if (!requireAuth({ requireVerified: true, requireTerms: true })) return;
+    if (!(await requireAuth({ requireVerified: true, requireTerms: true }))) return;
     const text = String(editPostDraft || "").trim();
 
     const target = posts.find((x) => x.id === postId);
@@ -645,7 +645,7 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
    * Delete a post
    */
   async function deletePost(postId, adminMode) {
-    if (!requireAuth({ requireVerified: !adminMode, requireTerms: true })) return;
+    if (!(await requireAuth({ requireVerified: !adminMode, requireTerms: true }))) return;
 
     const p = posts.find((x) => x.id === postId);
     if (!p || !canEditPost(p, adminMode)) return;

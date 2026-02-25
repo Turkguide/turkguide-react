@@ -53,8 +53,8 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
   /**
    * Submit business application
    */
-  function submitBizApplication(data) {
-    if (!requireAuth({ requireTerms: true })) return;
+  async function submitBizApplication(data) {
+    if (!(await requireAuth({ requireTerms: true }))) return;
 
     // ✅ Core fields
     const name = String(data?.name || "").trim();
@@ -437,8 +437,8 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
   /**
    * Open business apply modal
    */
-  function openBizApply() {
-    if (!requireAuth({ requireTerms: true })) return;
+  async function openBizApply() {
+    if (!(await requireAuth({ requireTerms: true }))) return;
     setShowBizApply(true);
   }
 
