@@ -146,9 +146,12 @@ export function AdminPanel({
   }, [safeLogs, logQuery]);
 
   const reportsFiltered = useMemo(() => {
+    const openOnly = safeReports.filter(
+      (r) => String(r.status || "open").toLowerCase() !== "resolved"
+    );
     const q = reportQuery.trim().toLowerCase();
-    if (!q) return safeReports;
-    return safeReports.filter(
+    if (!q) return openOnly;
+    return openOnly.filter(
       (r) =>
         String(r.reporterUsername || "").toLowerCase().includes(q) ||
         String(r.reason || "").toLowerCase().includes(q) ||
