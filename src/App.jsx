@@ -1127,7 +1127,7 @@ async function openReport(ctx) {
     setReportReason("");
     reportModalOpenedAtRef.current = Date.now();
   } catch (e) {
-    console.error("openReport error:", e);
+    if (import.meta.env.DEV) console.error("openReport error:", e);
     alert("Şikayet ekranı açılamadı. Lütfen tekrar deneyin.");
   }
 }
@@ -1187,6 +1187,10 @@ async function submitReport() {
 
   try {
     if (!supabase?.from) throw new Error("Bağlantı yok.");
+    if (typeof supabase?.rpc !== "function") {
+      alert("Şikayet özelliği şu an kullanılamıyor. Lütfen daha sonra deneyin.");
+      return;
+    }
     // RPC ile insert: reporter_id sunucuda auth.uid() ile set edilir, user/admin aynı şekilde çalışır
     const { data: newId, error: rpcError } = await supabase.rpc("insert_report", {
       p_reporter_username: payload.reporter_username,
@@ -1261,15 +1265,18 @@ async function submitReport() {
     setReportCtx(null);
     setReportReason("");
   } catch (e) {
-    console.warn("report submit error:", e);
+    if (import.meta.env.DEV) console.warn("report submit error:", e);
     const msg = String(e?.message || e || "");
     const isRls = /row-level security|violates.*policy/i.test(msg);
-    if (isRls) {
+    const isRpcMissing = /function.*does not exist|rpc.*not found/i.test(msg);
+    if (isRpcMissing) {
+      alert("Şikayet sistemi henüz aktif değil. Lütfen daha sonra deneyin veya destek ile iletişime geçin.");
+    } else if (isRls) {
       alert(
         "Şikayet gönderilemedi. Oturum sunucuda tanınmıyor olabilir. Lütfen çıkış yapıp tekrar giriş yapın."
       );
     } else {
-      alert("Şikayet gönderilemedi. " + (msg ? msg : "Lütfen tekrar dene."));
+      alert("Şikayet gönderilemedi. " + (msg ? msg : "Lütfen tekrar deneyin."));
     }
   }
 }

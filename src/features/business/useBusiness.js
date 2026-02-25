@@ -55,7 +55,13 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
    */
   async function submitBizApplication(data) {
     if (!(await requireAuth({ requireTerms: true }))) return;
+    if (!user?.id) {
+      alert("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+      return;
+    }
+    const applicantName = user?.username ?? user?.email ?? "user";
 
+    try {
     // ✅ Core fields
     const name = String(data?.name || "").trim();
     const category = String(data?.category || "").trim();
@@ -113,8 +119,8 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
       id: appId,
       createdAt: now(),
       status: "pending",
-      applicant: user.username,
-      ownerUsername: user.username,
+      applicant: applicantName,
+      ownerUsername: applicantName,
       userId: user.id || null,
       name,
       category,
@@ -162,18 +168,22 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
         })
         .then(({ error }) => {
           if (error) {
-            console.warn("biz_apps insert error:", error);
-            alert("Basvuru gonderilemedi. Lutfen tekrar deneyin.");
+            if (import.meta.env.DEV) console.warn("biz_apps insert error:", error);
+            alert("Başvuru gönderilemedi. Lütfen tekrar deneyin.");
           }
         })
         .catch((e) => {
-          console.warn("biz_apps insert exception:", e);
-          alert("Basvuru gonderilemedi. Lutfen tekrar deneyin.");
+          if (import.meta.env.DEV) console.warn("biz_apps insert exception:", e);
+          alert("Başvuru gönderilemedi. Lütfen tekrar deneyin.");
         });
     }
 
     alert("✅ Başvurunuz alındı. İncelendikten sonra işletmeler listesinde görünecek.");
     setShowBizApply(false);
+    } catch (e) {
+      if (import.meta.env.DEV) console.error("submitBizApplication error:", e);
+      alert("Başvuru gönderilirken hata oluştu. Lütfen tekrar deneyin.");
+    }
   }
 
   /**
