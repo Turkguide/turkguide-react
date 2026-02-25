@@ -112,7 +112,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
             );
             return true;
           }
-        } catch (_) {}
+        } catch (e) {}
       }
       if (setShowTermsGate) setShowTermsGate(true);
       if (setTermsChecked) setTermsChecked(false);
@@ -134,6 +134,10 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
    * Login or Register
    */
   async function loginNow(provider = "email", mode = "login", options = {}) {
+    if (!supabase?.auth) {
+      alert("Bağlantı hazır değil. Sayfayı yenileyip tekrar deneyin.");
+      return;
+    }
     try {
       const email = String(authEmail || "").trim().toLowerCase();
       const pass = String(authPassword || "").trim();
@@ -159,8 +163,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
           );
 
           if (emailErr) {
-            console.warn("email availability check error:", emailErr);
-            // Fallback to Supabase Auth unique email check
+            if (import.meta.env.DEV) console.warn("email availability check:", emailErr);
           } else if (emailAvailable === false) {
             alert("Bu email adresi daha önce kayıt edilmiş.");
             return;
@@ -175,7 +178,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
           );
 
           if (error) {
-            console.warn("username availability check error:", error);
+            if (import.meta.env.DEV) console.warn("username availability check:", error);
             alert("Kullanıcı adı kontrol edilemedi. Lütfen tekrar dene.");
             return;
           }
@@ -189,7 +192,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
         let data;
         try {
           data = await authService.signUp(email, pass, username);
-          console.log("✅ signUp ok:", data);
+          if (import.meta.env.DEV) console.log("signUp ok");
         } catch (e) {
           const msg = String(e?.message || e?.error_description || "");
           if (msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("user already")) {
@@ -267,7 +270,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
         }
 
         const data = await authService.signIn(email, pass);
-        console.log("✅ login ok:", data);
+        if (import.meta.env.DEV) console.log("login ok");
 
         setUser((prev) => {
           const next = {
@@ -309,8 +312,9 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
 
       alert("Geçersiz işlem.");
     } catch (e) {
-      console.error("💥 loginNow crash:", e);
-      alert(e?.message || "Load failed");
+      if (import.meta.env.DEV) console.error("loginNow error:", e);
+      const msg = e?.message || e?.error_description || "";
+      alert(msg || "Giriş veya kayıt başarısız. Lütfen tekrar deneyin.");
     }
   }
 
@@ -318,15 +322,14 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
    * Logout
    */
   async function logout() {
-    console.log("✅ logout() clicked");
     try {
       const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("signOut timeout")), 800)
       );
       await Promise.race([authService.signOut(), timeout]);
     } catch (e) {
-      console.log("❌ logout() catch", e);
-      console.error("logout error:", e);
+      if (import.meta.env.DEV) console.error("logout error:", e);
+      alert("Çıkış sırasında bağlantı hatası. Yerel oturum temizlendi.");
     } finally {
       hardResetToHome();
     }
@@ -336,11 +339,13 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
    * Delete account
    */
   async function deleteAccount() {
-    console.log("✅ deleteAccount() clicked", { user });
     const ok = confirm("Hesabın kalıcı olarak silinecek. Emin misin?");
-    console.log("✅ deleteAccount() confirm result:", ok);
     if (!ok) return;
 
+    if (!supabase?.auth) {
+      alert("Bağlantı hazır değil. Sayfayı yenileyip tekrar deneyin.");
+      return;
+    }
     try {
       const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("deleteAccount timeout")), 1500)
@@ -350,8 +355,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
       hardResetToHome();
       return;
     } catch (e) {
-      console.log("❌ deleteAccount() catch", e);
-      console.error("delete account error:", e);
+      if (import.meta.env.DEV) console.error("deleteAccount error:", e);
       const detail = e?.message || e?.error_description || "";
       alert(`Hesap silinirken hata oluştu.${detail ? `\n${detail}` : ""}`);
       hardResetToHome();
@@ -362,11 +366,15 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
    * OAuth login
    */
   async function oauthLogin(provider) {
+    if (!supabase?.auth) {
+      alert("Bağlantı hazır değil. Sayfayı yenileyip tekrar deneyin.");
+      return;
+    }
     try {
       await authService.signInWithOAuth(provider);
     } catch (e) {
-      console.error("💥 oauthLogin crash:", e);
-      alert(e?.message || "OAuth giriş hatası");
+      if (import.meta.env.DEV) console.error("oauthLogin error:", e);
+      alert(e?.message || "OAuth giriş hatası. Lütfen tekrar deneyin.");
     }
   }
 

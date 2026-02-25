@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { KEY } from "../../constants";
-import { lsGet, lsSet } from "../../utils/localStorage";
+import { lsSet } from "../../utils/localStorage";
 import { ensureSeed } from "../../utils/seed";
 import { normalizeUsername } from "../../utils/helpers";
 import { consumePendingAcceptedTerms } from "./pendingProfileFlags";
@@ -25,23 +25,29 @@ export function useAuthState() {
       const fallbackEmail = emailValue || nextUser.id + "@apple.placeholder";
       const unameKey = normalizeUsername(unameRaw || fallbackUname);
       const avatarStr = typeof nextUser.avatar === "string" ? nextUser.avatar : "";
-      const { error } = await supabase.from("profiles").upsert(
-        {
-          id: nextUser.id,
-          username: unameKey,
-          email: emailValue || fallbackEmail,
-          avatar: avatarStr || null,
-          age: nextUser?.age ?? null,
-          city: String(nextUser?.city || "").trim() || null,
-          state: String(nextUser?.state || "").trim() || null,
-          country: String(nextUser?.country || "").trim() || null,
-          bio: String(nextUser?.bio || "").trim() || null,
-        },
-        { onConflict: "id" }
-      );
+      const ageVal = nextUser?.age;
+      const ageInt =
+        ageVal !== null && ageVal !== undefined && ageVal !== ""
+          ? (() => {
+              const n = Number(ageVal);
+              return Number.isInteger(n) ? n : null;
+            })()
+          : null;
+      const payload = {
+        id: nextUser.id,
+        username: unameKey,
+        email: emailValue || fallbackEmail,
+        avatar: avatarStr || null,
+        city: String(nextUser?.city || "").trim() || null,
+        state: String(nextUser?.state || "").trim() || null,
+        country: String(nextUser?.country || "").trim() || null,
+        bio: String(nextUser?.bio || "").trim() || null,
+      };
+      if (ageInt != null && Number.isInteger(ageInt)) payload.age = ageInt;
+      const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
       if (error) throw error;
     } catch (e) {
-      console.warn("syncPublicProfile error:", e);
+      if (import.meta.env.DEV) console.warn("syncPublicProfile error:", e);
       const msg = String(e?.message || e?.error_description || e || "");
       alert("Profil kaydedilemedi. " + (msg ? msg : "Lütfen tekrar giriş yapın veya destek ile iletişime geçin."));
     }
@@ -62,7 +68,7 @@ export function useAuthState() {
         bannedAt: data.banned_at || null,
       };
     } catch (e) {
-      console.warn("fetchProfileFlags error:", e);
+      if (import.meta.env.DEV) console.warn("fetchProfileFlags error:", e);
       return { acceptedTermsAt: null, bannedAt: null };
     }
   }
@@ -82,13 +88,13 @@ export function useAuthState() {
         prev && String(prev.id) === String(nextUser.id)
           ? {
               ...prev,
-              acceptedTermsAt: data.accepted_terms_at || null,
-              bannedAt: data.banned_at || null,
+              acceptedTermsAt: (data.accepted_terms_at || prev.acceptedTermsAt) ?? null,
+              bannedAt: (data.banned_at ?? prev.bannedAt) ?? null,
             }
           : prev
       );
     } catch (e) {
-      console.warn("hydrateProfileFlags error:", e);
+      if (import.meta.env.DEV) console.warn("hydrateProfileFlags error:", e);
     }
   }
 
@@ -135,7 +141,7 @@ export function useAuthState() {
         const { data, error } = await supabase.auth.getSession();
         if (!alive) return;
 
-        if (error) console.error("❌ getSession error:", error);
+        if (error && import.meta.env.DEV) console.error("getSession error:", error);
 
         let session = data?.session;
         if (session?.expires_at) {
@@ -234,7 +240,7 @@ export function useAuthState() {
               setUser(null);
             }
           } catch (e) {
-            console.error("💥 onAuthStateChange handler:", e);
+            if (import.meta.env.DEV) console.error("onAuthStateChange handler:", e);
             if (s?.user) {
               setUser((prev) => {
                 const next = {
@@ -257,7 +263,7 @@ export function useAuthState() {
 
         authSub = subData?.subscription || null;
       } catch (e) {
-        console.error("💥 restore/auth crash:", e);
+        if (import.meta.env.DEV) console.error("restore/auth crash:", e);
         if (!userWasSet) setUser(null);
       } finally {
         clearTimeout(bootTimeout);

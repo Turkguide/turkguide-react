@@ -5,9 +5,8 @@ import { supabase } from "./supabaseClient";
 import { KEY, DEFAULT_ADMINS } from "./constants";
 
 // Utils
-import { lsGet, lsSet } from "./utils/localStorage";
-import { now, uid, fmt, normalizeUsername, isAdminUser, openDirections, openCall, trackMetric, uuid } from "./utils/helpers";
-import { ensureSeed } from "./utils/seed";
+import { lsSet } from "./utils/localStorage";
+import { now, fmt, normalizeUsername, openDirections, openCall, trackMetric, uuid } from "./utils/helpers";
 
 // Hooks
 import { useSystemTheme } from "./hooks/useSystemTheme";
@@ -72,11 +71,30 @@ import { useNotifications } from "./features/notifications";
  */
 
 /* ========= APP ========= */
-export default function App() {
-  console.log("🔥 App.jsx yüklendi");
-  console.log("🔥 SUPABASE INSTANCE:", supabase);
-  console.log("🧪 ENV URL:", import.meta.env.VITE_SUPABASE_URL);
-  console.log("🧪 ENV KEY:", import.meta.env.VITE_SUPABASE_ANON_KEY);
+function MisconfigurationScreen() {
+  return (
+    <div style={{
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+      textAlign: "center",
+      background: "#1a1a1a",
+      color: "#fff",
+      fontFamily: "system-ui, sans-serif",
+    }}>
+      <div>
+        <p style={{ fontSize: 18, fontWeight: 700 }}>Yapılandırma hatası</p>
+        <p style={{ marginTop: 8, opacity: 0.9 }}>
+          Bağlantı ayarları eksik. Lütfen yönetici ile iletişime geçin.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AppContent() {
   const isDev = import.meta.env.DEV;
 
   // Auth state
@@ -86,7 +104,7 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(() => {
     try {
       return window.innerWidth < 720;
-    } catch (_) {
+    } catch (_ignored) {
       return false;
     }
   });
@@ -101,11 +119,10 @@ export default function App() {
   const [bizApps, setBizApps] = useState([]);
   const [posts, setPosts] = useState([]);
 
-  // 🧪 DEBUG: posts state gerçekten güncelleniyor mu?
   useEffect(() => {
-    try {
-      console.log("🧪 POSTS STATE CHANGED -> len=", (posts || []).length, "first=", (posts || [])[0]);
-    } catch (_) {}
+    if (import.meta.env.DEV && posts?.length != null) {
+      try { console.log("posts len", posts.length); } catch (_ignored) { /* noop */ }
+    }
   }, [posts]);
   const [dms, setDms] = useState([]);
   const [appts, setAppts] = useState([]);
@@ -120,8 +137,8 @@ export default function App() {
   const [termsChecked, setTermsChecked] = useState(false);
   const [acceptingTerms, setAcceptingTerms] = useState(false);
 
-  const [infoPage, setInfoPage] = useState(null);
-  // infoPage: "about" | "help" | "privacy" | "terms" | "contact" | null
+  const [_infoPage, _setInfoPage] = useState(null);
+  // reserved: "about" | "help" | "privacy" | "terms" | "contact" | null
 
   // Modals
   const [showAuth, setShowAuth] = useState(false);
@@ -148,7 +165,7 @@ export default function App() {
       const saved = sessionStorage.getItem("tg_active_tab_v1");
       if (window.location.pathname === "/admin") return "admin";
       return saved || "biz";
-    } catch (_) {
+    } catch (_ignored) {
       return window.location.pathname === "/admin" ? "admin" : "biz";
     }
   });
@@ -203,16 +220,15 @@ useEffect(() => {
   if (user?.acceptedTermsAt && showTermsGate) setShowTermsGate(false);
 }, [user?.acceptedTermsAt, showTermsGate]);
 
-// 🧪 DEBUG
 useEffect(() => {
-  console.log("🧪 ACTIVE CHANGED ->", active);
+  if (import.meta.env.DEV) try { console.log("active", active); } catch (_ignored) { /* noop */ }
 }, [active]);
 
 // ✅ KALDIĞI YERİ HATIRLA
 useEffect(() => {
   try {
     sessionStorage.setItem("tg_active_tab_v1", active);
-  } catch (_) {}
+  } catch (_ignored) {}
 }, [active]);
 
 useEffect(() => {
@@ -380,7 +396,7 @@ useEffect(() => {
     cancelled = true;
     try {
       if (channel) supabase.removeChannel(channel);
-    } catch (_) {}
+    } catch (_ignored) {}
   };
 }, [admin.adminMode, active]);
 
@@ -597,7 +613,7 @@ useEffect(() => {
           }
           const { data: sData2 } = await supabase.auth.getSession();
           if (!sData2?.session) return;
-        } catch (_) {
+        } catch (_ignored) {
           return;
         }
       }
@@ -650,7 +666,7 @@ useEffect(() => {
             }));
             setDms(mapped);
             return;
-          } catch (_) {}
+          } catch (_ignored) {}
         }
         console.error("fetchDms error:", error);
         return;
@@ -675,7 +691,7 @@ useEffect(() => {
     return () => {
       cancelled = true;
     };
-  }, [booted, user?.username, biz]);
+  }, [booted, user, user?.username, biz]);
 
   // 🔔 Realtime: DMs insert/update
   useEffect(() => {
@@ -744,9 +760,9 @@ useEffect(() => {
     return () => {
       try {
         supabase.removeChannel(channel);
-      } catch (_) {}
+      } catch (_ignored) {}
     };
-  }, [booted, user?.username, biz]);
+  }, [booted, user, user?.username, biz]);
 
   // Appointment hook (must be after auth hook and business hook)
   const appointment = useAppointment({
@@ -796,7 +812,7 @@ useEffect(() => {
   });
 
   const approvedBiz = useMemo(() => biz.filter((x) => x.status === "approved"), [biz]);
-  const deletedBiz = useMemo(() => biz.filter((x) => x.status === "deleted"), [biz]);
+  const _deletedBiz = useMemo(() => biz.filter((x) => x.status === "deleted"), [biz]);
   const pendingApps = useMemo(() => bizApps.filter((x) => x.status === "pending"), [bizApps]);
 
   const categoryCounts = useMemo(() => {
@@ -849,7 +865,7 @@ useEffect(() => {
   }, [posts, blockedUsernames, blockedByUsernames]);
 
   // Auth functions from hook
-  const { loginNow, logout, deleteAccount, oauthLogin, requireAuth, authUserExists } = auth;
+  const { requireAuth } = auth;
 
   // Business functions from hook
   const business = useBusiness({
@@ -883,7 +899,7 @@ useEffect(() => {
       body.style.right = "0";
       body.style.width = "100%";
       body.style.overflow = "hidden";
-    } catch (_) {}
+    } catch (_ignored) {}
 
     return () => {
       try {
@@ -895,7 +911,7 @@ useEffect(() => {
         body.style.width = "";
         body.style.overflow = "";
         window.scrollTo(0, scrollLockRef.current || 0);
-      } catch (_) {}
+      } catch (_ignored) {}
     };
   }, [isMobile, business?.showBizApply]);
 
@@ -959,7 +975,7 @@ useEffect(() => {
     return () => {
       try {
         if (channel) supabase.removeChannel(channel);
-      } catch (_) {}
+      } catch (_ignored) {}
     };
   }, [active, hub]);
 
@@ -989,9 +1005,9 @@ useEffect(() => {
 
 
 // ✅ Unread counters
-// - unreadDmForMe: unread message count (legacy)
+// - unreadDmForMe: unread message count (legacy, kept for future use)
 // - unreadThreadsForMe: unread "thread" count = farklı gönderen sayısı (badge bunu gösterecek)
-const unreadDmForMe = useMemo(() => {
+const _unreadDmForMe = useMemo(() => {
   if (!user) return 0;
   const me = normalizeUsername(user.username);
 
@@ -1141,7 +1157,7 @@ async function submitReport() {
     }
     reporterId = sessionUser.id;
     reporterUsername = (sessionUser.user_metadata?.username ?? sessionUser.email ?? reporterUsername) || "user";
-  } catch (_) {
+  } catch (_ignored) {
     alert("Oturum doğrulanamadı. Lütfen çıkış yapıp tekrar giriş yapın.");
     return;
   }
@@ -1271,7 +1287,7 @@ async function acceptTerms() {
   const timeoutMs = 12000;
   const run = async () => {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) console.error("acceptTerms session error:", sessionError);
+    if (sessionError && import.meta.env.DEV) console.error("acceptTerms session error:", sessionError);
     userId = userId || sessionData?.session?.user?.id || null;
     if (!userId) {
       alert("Oturum bulunamadı. Lütfen tekrar giriş yap.");
@@ -1291,7 +1307,7 @@ async function acceptTerms() {
           .update({ termsAccepted: true, accepted_terms_at: acceptedAt })
           .eq("id", userId);
         if (!usersError) updated = true;
-      } catch (_) {}
+      } catch (_ignored) {}
     }
     if (!updated) {
       alert("Kabul kaydedilemedi. Sayfayı yenileyip tekrar deneyin.");
@@ -1311,8 +1327,8 @@ async function acceptTerms() {
     if (String(e?.message) === "timeout") {
       alert("Kayıt zaman aşımına uğradı. Lütfen tekrar deneyin.");
     } else {
-      console.error("acceptTerms error:", e);
-      alert("Kabul işlemi başarısız oldu.");
+      if (import.meta.env.DEV) console.error("acceptTerms error:", e);
+      alert("Kabul işlemi başarısız oldu. Lütfen tekrar deneyin.");
     }
     return false;
   }
@@ -1405,7 +1421,6 @@ function requestTermsGate() {
 function getDmOtherUsername(message, me) {
   if (!message) return "";
   const from = normalizeUsername(message.from);
-  const to = normalizeUsername(message.toUsername);
   if (from === me) return message.toUsername || "";
   return message.from || "";
 }
@@ -2038,4 +2053,9 @@ return (
   </div>
   </div>
   );
+}
+
+export default function App() {
+  if (!supabase) return <MisconfigurationScreen />;
+  return <AppContent />;
 }

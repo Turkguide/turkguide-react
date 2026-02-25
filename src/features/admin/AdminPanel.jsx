@@ -54,11 +54,11 @@ export function AdminPanel({
 }) {
   const safePending = Array.isArray(pendingApps) ? pendingApps : [];
   const safeApps = Array.isArray(allApps) ? allApps : safePending;
-  const safeBiz = Array.isArray(approvedBiz) ? approvedBiz : [];
-  const safeUsers = Array.isArray(users) ? users : [];
-  const safeAppts = Array.isArray(appts) ? appts : [];
-  const safeLogs = Array.isArray(adminLog) ? adminLog : [];
-  const safeReports = Array.isArray(reports) ? reports : [];
+  const safeBiz = useMemo(() => (Array.isArray(approvedBiz) ? approvedBiz : []), [approvedBiz]);
+  const safeUsers = useMemo(() => (Array.isArray(users) ? users : []), [users]);
+  const safeAppts = useMemo(() => (Array.isArray(appts) ? appts : []), [appts]);
+  const safeLogs = useMemo(() => (Array.isArray(adminLog) ? adminLog : []), [adminLog]);
+  const safeReports = useMemo(() => (Array.isArray(reports) ? reports : []), [reports]);
 
   const [activeSection, setActiveSection] = useState("dashboard");
   const [appQuery, setAppQuery] = useState("");

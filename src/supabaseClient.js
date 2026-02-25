@@ -16,16 +16,15 @@ try {
       autoRefreshToken: true,
     },
   });
-  console.log("✅ SUPABASE URL:", SUPABASE_URL);
-  console.log("✅ SUPABASE KEY OK:", !!SUPABASE_ANON_KEY);
+  if (import.meta.env.DEV) {
+    console.log("Supabase URL configured");
+  }
 } catch (e) {
   const errorMsg =
-    "❌ KRİTİK HATA: Supabase environment variables eksik veya hatalı. Uygulama sınırlı çalışabilir.";
-  console.error(errorMsg, {
-    error: String(e?.message || e || ""),
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY,
-  });
+    "Supabase env eksik veya hatalı. Uygulama çalışamaz.";
+  if (import.meta.env.DEV) {
+    console.error(errorMsg, String(e?.message || e || ""));
+  }
 }
 
 export { supabase };
