@@ -94,11 +94,16 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
     if (options.requireTerms && !user?.acceptedTermsAt) {
       if (user?.id && supabase?.from) {
         try {
-          const { data } = await supabase
+          const timeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 4000)
+          );
+          const fetchFlags = supabase
             .from("profiles")
             .select("accepted_terms_at, banned_at")
             .eq("id", user.id)
             .single();
+          const res = await Promise.race([fetchFlags, timeout]);
+          const data = res?.data;
           if (data?.accepted_terms_at) {
             setUser((prev) =>
               prev?.id === user.id

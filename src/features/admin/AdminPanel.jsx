@@ -169,25 +169,16 @@ export function AdminPanel({
   const logsPageData = paginate(logsFiltered, logsPage);
   const reportsPageData = paginate(reportsFiltered, reportsPage);
 
-  const [selectedBizId, setSelectedBizId] = useState("");
-  const selectedBiz = safeBiz.find((b) => String(b.id) === String(selectedBizId)) || null;
-
-  const kpis = selectedBizId
-    ? [
-        { label: "Seçili İşletme", value: selectedBiz?.name || "-" },
-        { label: "İşletme Görüntüleme", value: getMetric(`biz_view:${selectedBizId}`) },
-        { label: "Yol Tarifi", value: getMetric(`directions_click:${selectedBizId}`) },
-      ]
-    : [
-        { label: "Toplam Kullanıcı", value: safeUsers.length },
-        { label: "Onaylı İşletme", value: safeBiz.length },
-        { label: `Bekleyen Başvuru (${safePending.length})`, value: safePending.length },
-        { label: "Randevu Talebi", value: safeAppts.length },
-        { label: "Admin Log", value: safeLogs.length },
-        { label: "İşletme Görüntüleme", value: getMetric("biz_view_total") },
-        { label: "Arama Tıklama", value: getMetric("search_click_total") },
-        { label: "Yol Tarifi", value: getMetric("directions_click_total") },
-      ];
+  const kpis = [
+    { label: "Toplam Kullanıcı", value: safeUsers.length },
+    { label: "Onaylı İşletme", value: safeBiz.length },
+    { label: `Bekleyen Başvuru (${safePending.length})`, value: safePending.length },
+    { label: "Randevu Talebi", value: safeAppts.length },
+    { label: "Admin Log", value: safeLogs.length },
+    { label: "İşletme Görüntüleme", value: getMetric("biz_view_total") },
+    { label: "Arama Tıklama", value: getMetric("search_click_total") },
+    { label: "Yol Tarifi", value: getMetric("directions_click_total") },
+  ];
 
   if (!adminMode) return null;
 
@@ -246,31 +237,7 @@ export function AdminPanel({
 
           {activeSection === "dashboard" ? (
             <Card ui={ui} id="admin-kpi">
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                <div style={{ fontSize: 16, fontWeight: 950 }}>KPI Özeti</div>
-                <select
-                  value={selectedBizId}
-                  onChange={(e) => setSelectedBizId(e.target.value)}
-                  style={inputStyle(ui, {
-                    minWidth: 300,
-                    padding: "14px 18px",
-                    fontWeight: 900,
-                    fontSize: 14,
-                    borderWidth: 2,
-                    boxShadow:
-                      ui.mode === "light"
-                        ? "0 12px 28px rgba(0,0,0,0.1)"
-                        : "0 14px 32px rgba(0,0,0,0.34)",
-                  })}
-                >
-                  <option value="">Tüm işletmeler</option>
-                  {safeBiz.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div style={{ fontSize: 16, fontWeight: 950 }}>KPI Özeti</div>
               <div style={{ display: "grid", gap: 12, marginTop: 12, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
                 {kpis.map((k) => (
                   <div

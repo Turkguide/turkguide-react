@@ -438,8 +438,13 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
    * Open business apply modal
    */
   async function openBizApply() {
-    if (!(await requireAuth({ requireTerms: true }))) return;
-    setShowBizApply(true);
+    try {
+      if (!(await requireAuth({ requireTerms: true }))) return;
+      setShowBizApply(true);
+    } catch (e) {
+      console.error("openBizApply error:", e);
+      alert("İşletme ekleme açılamadı. Lütfen tekrar deneyin.");
+    }
   }
 
   return {

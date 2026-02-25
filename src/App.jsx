@@ -1105,10 +1105,15 @@ function clearFilters() {
 }
 
 async function openReport(ctx) {
-  if (!(await requireAuth({ requireTerms: true }))) return;
-  setReportCtx(ctx || null);
-  setReportReason("");
-  reportModalOpenedAtRef.current = Date.now();
+  try {
+    if (!(await requireAuth({ requireTerms: true }))) return;
+    setReportCtx(ctx || null);
+    setReportReason("");
+    reportModalOpenedAtRef.current = Date.now();
+  } catch (e) {
+    console.error("openReport error:", e);
+    alert("Şikayet ekranı açılamadı. Lütfen tekrar deneyin.");
+  }
 }
 
 async function submitReport() {
