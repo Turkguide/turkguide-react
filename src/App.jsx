@@ -910,6 +910,22 @@ useEffect(() => {
     blockedByUsernames,
   });
 
+  // 🔄 Sekme tekrar görünür olduğunda session yenile + HUB verisini tazele (arka planda kalınca JWT süresi dolmasın)
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!supabase?.auth?.refreshSession) return;
+      Promise.resolve(supabase.auth.refreshSession())
+        .then(() => {
+          if (active === "hub" && hub?.fetchHubPosts) hub.fetchHubPosts();
+        })
+        .catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [active, hub]);
+
   // 🔄 Fetch + Realtime subscribe when HUB tab becomes active
   useEffect(() => {
     if (!hub || !hub.fetchHubPosts) return;

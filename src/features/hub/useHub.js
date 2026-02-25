@@ -131,19 +131,11 @@ export function useHub({ user, setPosts, posts, requireAuth, createNotification,
     } catch (e) {
       console.error("fetchHubPosts error:", e);
       console.log("🟣 fetchHubPosts: catch raw=", e);
-      const msg = String(e?.message || e || "");
-      const looksAuthExpired =
-        msg.toLowerCase().includes("jwt expired") ||
-        msg.toLowerCase().includes("invalid jwt") ||
-        msg.toLowerCase().includes("expired") ||
-        e?.status === 401;
-      if (retryOnAuth && looksAuthExpired && supabase?.auth?.refreshSession) {
+      if (retryOnAuth && supabase?.auth?.refreshSession) {
         try {
-          const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-          if (!refreshError && refreshed?.session) {
-            await fetchHubPosts(false);
-            return;
-          }
+          await supabase.auth.refreshSession();
+          await fetchHubPosts(false);
+          return;
         } catch (_) {}
       }
       try {
