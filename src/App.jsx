@@ -1150,9 +1150,11 @@ async function submitReport() {
   }
   let reporterId = null;
   let reporterUsername = user?.username ?? "";
-  const sessionTimeoutMs = 10000;
+  const sessionTimeoutMs = 25000;
   try {
     const sessionPromise = (async () => {
+      const { data: existing } = await supabase.auth.getSession();
+      if (existing?.session?.user?.id) return existing.session.user;
       await supabase.auth.refreshSession();
       const { data: sessionData } = await supabase.auth.getSession();
       return sessionData?.session?.user ?? null;
