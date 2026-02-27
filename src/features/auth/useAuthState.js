@@ -14,42 +14,62 @@ export function useAuthState() {
   const [booted, setBooted] = useState(false);
   const userRef = useRef(null);
 
+  /**
+   * Sync profile row to public.profiles (idempotent upsert).
+   * After Apple/OAuth signup, backend trigger may create the row; we upsert to enrich or create.
+   * Does not alert on duplicate/conflict (trigger race); one retry on transient failure.
+   */
   async function syncPublicProfile(nextUser) {
-    try {
-      if (!supabase?.from) return;
-      if (!nextUser?.id) return;
-      // Apple (ve bazı OAuth) bazen email/username döndürmez; yine de profil satırı oluştur
-      const unameRaw = String(nextUser?.username || "").trim();
-      const emailValue = String(nextUser?.email || "").trim();
-      const fallbackUname = "user_" + String(nextUser.id).slice(0, 8);
-      const fallbackEmail = emailValue || nextUser.id + "@apple.placeholder";
-      const unameKey = normalizeUsername(unameRaw || fallbackUname);
-      const avatarStr = typeof nextUser.avatar === "string" ? nextUser.avatar : "";
-      const ageVal = nextUser?.age;
-      const ageInt =
-        ageVal !== null && ageVal !== undefined && ageVal !== ""
-          ? (() => {
-              const n = Number(ageVal);
-              return Number.isInteger(n) ? n : null;
-            })()
-          : null;
-      const payload = {
-        id: nextUser.id,
-        username: unameKey,
-        email: emailValue || fallbackEmail,
-        avatar: avatarStr || null,
-        city: String(nextUser?.city || "").trim() || null,
-        state: String(nextUser?.state || "").trim() || null,
-        country: String(nextUser?.country || "").trim() || null,
-        bio: String(nextUser?.bio || "").trim() || null,
-      };
-      if (ageInt != null && Number.isInteger(ageInt)) payload.age = ageInt;
-      const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
-      if (error) throw error;
-    } catch (e) {
-      if (import.meta.env.DEV) console.warn("syncPublicProfile error:", e);
-      const msg = String(e?.message || e?.error_description || e || "");
-      alert("Profil kaydedilemedi. " + (msg ? msg : "Lütfen tekrar giriş yapın veya destek ile iletişime geçin."));
+    if (!supabase?.from || !nextUser?.id) return;
+    const unameRaw = String(nextUser?.username || "").trim();
+    const emailValue = String(nextUser?.email || "").trim();
+    const fallbackUname = "user_" + String(nextUser.id).slice(0, 8);
+    const fallbackEmail = emailValue || nextUser.id + "@apple.placeholder";
+    const unameKey = normalizeUsername(unameRaw || fallbackUname);
+    const avatarStr = typeof nextUser.avatar === "string" ? nextUser.avatar : "";
+    const ageVal = nextUser?.age;
+    const ageInt =
+      ageVal !== null && ageVal !== undefined && ageVal !== ""
+        ? (() => {
+            const n = Number(ageVal);
+            return Number.isInteger(n) ? n : null;
+          })()
+        : null;
+    const payload = {
+      id: nextUser.id,
+      username: unameKey,
+      email: emailValue || fallbackEmail,
+      avatar: avatarStr || null,
+      city: String(nextUser?.city || "").trim() || null,
+      state: String(nextUser?.state || "").trim() || null,
+      country: String(nextUser?.country || "").trim() || null,
+      bio: String(nextUser?.bio || "").trim() || null,
+    };
+    if (ageInt != null && Number.isInteger(ageInt)) payload.age = ageInt;
+
+    const doUpsert = () => supabase.from("profiles").upsert(payload, { onConflict: "id" });
+
+    for (let attempt = 0; attempt <= 1; attempt++) {
+      try {
+        const { error } = await doUpsert();
+        if (!error) return;
+        const msg = String(error?.message || error?.code || "").toLowerCase();
+        if (/duplicate|unique|already exists|conflict/i.test(msg)) return;
+        if (attempt === 0) {
+          await new Promise((r) => setTimeout(r, 800));
+          continue;
+        }
+        if (import.meta.env.DEV) console.warn("syncPublicProfile error:", error);
+        alert("Profil kaydedilemedi. Lütfen tekrar giriş yapın veya destek ile iletişime geçin.");
+      } catch (e) {
+        if (attempt === 0) {
+          await new Promise((r) => setTimeout(r, 800));
+          continue;
+        }
+        if (import.meta.env.DEV) console.warn("syncPublicProfile exception:", e);
+        alert("Profil kaydedilemedi. Lütfen tekrar giriş yapın veya destek ile iletişime geçin.");
+      }
+      return;
     }
   }
 
@@ -192,14 +212,14 @@ export function useAuthState() {
             })
             .catch(() => {});
           try {
-            syncPublicProfile(nextUser);
+            await syncPublicProfile(nextUser);
           } catch (_) {}
         } else {
           setUser(null);
         }
 
         // 2) Auth listener — sadece SIGNED_OUT'ta çıkış yap; ilk yükleme race'inde user silinmesin
-        const { data: subData } = supabase.auth.onAuthStateChange((event, s) => {
+        const { data: subData } = supabase.auth.onAuthStateChange(async (event, s) => {
           if (!alive) return;
           if (!s?.user && event !== "SIGNED_OUT") return;
           try {
@@ -234,7 +254,9 @@ export function useAuthState() {
                 }
                 return next;
               });
-              syncPublicProfile(nextUser);
+              try {
+                await syncPublicProfile(nextUser);
+              } catch (_) {}
               hydrateProfileFlags(nextUser);
             } else {
               setUser(null);

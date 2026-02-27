@@ -138,46 +138,42 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
       avatar: String(data?.avatar || "").trim() || "",
     };
 
-    setBizApps((prev) => [app, ...prev]);
-
-    // Best-effort persistence
-    if (supabase?.from) {
-      supabase
-        .from("biz_apps")
-        .insert({
-          id: app.id,
-          created_at: new Date(app.createdAt).toISOString(),
-          status: app.status,
-          applicant: app.applicant,
-          owner_username: app.ownerUsername,
-          user_id: app.userId,
-          name: app.name,
-          category: app.category,
-          desc: app.desc,
-          country: app.country,
-          state: app.state,
-          zip: app.zip,
-          apt: app.apt,
-          address1: app.address1,
-          address: app.address,
-          city: app.city,
-          phone_dial: app.phoneDial,
-          phone_local: app.phoneLocal,
-          phone: app.phone,
-          avatar: app.avatar,
-        })
-        .then(({ error }) => {
-          if (error) {
-            if (import.meta.env.DEV) console.warn("biz_apps insert error:", error);
-            alert("Başvuru gönderilemedi. Lütfen tekrar deneyin.");
-          }
-        })
-        .catch((e) => {
-          if (import.meta.env.DEV) console.warn("biz_apps insert exception:", e);
-          alert("Başvuru gönderilemedi. Lütfen tekrar deneyin.");
-        });
+    if (!supabase?.from) {
+      alert("Bağlantı hazır değil. Lütfen sayfayı yenileyip tekrar deneyin.");
+      return;
     }
 
+    const insertPayload = {
+      id: app.id,
+      created_at: new Date(app.createdAt).toISOString(),
+      status: app.status,
+      applicant: app.applicant,
+      owner_username: app.ownerUsername,
+      user_id: app.userId,
+      name: app.name,
+      category: app.category,
+      desc: app.desc,
+      country: app.country,
+      state: app.state,
+      zip: app.zip,
+      apt: app.apt,
+      address1: app.address1,
+      address: app.address,
+      city: app.city,
+      phone_dial: app.phoneDial,
+      phone_local: app.phoneLocal,
+      phone: app.phone,
+      avatar: app.avatar,
+    };
+
+    const { error: insertError } = await supabase.from("biz_apps").insert(insertPayload);
+    if (insertError) {
+      if (import.meta.env.DEV) console.warn("biz_apps insert error:", insertError);
+      alert("Başvuru gönderilemedi. " + (insertError.message || "Lütfen tekrar deneyin."));
+      return;
+    }
+
+    setBizApps((prev) => [app, ...prev]);
     alert("✅ Başvurunuz alındı. İncelendikten sonra işletmeler listesinde görünecek.");
     setShowBizApply(false);
     } catch (e) {

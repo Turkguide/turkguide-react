@@ -132,6 +132,7 @@ function AppContent() {
   const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
   const [reportCtx, setReportCtx] = useState(null);
   const [reportReason, setReportReason] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
   const reportModalOpenedAtRef = useRef(0);
   const [showTermsGate, setShowTermsGate] = useState(false);
   const [termsChecked, setTermsChecked] = useState(false);
@@ -1139,26 +1140,41 @@ async function submitReport() {
     alert("Şikayet sebebi zorunludur.");
     return;
   }
+  if (submittingReport) return;
+  setSubmittingReport(true);
 
-  // RLS: auth.uid() = reporter_id olmalı; sadece oturumdaki kullanıcıyı kullan (admin/user aynı kural)
   if (!supabase?.auth?.getSession) {
     alert("Bağlantı hazır değil. Lütfen sayfayı yenileyin.");
+    setSubmittingReport(false);
     return;
   }
   let reporterId = null;
   let reporterUsername = user?.username ?? "";
+  const sessionTimeoutMs = 10000;
   try {
-    await supabase.auth.refreshSession();
-    const { data: sessionData } = await supabase.auth.getSession();
-    const sessionUser = sessionData?.session?.user;
+    const sessionPromise = (async () => {
+      await supabase.auth.refreshSession();
+      const { data: sessionData } = await supabase.auth.getSession();
+      return sessionData?.session?.user ?? null;
+    })();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("session_timeout")), sessionTimeoutMs)
+    );
+    const sessionUser = await Promise.race([sessionPromise, timeoutPromise]);
     if (!sessionUser?.id) {
       alert("Oturum bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.");
+      setSubmittingReport(false);
       return;
     }
     reporterId = sessionUser.id;
     reporterUsername = (sessionUser.user_metadata?.username ?? sessionUser.email ?? reporterUsername) || "user";
-  } catch (_ignored) {
-    alert("Oturum doğrulanamadı. Lütfen çıkış yapıp tekrar giriş yapın.");
+  } catch (e) {
+    if (String(e?.message) === "session_timeout") {
+      alert("Bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.");
+    } else {
+      alert("Oturum doğrulanamadı. Lütfen çıkış yapıp tekrar giriş yapın.");
+    }
+    setSubmittingReport(false);
     return;
   }
 
@@ -1278,12 +1294,14 @@ async function submitReport() {
     } else {
       alert("Şikayet gönderilemedi. " + (msg ? msg : "Lütfen tekrar deneyin."));
     }
+  } finally {
+    setSubmittingReport(false);
   }
 }
 
 /**
- * Accept terms and persist to DB. Returns true if saved successfully (so UI can close modal).
- * Timeout 12s so "Kaydediliyor" never sticks.
+ * Accept terms and persist to DB (profiles only). Returns true if saved successfully.
+ * Single write to profiles; 15s timeout so "Kaydediliyor" never sticks.
  */
 async function acceptTerms() {
   if (!supabase?.from || !supabase?.auth?.getSession) {
@@ -1291,7 +1309,8 @@ async function acceptTerms() {
     return false;
   }
   let userId = user?.id || null;
-  const timeoutMs = 12000;
+  const TIMEOUT_MS = 15000;
+
   const run = async () => {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError && import.meta.env.DEV) console.error("acceptTerms session error:", sessionError);
@@ -1301,22 +1320,12 @@ async function acceptTerms() {
       return false;
     }
     const acceptedAt = new Date().toISOString();
-    let updated = false;
     const { error: profilesError } = await supabase
       .from("profiles")
       .update({ accepted_terms_at: acceptedAt })
       .eq("id", userId);
-    if (!profilesError) updated = true;
-    if (!updated) {
-      try {
-        const { error: usersError } = await supabase
-          .from("users")
-          .update({ termsAccepted: true, accepted_terms_at: acceptedAt })
-          .eq("id", userId);
-        if (!usersError) updated = true;
-      } catch (_ignored) {}
-    }
-    if (!updated) {
+    if (profilesError) {
+      if (import.meta.env.DEV) console.warn("acceptTerms profiles update error:", profilesError);
       alert("Kabul kaydedilemedi. Sayfayı yenileyip tekrar deneyin.");
       return false;
     }
@@ -1324,11 +1333,12 @@ async function acceptTerms() {
     setUser((prev) => (prev ? { ...prev, acceptedTermsAt: acceptedAt } : prev));
     return true;
   };
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("timeout")), timeoutMs)
+
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("timeout")), TIMEOUT_MS)
   );
   try {
-    const ok = await Promise.race([run(), timeout]);
+    const ok = await Promise.race([run(), timeoutPromise]);
     return ok === true;
   } catch (e) {
     if (String(e?.message) === "timeout") {
@@ -1964,11 +1974,11 @@ return (
             style={inputStyle(ui, { minHeight: 120, resize: "vertical" })}
           />
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <Button ui={ui} onClick={() => { setReportCtx(null); setReportReason(""); }}>
+            <Button ui={ui} onClick={() => { setReportCtx(null); setReportReason(""); }} disabled={submittingReport}>
               Vazgeç
             </Button>
-            <Button ui={ui} variant="danger" onClick={submitReport}>
-              Gönder
+            <Button ui={ui} variant="danger" onClick={submitReport} disabled={submittingReport}>
+              {submittingReport ? "Gönderiliyor…" : "Gönder"}
             </Button>
           </div>
         </div>
