@@ -175,6 +175,7 @@ export function useAuthState() {
         }
         if (session?.user) {
           const md = session.user.user_metadata || {};
+          const flags = await fetchProfileFlags(session.user.id);
           const nextUser = {
             id: session.user.id,
             email: session.user.email ?? null,
@@ -193,24 +194,13 @@ export function useAuthState() {
               !!(session.user.email_confirmed_at ?? session.user.confirmed_at) &&
               !session.user.new_email,
             newEmailPending: session.user.new_email ?? null,
-            acceptedTermsAt: null,
-            bannedAt: null,
+            acceptedTermsAt: flags?.acceptedTermsAt ?? null,
+            bannedAt: flags?.bannedAt ?? null,
           };
           applyProfileFlags(nextUser);
           setUser(nextUser);
           userWasSet = true;
           if (alive) setBooted(true);
-          Promise.resolve()
-            .then(() => fetchProfileFlags(session.user.id))
-            .then((flags) => {
-              if (!alive || !flags) return;
-              setUser((prev) =>
-                prev && String(prev.id) === String(session.user.id)
-                  ? { ...prev, acceptedTermsAt: flags.acceptedTermsAt, bannedAt: flags.bannedAt }
-                  : prev
-              );
-            })
-            .catch(() => {});
           try {
             await syncPublicProfile(nextUser);
           } catch (_) {}
@@ -225,6 +215,7 @@ export function useAuthState() {
           try {
             if (s?.user) {
               const md = s.user.user_metadata || {};
+              const flags = await fetchProfileFlags(s.user.id);
               const nextUser = {
                 id: s.user.id,
                 email: s.user.email ?? null,
@@ -242,8 +233,8 @@ export function useAuthState() {
                 emailVerified:
                   !!(s.user.email_confirmed_at ?? s.user.confirmed_at) && !s.user.new_email,
                 newEmailPending: s.user.new_email ?? null,
-                acceptedTermsAt: null,
-                bannedAt: null,
+                acceptedTermsAt: flags?.acceptedTermsAt ?? null,
+                bannedAt: flags?.bannedAt ?? null,
               };
               applyProfileFlags(nextUser);
               setUser((prev) => {
@@ -257,7 +248,6 @@ export function useAuthState() {
               try {
                 await syncPublicProfile(nextUser);
               } catch (_) {}
-              hydrateProfileFlags(nextUser);
             } else {
               setUser(null);
             }
