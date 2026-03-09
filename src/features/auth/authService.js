@@ -86,7 +86,7 @@ export const authService = {
    */
   async deleteAccount() {
     const fnName = "delete-my-account";
-    const timeoutMs = 25000;
+    const timeoutMs = 15000;
     const log = (label, obj) => {
       console.log("[deleteAccount] " + label, obj);
     };

@@ -374,22 +374,30 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
   /**
    * Delete account via Edge Function. On success: hardResetToHome (session cleared).
    * On failure: throws, caller keeps user logged in and shows error. Session is NOT cleared before invoke.
+   * Safety: loading state is always cleared after max 30s so the UI never stays stuck on "Siliniyor...".
    */
   async function deleteAccount() {
     if (!supabase?.auth) throw new Error("Bağlantı hazır değil.");
-    const timeoutMs = 25000;
+    const timeoutMs = 15000;
     setDeletingAccount(true);
+    const safetyMs = 30000;
+    const safetyTimer = setTimeout(() => {
+      console.warn("[deleteAccount] safety: 30s elapsed, forcing loading off");
+      setDeletingAccount(false);
+    }, safetyMs);
     try {
       console.log("[deleteAccount useAuth] calling authService.deleteAccount (session NOT cleared yet)");
       const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("İstek zaman aşımına uğradı.")), timeoutMs)
       );
       await Promise.race([authService.deleteAccount(), timeout]);
+      clearTimeout(safetyTimer);
       console.log("[deleteAccount useAuth] authService.deleteAccount succeeded, now hardResetToHome");
       hardResetToHome();
     } catch (e) {
-      console.log("[deleteAccount useAuth] authService.deleteAccount failed", e?.message);
+      clearTimeout(safetyTimer);
       setDeletingAccount(false);
+      console.log("[deleteAccount useAuth] authService.deleteAccount failed", e?.message);
       throw e;
     }
   }
