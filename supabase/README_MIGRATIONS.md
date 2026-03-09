@@ -34,7 +34,7 @@ Verify in Supabase Dashboard → Authentication → Policies (and Table Editor �
 - **profiles**: Users can read own row; authenticated can read public fields (e.g. avatar, username) for others; only own row update (or admin).
 - **businesses / biz_apps**: Appropriate select/insert/update for owners and admins; public read for approved businesses.
 - **appointments**: Own appointments + biz owner visibility; insert by authenticated.
-- **hub_posts / hub_likes / hub_comments**: Per your UGC rules (e.g. public read, insert/update/delete by author or admin).
+- **hub_posts / hub_likes / hub_comments**: Per your UGC rules (e.g. public read, insert/update/delete by author or admin). Admin panel "İçeriği Kaldır" için admin'in `hub_posts` üzerinde DELETE yapabilmesi gerekir; RLS kullanıyorsanız aşağıdaki policy'yi ekleyin.
 - **admin_logs**: Admin-only select; insert by service or admin.
 - **reports**: Admin-only select; insert by authenticated (reporter).
 
@@ -49,3 +49,19 @@ alter table public.hub_likes
 ```
 
 Adjust table/column names to match your schema.
+
+## 5. hub_posts: Admin delete (İçeriği Kaldır)
+
+Admin panelinde raporlanan bir gönderi için "İçeriği Kaldır" tıklandığında HUB'daki içeriğin gerçekten silinmesi için, `hub_posts` tablosunda RLS açıksa admin rolüne DELETE izni verin:
+
+```sql
+alter table public.hub_posts enable row level security;
+
+-- Admin herhangi bir gönderiyi silebilir (moderasyon)
+create policy "hub_posts_admin_delete"
+on public.hub_posts for delete
+to authenticated
+using ((select role from public.profiles p where p.id = auth.uid()) = 'admin');
+```
+
+Mevcut SELECT/INSERT/UPDATE policy'leriniz varsa onlara dokunmayın; sadece DELETE için yukarıdakini ekleyin.

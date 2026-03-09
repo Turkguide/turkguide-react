@@ -402,18 +402,38 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
 
     if (deleteCtx.type === "hub_post") {
       const r = deleteCtx.item;
-      if (supabase?.from) {
+      const postId = r?.targetId ?? r?.target_id ?? "";
+      addLog("HUB_CONTENT_REMOVED", { reportId: r?.id, targetId: postId, reason });
+      if (setReports && r?.id) {
+        setReports((prev) => (prev || []).filter((x) => x.id !== r.id));
+      }
+      if (setPosts && postId) {
+        setPosts((prev) => (prev || []).filter((p) => String(p.id) !== String(postId)));
+      }
+      if (supabase?.from && postId) {
         supabase
           .from("hub_posts")
           .delete()
-          .eq("id", r?.targetId || r?.target_id || "")
+          .eq("id", postId)
           .then(({ error }) => {
-            if (error) console.warn("hub_posts delete error:", error);
+            if (error) {
+              if (import.meta.env.DEV) console.warn("hub_posts delete error:", error);
+              return;
+            }
+            if (r?.id) {
+              supabase
+                .from("reports")
+                .update({ status: "resolved" })
+                .eq("id", r.id)
+                .then(() => {})
+                .catch((reportErr) => {
+                  if (import.meta.env.DEV) console.warn("reports resolve error:", reportErr);
+                });
+            }
           })
-          .catch((e) => console.warn("hub_posts delete exception:", e));
-      }
-      if (setPosts) {
-        setPosts((prev) => (prev || []).filter((p) => String(p.id) !== String(r?.targetId || r?.target_id || "")));
+          .catch((e) => {
+            if (import.meta.env.DEV) console.warn("hub_posts delete exception:", e);
+          });
       }
     }
 
