@@ -56,22 +56,37 @@ export function useUserManagement({
    * Save edited user
    */
   async function saveEditUser() {
-    if (typeof user !== "undefined" && !user?.acceptedTermsAt) {
-      alert("Profil güncellemek için Kullanım Şartları'nı kabul etmelisin.");
-      setSavingEditUser(false);
-      return;
-    }
     setEditUserError("");
     setSavingEditUser(true);
+
     const u = editUserCtx;
     if (!u) {
       setSavingEditUser(false);
       return;
     }
 
-    const isAdmin = admin?.adminMode ?? false;
     const me = typeof user !== "undefined" ? user : null;
+    let termsOk = !!me?.acceptedTermsAt;
+    if (me && !termsOk && me.id && supabase?.from) {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("accepted_terms_at")
+          .eq("id", me.id)
+          .single();
+        if (data?.accepted_terms_at) {
+          termsOk = true;
+          setUser((prev) => (prev?.id === me.id ? { ...prev, acceptedTermsAt: data.accepted_terms_at } : prev));
+        }
+      } catch (_) {}
+    }
+    if (!termsOk && me) {
+      alert("Profil güncellemek için Kullanım Şartları'nı kabul etmelisin.");
+      setSavingEditUser(false);
+      return;
+    }
 
+    const isAdmin = admin?.adminMode ?? false;
     const can = isAdmin || (me && (u.id || u.user_id || u.uid) && me.id && (u.id || u.user_id || u.uid) === me.id);
     if (!can) {
       setEditUserError("Bu profili düzenleme yetkin yok.");
@@ -80,6 +95,7 @@ export function useUserManagement({
       return;
     }
 
+    try {
     // ✅ Username değişince profil popup "Profil bulunamadı" olmasın diye eski username'i yakala
     const oldUsername = String(u._origUsername || u.username || "").trim();
 
@@ -286,7 +302,23 @@ export function useUserManagement({
           session_email: sessUser.email,
         });
 
-        const { error } = await supabase.auth.updateUser({ data: payload });
+        let error = null;
+        try {
+          const updateTimeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 20000)
+          );
+          const result = await Promise.race([
+            supabase.auth.updateUser({ data: payload }).then((r) => r),
+            updateTimeout,
+          ]);
+          if (result?.error) error = result.error;
+        } catch (e) {
+          if (e?.message === "timeout") {
+            error = { message: "Profil kaydetme zaman aşımına uğradı. Lütfen tekrar deneyin." };
+          } else {
+            throw e;
+          }
+        }
 
         if (error) {
           console.error("❌ updateUser error FULL:", error);
@@ -615,7 +647,9 @@ export function useUserManagement({
     admin?.addLog?.("USER_EDIT", { id: u.id, username });
     setShowEditUser(false);
     setEditUserCtx(null);
-    setSavingEditUser(false);
+    } finally {
+      setSavingEditUser(false);
+    }
   }
 
   /**

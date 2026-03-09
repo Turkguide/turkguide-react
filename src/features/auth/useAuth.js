@@ -3,6 +3,7 @@ import { authService } from "./authService";
 import { KEY } from "../../constants";
 import { supabase } from "../../supabaseClient";
 import { normalizeUsername } from "../../utils/helpers";
+import { setPendingAcceptedTerms } from "./pendingProfileFlags";
 
 /**
  * Hook for authentication operations
@@ -210,11 +211,17 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
         } else {
           const userId = data.user.id;
           let acceptedTermsAt = null;
+          let termsWriteOk = false;
           if (options.termsAccepted === true) {
             acceptedTermsAt = new Date().toISOString();
+            setPendingAcceptedTerms(userId, acceptedTermsAt);
             try {
-              await supabase.from("profiles").update({ accepted_terms_at: acceptedTermsAt }).eq("id", userId);
-            } catch (_) {}
+              const { error } = await supabase.from("profiles").update({ accepted_terms_at: acceptedTermsAt }).eq("id", userId);
+              termsWriteOk = !error;
+              if (error && import.meta.env.DEV) console.warn("register: accepted_terms_at update failed", error);
+            } catch (e) {
+              if (import.meta.env.DEV) console.warn("register: accepted_terms_at update exception", e);
+            }
           }
           alert("Kayıt alındı ve giriş yapıldı.");
           setUser((prev) => {
