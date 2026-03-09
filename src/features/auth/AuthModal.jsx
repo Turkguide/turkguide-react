@@ -6,6 +6,19 @@ import { Modal, Button, inputStyle } from "../../components/ui";
  */
 export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegister, authEmail, setAuthEmail, authPassword, setAuthPassword, authUsername, setAuthUsername, loginNow, oauthLogin }) {
   const [registerTermsAccepted, setRegisterTermsAccepted] = useState(false);
+  const [showTermsViewer, setShowTermsViewer] = useState(false);
+  const [termsViewerType, setTermsViewerType] = useState(/** @type {null | 'terms' | 'community'} */ null);
+
+  const openTermsViewer = (type) => {
+    setTermsViewerType(type);
+    setShowTermsViewer(true);
+  };
+
+  const closeTermsViewer = () => {
+    setShowTermsViewer(false);
+    setTermsViewerType(null);
+  };
+
   return (
     <>
       {/* LOGIN MODAL */}
@@ -120,9 +133,37 @@ export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegi
             onChange={(e) => setRegisterTermsAccepted(e.target.checked)}
           />
           <span>
-            <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: ui.text }}>Kullanım Şartları</a>
+            <button
+              type="button"
+              onClick={() => openTermsViewer("terms")}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                color: ui.text,
+                textDecoration: "underline",
+                cursor: "pointer",
+                font: "inherit",
+              }}
+            >
+              Kullanım Şartları
+            </button>
             {" ve "}
-            <a href="/community-guidelines.html" target="_blank" rel="noopener noreferrer" style={{ color: ui.text }}>Topluluk Kuralları</a>
+            <button
+              type="button"
+              onClick={() => openTermsViewer("community")}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                color: ui.text,
+                textDecoration: "underline",
+                cursor: "pointer",
+                font: "inherit",
+              }}
+            >
+              Topluluk Kuralları
+            </button>
             ’nı okudum ve kabul ediyorum.
           </span>
         </label>
@@ -161,6 +202,38 @@ export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegi
 
         <div style={{ marginTop: 10, color: ui.muted, fontSize: 12 }}>
           Not: Eğer Supabase bağlı değilse "Kaydı Tamamla" tıklayınca hata verebilir.
+        </div>
+      </Modal>
+
+      {/* Terms / Community Guidelines viewer — in-app so user can return without losing signup data */}
+      <Modal
+        ui={ui}
+        open={showTermsViewer}
+        title={termsViewerType === "community" ? "Topluluk Kuralları" : "Kullanım Şartları"}
+        onClose={closeTermsViewer}
+        showBack={true}
+        onBack={closeTermsViewer}
+        iconClose={true}
+        fullScreen={true}
+        zIndex={1001}
+      >
+        <div
+          style={{
+            height: "100%",
+            minHeight: 300,
+          }}
+        >
+          <iframe
+            src={termsViewerType === "terms" ? "/terms.html" : "/community-guidelines.html"}
+            title={termsViewerType === "community" ? "Topluluk Kuralları" : "Kullanım Şartları"}
+            style={{
+              width: "100%",
+              height: "100%",
+              minHeight: 300,
+              border: "none",
+              borderRadius: 8,
+            }}
+          />
         </div>
       </Modal>
     </>
