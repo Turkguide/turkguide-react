@@ -90,7 +90,11 @@ export const authService = {
       throw new Error("Hesap silme şu an kullanılamıyor.");
     }
     const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
+    let token = sessionData?.session?.access_token;
+    if (!token) {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      token = refreshed?.session?.access_token;
+    }
     if (!token) {
       throw new Error("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
     }
@@ -126,11 +130,13 @@ export const authService = {
     } catch (_) {}
 
     if (!res.ok) {
-      const statusHint = res.status === 404
-        ? " Edge Function bulunamadı (404) — deploy edin: supabase functions deploy delete-my-account"
-        : res.status >= 500
-          ? " Sunucu hatası (" + res.status + "). Edge Function'ı deploy edip Supabase loglarına bakın."
-          : "";
+      const statusHint = res.status === 401
+        ? " Oturum geçersiz veya süresi dolmuş. Çıkış yapıp tekrar giriş yapın, ardından hesap silmeyi deneyin."
+        : res.status === 404
+          ? " Edge Function bulunamadı (404) — deploy edin: supabase functions deploy delete-my-account"
+          : res.status >= 500
+            ? " Sunucu hatası (" + res.status + "). Edge Function'ı deploy edip Supabase loglarına bakın."
+            : "";
       const msg = body?.error ? String(body.error) : "Hesap silinirken sunucu hatası oluştu (" + res.status + ").";
       const step = body?.step ? " Adım: " + body.step + "." : "";
       const fallback = !body?.error
