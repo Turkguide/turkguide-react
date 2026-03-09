@@ -80,69 +80,94 @@ export const authService = {
   },
 
   /**
-   * Delete account via Edge Function. Uses fetch + timeout so we get the real error from the server.
+   * Delete account via Edge Function.
+   * Uses supabase.functions.invoke() so the client attaches the session (Authorization) automatically.
+   * Logs session and full invoke result for debugging. Surfaces exact server error when available.
    */
   async deleteAccount() {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || "";
     const fnName = "delete-my-account";
     const timeoutMs = 25000;
+    const log = (label, obj) => {
+      console.log("[deleteAccount] " + label, obj);
+    };
+
     if (!supabase?.auth?.getSession) {
       throw new Error("Hesap silme şu an kullanılamıyor.");
     }
-    const { data: sessionData } = await supabase.auth.getSession();
-    let token = sessionData?.session?.access_token;
-    if (!token) {
-      const { data: refreshed } = await supabase.auth.refreshSession();
-      token = refreshed?.session?.access_token;
-    }
-    if (!token) {
-      throw new Error("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
-    }
-    if (!supabaseUrl) {
-      throw new Error("Hesap silme yapılandırması eksik.");
-    }
-    const url = `${supabaseUrl.replace(/\/$/, "")}/functions/v1/${fnName}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    let res;
-    try {
-      res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({}),
-        signal: controller.signal,
-      });
-    } catch (e) {
-      clearTimeout(timeoutId);
-      if (e?.name === "AbortError") {
-        throw new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.");
-      }
-      throw new Error(e?.message || "Bağlantı hatası. Lütfen ağınızı kontrol edip tekrar deneyin.");
-    }
-    clearTimeout(timeoutId);
-    const rawText = await res.text().catch(() => "");
-    let body = {};
-    try {
-      if (rawText && rawText.trim().startsWith("{")) body = JSON.parse(rawText);
-    } catch (_) {}
 
-    if (!res.ok) {
-      const statusHint = res.status === 401
-        ? " Oturum geçersiz veya süresi dolmuş. Çıkış yapıp tekrar giriş yapın, ardından hesap silmeyi deneyin."
-        : res.status === 404
-          ? " Edge Function bulunamadı (404) — deploy edin: supabase functions deploy delete-my-account"
-          : res.status >= 500
-            ? " Sunucu hatası (" + res.status + "). Edge Function'ı deploy edip Supabase loglarına bakın."
-            : "";
-      const msg = body?.error ? String(body.error) : "Hesap silinirken sunucu hatası oluştu (" + res.status + ").";
-      const step = body?.step ? " Adım: " + body.step + "." : "";
-      const fallback = !body?.error
-        ? statusHint || " Lütfen Edge Function'ın deploy edildiğini ve doğru projede olduğunu kontrol edin."
-        : "";
-      throw new Error(msg + step + fallback);
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    log("1 getSession result", {
+      hasSession: !!sessionData?.session,
+      sessionExists: !!sessionData?.session,
+      userId: sessionData?.session?.user?.id ?? null,
+      accessTokenLength: sessionData?.session?.access_token?.length ?? 0,
+      sessionError: sessionError?.message ?? null,
+    });
+    if (!sessionData?.session) {
+      throw new Error("Oturum yok. getSession() session boş. Lütfen tekrar giriş yapın.");
+    }
+    if (!sessionData.session.access_token) {
+      throw new Error("Oturum var ama access_token yok. Lütfen çıkış yapıp tekrar giriş yapın.");
+    }
+
+    await supabase.auth.refreshSession();
+    const { data: afterRefresh } = await supabase.auth.getSession();
+    if (!afterRefresh?.session?.access_token) {
+      throw new Error("Refresh sonrası oturum/token yok. Lütfen tekrar giriş yapın.");
+    }
+    log("2 before invoke", {
+      sessionAvailableAtInvoke: true,
+      userId: afterRefresh.session?.user?.id,
+      aboutToInvoke: fnName,
+    });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.")), timeoutMs)
+    );
+    const invokePromise = supabase.functions.invoke(fnName, { method: "POST" });
+
+    let result;
+    try {
+      result = await Promise.race([invokePromise, timeoutPromise]);
+    } catch (e) {
+      log("3 invoke threw (transport/timeout)", { message: e?.message, name: e?.name });
+      if (e?.message?.includes("zaman aşımı")) throw e;
+      throw new Error("İstek hatası (ağ/zaman aşımı): " + (e?.message || String(e)));
+    }
+
+    log("4 invoke full result", {
+      hasData: !!result?.data,
+      hasError: !!result?.error,
+      dataKeys: result?.data ? Object.keys(result.data) : [],
+      errorMessage: result?.error?.message ?? null,
+      errorName: result?.error?.name ?? null,
+      errorContextType: result?.error?.context ? typeof result.error.context : null,
+    });
+
+    const { data, error } = result ?? {};
+    if (error) {
+      let serverBody = null;
+      try {
+        const ctx = error.context;
+        if (ctx && typeof ctx.json === "function") {
+          serverBody = await ctx.json();
+          log("5 error.context.json()", serverBody);
+        } else if (ctx && typeof ctx.text === "function") {
+          const raw = await ctx.text();
+          log("5 error.context.text() raw", raw?.slice(0, 500));
+          serverBody = raw?.trim().startsWith("{") ? JSON.parse(raw) : null;
+        }
+      } catch (parseErr) {
+        log("5 error.context parse failed", parseErr?.message);
+      }
+
+      const msg = serverBody?.error != null ? String(serverBody.error) : (serverBody?.message != null ? String(serverBody.message) : (error?.message || "Hesap silinirken sunucu hatası oluştu."));
+      const step = serverBody?.step ? " [Adım: " + serverBody.step + "]" : "";
+      const fullMsg = msg + step;
+      throw new Error(fullMsg);
+    }
+    if (data && data.ok !== true && (data.error || data.message)) {
+      throw new Error(data.error || data.message || "Hesap silinirken hata oluştu.");
     }
   },
 
