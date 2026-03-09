@@ -4,6 +4,12 @@ import { fmt, normalizeUsername, getMetric } from "../../utils/helpers";
 
 const PAGE_SIZE = 8;
 
+function getStartOfTodayMs() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
 function paginate(list, page) {
   const total = list.length;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -19,16 +25,166 @@ function paginate(list, page) {
 
 function Pagination({ ui, page, pages, onPrev, onNext }) {
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
+    <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12 }}>
       <Button ui={ui} onClick={onPrev} disabled={page <= 1}>
         ← Önceki
       </Button>
-      <div style={{ color: ui.muted2, fontSize: 12 }}>
+      <span style={{ color: ui.muted2, fontSize: 13 }}>
         Sayfa {page} / {pages}
-      </div>
+      </span>
       <Button ui={ui} onClick={onNext} disabled={page >= pages}>
         Sonraki →
       </Button>
+    </div>
+  );
+}
+
+// ----- Simple nav icons (inline SVG) -----
+const iconSize = 20;
+const iconStroke = 2;
+function IconDashboard({ color }) {
+  return (
+    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth={iconStroke} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="9" rx="1" />
+      <rect x="14" y="3" width="7" height="5" rx="1" />
+      <rect x="14" y="12" width="7" height="9" rx="1" />
+      <rect x="3" y="16" width="7" height="5" rx="1" />
+    </svg>
+  );
+}
+function IconModeration({ color }) {
+  return (
+    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth={iconStroke} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
+  );
+}
+function IconBusiness({ color }) {
+  return (
+    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth={iconStroke} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+function IconUsers({ color }) {
+  return (
+    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth={iconStroke} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+function IconAppointments({ color }) {
+  return (
+    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth={iconStroke} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+function IconLogs({ color }) {
+  return (
+    <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth={iconStroke} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+const NAV_ITEMS = [
+  { id: "dashboard", label: "Dashboard", Icon: IconDashboard },
+  { id: "reports", label: "Moderasyon", Icon: IconModeration },
+  { id: "businesses", label: "İşletmeler", Icon: IconBusiness },
+  { id: "users", label: "Kullanıcılar", Icon: IconUsers },
+  { id: "appointments", label: "Randevular", Icon: IconAppointments },
+  { id: "logs", label: "Loglar", Icon: IconLogs },
+];
+
+// Human-readable log action labels and badge color
+function getLogDisplay(action, payload) {
+  const a = String(action || "").toUpperCase();
+  if (a.includes("HUB_CONTENT_REMOVED") || a.includes("CONTENT_REMOVED")) {
+    return { title: "İçerik kaldırıldı", color: "red" };
+  }
+  if (a.includes("USER_DELETE") || a.includes("USER_SUSPEND") || a.includes("BUSINESS_DELETE")) {
+    return { title: a.includes("USER") ? "Kullanıcı askıya alındı / silindi" : "İşletme silindi", color: "red" };
+  }
+  if (a.includes("BUSINESS_APPROVE")) {
+    return { title: "İşletme onaylandı", color: "green" };
+  }
+  if (a.includes("BUSINESS_REJECT")) {
+    return { title: "İşletme reddedildi", color: "yellow" };
+  }
+  if (a.includes("REPORT") || a.includes("RESOLVED")) {
+    return { title: "Rapor çözüldü", color: "blue" };
+  }
+  if (a.includes("PENDING") || a.includes("REJECT")) {
+    return { title: action || "İşlem", color: "yellow" };
+  }
+  return { title: action || "İşlem", color: "gray" };
+}
+
+function LogBadge({ ui, color }) {
+  const bg =
+    color === "red"
+      ? "rgba(239,68,68,0.2)"
+      : color === "green"
+      ? "rgba(34,197,94,0.2)"
+      : color === "yellow"
+      ? "rgba(234,179,8,0.2)"
+      : color === "blue"
+      ? "rgba(59,130,246,0.2)"
+      : "rgba(128,128,128,0.2)";
+  const text =
+    color === "red"
+      ? ui.red
+      : color === "green"
+      ? ui.green
+      : color === "yellow"
+      ? "#eab308"
+      : color === "blue"
+      ? "#3b82f6"
+      : ui.muted2;
+  return (
+    <span
+      style={{
+        padding: "4px 10px",
+        borderRadius: 8,
+        fontSize: 12,
+        fontWeight: 700,
+        background: bg,
+        color: text,
+      }}
+    >
+      {color === "red" ? "Silme" : color === "green" ? "Onay" : color === "yellow" ? "Uyarı" : color === "blue" ? "Bilgi" : "Log"}
+    </span>
+  );
+}
+
+function EmptyState({ ui, icon, title, subtitle }) {
+  return (
+    <div
+      style={{
+        textAlign: "center",
+        padding: "32px 20px",
+        color: ui.muted,
+        border: `1px dashed ${ui.border}`,
+        borderRadius: 16,
+        background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.02)",
+      }}
+    >
+      <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.6 }}>{icon}</div>
+      <div style={{ fontWeight: 700, fontSize: 15, color: ui.text }}>{title}</div>
+      {subtitle ? <div style={{ fontSize: 13, marginTop: 4 }}>{subtitle}</div> : null}
     </div>
   );
 }
@@ -51,6 +207,7 @@ export function AdminPanel({
   profile,
   openEditBiz,
   openEditUser,
+  hubPostsTodayCount = 0,
 }) {
   const safePending = Array.isArray(pendingApps) ? pendingApps : [];
   const safeApps = Array.isArray(allApps) ? allApps : safePending;
@@ -67,6 +224,10 @@ export function AdminPanel({
   const [apptQuery, setApptQuery] = useState("");
   const [logQuery, setLogQuery] = useState("");
   const [reportQuery, setReportQuery] = useState("");
+  const [reportFilterStatus, setReportFilterStatus] = useState("open"); // open | all
+  const [reportFilterType, setReportFilterType] = useState(""); // '' | hub_post | hub_comment | user_profile | business
+  const [logFilterAction, setLogFilterAction] = useState(""); // '' or action substring
+  const [expandedLogId, setExpandedLogId] = useState(null);
 
   const [appsPage, setAppsPage] = useState(1);
   const [bizPage, setBizPage] = useState(1);
@@ -74,6 +235,25 @@ export function AdminPanel({
   const [apptsPage, setApptsPage] = useState(1);
   const [logsPage, setLogsPage] = useState(1);
   const [reportsPage, setReportsPage] = useState(1);
+
+  const startTodayMs = useMemo(() => getStartOfTodayMs(), []);
+
+  const todayUsersCount = useMemo(
+    () => safeUsers.filter((u) => (u.createdAt || 0) >= startTodayMs).length,
+    [safeUsers, startTodayMs]
+  );
+  const todayApptsCount = useMemo(
+    () =>
+      safeAppts.filter((a) => {
+        const t = a.requestedAt || a.createdAt;
+        return t && new Date(t).getTime() >= startTodayMs;
+      }).length,
+    [safeAppts, startTodayMs]
+  );
+  const openReportsCount = useMemo(
+    () => safeReports.filter((r) => String(r.status || "open").toLowerCase() !== "resolved").length,
+    [safeReports]
+  );
 
   const appsFiltered = useMemo(() => {
     const q = appQuery.trim().toLowerCase();
@@ -129,29 +309,24 @@ export function AdminPanel({
       map.get(bizKey).push({
         dateLabel,
         fromUsername: a.fromUsername || "-",
+        note: a.note || "",
+        status: a.status || "pending",
       });
     }
     return Array.from(map.entries());
   }, [apptsFiltered]);
 
-  const logsFiltered = useMemo(() => {
-    const q = logQuery.trim().toLowerCase();
-    if (!q) return safeLogs;
-    return safeLogs.filter(
-      (l) =>
-        String(l.action || "").toLowerCase().includes(q) ||
-        String(l.admin || "").toLowerCase().includes(q) ||
-        JSON.stringify(l.payload || {}).toLowerCase().includes(q)
-    );
-  }, [safeLogs, logQuery]);
-
   const reportsFiltered = useMemo(() => {
-    const openOnly = safeReports.filter(
-      (r) => String(r.status || "open").toLowerCase() !== "resolved"
-    );
+    let list =
+      reportFilterStatus === "all"
+        ? safeReports
+        : safeReports.filter((r) => String(r.status || "open").toLowerCase() !== "resolved");
+    if (reportFilterType) {
+      list = list.filter((r) => String(r.targetType || "").toLowerCase() === reportFilterType.toLowerCase());
+    }
     const q = reportQuery.trim().toLowerCase();
-    if (!q) return openOnly;
-    return openOnly.filter(
+    if (!q) return list;
+    return list.filter(
       (r) =>
         String(r.reporterUsername || "").toLowerCase().includes(q) ||
         String(r.reason || "").toLowerCase().includes(q) ||
@@ -159,7 +334,23 @@ export function AdminPanel({
         String(r.targetLabel || "").toLowerCase().includes(q) ||
         String(r.targetType || "").toLowerCase().includes(q)
     );
-  }, [safeReports, reportQuery]);
+  }, [safeReports, reportQuery, reportFilterStatus, reportFilterType]);
+
+  const logsFiltered = useMemo(() => {
+    const q = logQuery.trim().toLowerCase();
+    const byAction = logFilterAction.trim().toLowerCase();
+    let list = safeLogs;
+    if (byAction) {
+      list = list.filter((l) => String(l.action || "").toLowerCase().includes(byAction));
+    }
+    if (!q) return list;
+    return list.filter(
+      (l) =>
+        String(l.action || "").toLowerCase().includes(q) ||
+        String(l.admin || "").toLowerCase().includes(q) ||
+        JSON.stringify(l.payload || {}).toLowerCase().includes(q)
+    );
+  }, [safeLogs, logQuery, logFilterAction]);
 
   const appsPageData = paginate(appsFiltered, appsPage);
   const bizPageData = paginate(bizFiltered, bizPage);
@@ -169,125 +360,280 @@ export function AdminPanel({
   const logsPageData = paginate(logsFiltered, logsPage);
   const reportsPageData = paginate(reportsFiltered, reportsPage);
 
-  const kpis = [
-    { label: "Toplam Kullanıcı", value: safeUsers.length },
-    { label: "Onaylı İşletme", value: safeBiz.length },
-    { label: `Bekleyen Başvuru (${safePending.length})`, value: safePending.length },
-    { label: "Randevu Talebi", value: safeAppts.length },
-    { label: "Admin Log", value: safeLogs.length },
-    { label: "İşletme Görüntüleme", value: getMetric("biz_view_total") },
-    { label: "Arama Tıklama", value: getMetric("search_click_total") },
-    { label: "Yol Tarifi", value: getMetric("directions_click_total") },
-  ];
+  const kpiCards = useMemo(
+    () => [
+      { label: "Toplam kullanıcı", value: safeUsers.length },
+      { label: "Onaylı işletme", value: safeBiz.length },
+      { label: "Bekleyen başvuru", value: safePending.length },
+      { label: "Açık rapor / moderasyon", value: openReportsCount },
+      { label: "Bugünkü randevular", value: todayApptsCount },
+      { label: "Bugün yeni kullanıcı", value: todayUsersCount },
+      { label: "Bugün HUB paylaşımı", value: hubPostsTodayCount },
+      { label: "Admin log sayısı", value: safeLogs.length },
+    ],
+    [
+      safeUsers.length,
+      safeBiz.length,
+      safePending.length,
+      openReportsCount,
+      todayApptsCount,
+      todayUsersCount,
+      hubPostsTodayCount,
+      safeLogs.length,
+    ]
+  );
 
   if (!adminMode) return null;
 
+  const isActive = (id) => activeSection === id;
+
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 16 }}>
-        <Card ui={ui} style={{ height: "fit-content" }}>
-          <div style={{ fontSize: 16, fontWeight: 950 }}>Admin Menü</div>
-          <div style={{ color: ui.muted2, fontSize: 12, marginTop: 6 }}>
-            Hızlı gezinme
+    <div style={{ display: "grid", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 240px) 1fr", gap: 20 }}>
+        {/* ----- SIDEBAR ----- */}
+        <Card ui={ui} style={{ height: "fit-content", position: "sticky", top: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: ui.muted2, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>
+            Admin
           </div>
-          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-            {[
-              ["Dashboard", "dashboard"],
-              ["İşletmeler", "businesses"],
-              ["Randevular", "appointments"],
-              ["Kullanıcılar", "users"],
-              ["Kötüye Kullanım", "reports"],
-              ["Loglar", "logs"],
-            ].map(([label, targetId]) => (
+          <nav style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {NAV_ITEMS.map(({ id, label, Icon }) => (
               <button
-                key={label}
+                key={id}
                 type="button"
-                onClick={() => setActiveSection(targetId)}
+                onClick={() => setActiveSection(id)}
                 style={{
-                  padding: "10px 12px",
-                  borderRadius: 14,
-                  border: `1px solid ${ui.border}`,
-                  background: activeSection === targetId ? ui.panel : ui.panel2,
-                  fontWeight: 900,
-                  fontSize: 13,
-                  color: ui.text,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: isActive(id) ? (ui.mode === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)") : "transparent",
+                  color: isActive(id) ? ui.text : ui.muted,
+                  fontWeight: isActive(id) ? 800 : 600,
+                  fontSize: 14,
                   textAlign: "left",
                   cursor: "pointer",
-                  boxShadow: ui.mode === "light" ? "0 8px 20px rgba(0,0,0,0.06)" : "0 10px 24px rgba(0,0,0,0.22)",
+                  width: "100%",
                 }}
               >
+                <span style={{ opacity: isActive(id) ? 1 : 0.7 }}>
+                  <Icon color={isActive(id) ? ui.text : ui.muted} />
+                </span>
                 {label}
               </button>
             ))}
-          </div>
+          </nav>
         </Card>
 
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
+          {/* ----- DASHBOARD HEADER ----- */}
           <Card ui={ui}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 950 }}>Admin Dashboard</div>
-                <div style={{ color: ui.muted, marginTop: 4 }}>
-                  Operasyonlar ve kalite kontrolleri tek ekranda.
-                </div>
+                <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Admin Panel</h1>
+                <p style={{ color: ui.muted, marginTop: 6, fontSize: 14 }}>Yönetim ve moderasyon tek ekranda.</p>
               </div>
               <Chip ui={ui}>@{currentUser?.username || "-"}</Chip>
             </div>
           </Card>
 
-          {activeSection === "dashboard" ? (
+          {/* ----- DASHBOARD KPIs ----- */}
+          {activeSection === "dashboard" && (
             <Card ui={ui} id="admin-kpi">
-              <div style={{ fontSize: 16, fontWeight: 950 }}>KPI Özeti</div>
-              <div style={{ display: "grid", gap: 12, marginTop: 12, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-                {kpis.map((k) => (
+              <h2 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 16px 0" }}>Özet</h2>
+              <div
+                style={{
+                  display: "grid",
+                  gap: 14,
+                  gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+                }}
+              >
+                {kpiCards.map((k) => (
                   <div
                     key={k.label}
                     style={{
                       border: `1px solid ${ui.border}`,
                       borderRadius: 14,
-                      padding: 12,
+                      padding: 14,
                       background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
                     }}
                   >
-                    <div style={{ fontSize: 12, color: ui.muted2 }}>{k.label}</div>
-                    <div style={{ fontSize: 22, fontWeight: 950, marginTop: 6 }}>{k.value}</div>
+                    <div style={{ fontSize: 12, color: ui.muted2, fontWeight: 600 }}>{k.label}</div>
+                    <div style={{ fontSize: 24, fontWeight: 900, marginTop: 6 }}>{k.value}</div>
                   </div>
                 ))}
               </div>
             </Card>
-          ) : null}
+          )}
 
-          {activeSection === "businesses" ? (
-          <Card ui={ui} id="admin-biz">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 950 }}>İşletme Yönetimi</div>
-                <div style={{ color: ui.muted, marginTop: 4 }}>Düzenle / Sil</div>
-              </div>
-              <input
-                value={bizQuery}
-                onChange={(e) => {
-                  setBizQuery(e.target.value);
-                  setBizPage(1);
-                }}
-                placeholder="İşletme ara..."
-                style={inputStyle(ui, { minWidth: 220 })}
-              />
-            </div>
-            <div
-              style={{
-                marginTop: 12,
-                border: `1px solid ${ui.border}`,
-                borderRadius: 16,
-                padding: 12,
-                background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          {/* ----- MODERASYON ----- */}
+          {activeSection === "reports" && (
+            <Card ui={ui} id="admin-reports">
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 900 }}>Bekleyen Başvurular</div>
-                  <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>İşletme onay kuyruğu</div>
+                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>Moderasyon</h2>
+                  <p style={{ color: ui.muted, marginTop: 4, fontSize: 13 }}>Raporlanan içerik ve kullanıcılar.</p>
                 </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  <select
+                    value={reportFilterStatus}
+                    onChange={(e) => {
+                      setReportFilterStatus(e.target.value);
+                      setReportsPage(1);
+                    }}
+                    style={inputStyle(ui, { minWidth: 120 })}
+                  >
+                    <option value="open">Açık raporlar</option>
+                    <option value="all">Tümü</option>
+                  </select>
+                  <select
+                    value={reportFilterType}
+                    onChange={(e) => {
+                      setReportFilterType(e.target.value);
+                      setReportsPage(1);
+                    }}
+                    style={inputStyle(ui, { minWidth: 140 })}
+                  >
+                    <option value="">Tüm türler</option>
+                    <option value="hub_post">Hub paylaşımı</option>
+                    <option value="hub_comment">Hub yorumu</option>
+                    <option value="user_profile">Kullanıcı</option>
+                    <option value="business_profile">İşletme</option>
+                  </select>
+                  <input
+                    value={reportQuery}
+                    onChange={(e) => {
+                      setReportQuery(e.target.value);
+                      setReportsPage(1);
+                    }}
+                    placeholder="Ara..."
+                    style={inputStyle(ui, { minWidth: 180 })}
+                  />
+                </div>
+              </div>
+
+              {reportsPageData.total === 0 ? (
+                <EmptyState
+                  ui={ui}
+                  icon="📋"
+                  title="Rapor yok"
+                  subtitle="Açık bildirim bulunmuyor."
+                />
+              ) : (
+                <>
+                  <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+                    {reportsPageData.items.map((r) => {
+                      const typeLabel =
+                        r.targetType === "hub_post"
+                          ? "Hub paylaşımı"
+                          : r.targetType === "hub_comment"
+                          ? "Hub yorumu"
+                          : r.targetType === "user_profile"
+                          ? "Kullanıcı"
+                          : r.targetType === "business_profile" || r.targetType === "business"
+                          ? "İşletme"
+                          : "Diğer";
+                      const isResolved = String(r.status || "").toLowerCase() === "resolved";
+                      return (
+                        <div
+                          key={r.id}
+                          style={{
+                            border: `1px solid ${ui.border}`,
+                            borderRadius: 14,
+                            padding: 14,
+                            background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <span style={{ fontWeight: 800, fontSize: 14 }}>{typeLabel}</span>
+                                {isResolved && (
+                                  <Chip ui={ui} style={{ fontSize: 11 }}>Çözüldü</Chip>
+                                )}
+                              </div>
+                              <div style={{ color: ui.muted, marginTop: 6, fontSize: 13 }}>
+                                Raporlayan: @{r.reporterUsername || "-"}
+                              </div>
+                              <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
+                                Hedef: {r.targetLabel || r.targetOwner || r.targetId || "-"}
+                              </div>
+                              <div style={{ marginTop: 8, fontSize: 13 }}>{r.reason || "-"}</div>
+                              <div style={{ color: ui.muted2, fontSize: 12, marginTop: 6 }}>{fmt(r.createdAt)}</div>
+                            </div>
+                          </div>
+                          <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {r.targetType === "hub_post" && !isResolved && (
+                              <Button
+                                ui={ui}
+                                variant="danger"
+                                onClick={() => business.openDelete("hub_post", r)}
+                              >
+                                İçeriği kaldır
+                              </Button>
+                            )}
+                            {!isResolved && (
+                              <Button
+                                ui={ui}
+                                variant="danger"
+                                onClick={() =>
+                                  business.openDelete("user", {
+                                    id: r.targetOwnerId || r.targetOwner,
+                                    username: r.targetOwner,
+                                  })
+                                }
+                              >
+                                Kullanıcıyı askıya al
+                              </Button>
+                            )}
+                            <Button
+                              ui={ui}
+                              variant="ok"
+                              onClick={() => business.openDelete("report", r)}
+                              disabled={isResolved}
+                            >
+                              Çözüldü işaretle
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Pagination
+                    ui={ui}
+                    page={reportsPageData.page}
+                    pages={reportsPageData.pages}
+                    onPrev={() => setReportsPage((p) => Math.max(1, p - 1))}
+                    onNext={() => setReportsPage((p) => Math.min(reportsPageData.pages, p + 1))}
+                  />
+                </>
+              )}
+            </Card>
+          )}
+
+          {/* ----- İŞLETMELER ----- */}
+          {activeSection === "businesses" && (
+            <Card ui={ui} id="admin-biz">
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>İşletme yönetimi</h2>
+                  <p style={{ color: ui.muted, marginTop: 4, fontSize: 13 }}>Başvurular ve onaylı işletmeler.</p>
+                </div>
+                <input
+                  value={bizQuery}
+                  onChange={(e) => {
+                    setBizQuery(e.target.value);
+                    setBizPage(1);
+                  }}
+                  placeholder="İşletme ara..."
+                  style={inputStyle(ui, { minWidth: 220 })}
+                />
+              </div>
+
+              {/* Pending applications */}
+              <div style={{ marginTop: 20 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 10 }}>Bekleyen başvurular</h3>
                 <input
                   value={appQuery}
                   onChange={(e) => {
@@ -295,405 +641,374 @@ export function AdminPanel({
                     setAppsPage(1);
                   }}
                   placeholder="Başvuru ara..."
-                  style={inputStyle(ui, { minWidth: 220 })}
+                  style={inputStyle(ui, { maxWidth: 280, marginBottom: 12 })}
                 />
-              </div>
-              {appsPageData.total === 0 ? (
-                <div style={{ color: ui.muted, marginTop: 10 }}>Bekleyen başvuru yok.</div>
-              ) : (
-                <>
-                  <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-                    {appsPageData.items.map((a) => {
-                      const status = String(a.status || "pending").toLowerCase();
-                      const isPending = status === "pending";
-                      return (
-                      <div
-                        key={a.id}
-                        style={{
-                          border: `1px solid ${ui.border}`,
-                          borderRadius: 14,
-                          padding: 10,
-                          background:
-                            ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                          <div>
-                            <div style={{ fontWeight: 900 }}>{a.name}</div>
-                            <div style={{ color: ui.muted, marginTop: 4, fontSize: 12 }}>
-                              {a.city} • {a.category} • @{a.applicant}
-                            </div>
-                            <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
-                              Durum: {status}
-                              {a.rejectReason ? ` • Sebep: ${a.rejectReason}` : ""}
+                {appsPageData.total === 0 ? (
+                  <EmptyState ui={ui} icon="📄" title="Bekleyen başvuru yok" subtitle="İşletme onay kuyruğu boş." />
+                ) : (
+                  <>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {appsPageData.items.map((a) => {
+                        const status = String(a.status || "pending").toLowerCase();
+                        const isPending = status === "pending";
+                        return (
+                          <div
+                            key={a.id}
+                            style={{
+                              border: `1px solid ${ui.border}`,
+                              borderRadius: 14,
+                              padding: 12,
+                              background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                              <div>
+                                <div style={{ fontWeight: 800 }}>{a.name}</div>
+                                <div style={{ color: ui.muted, marginTop: 4, fontSize: 12 }}>
+                                  {a.city} • {a.category} • @{a.applicant}
+                                </div>
+                                <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
+                                  Durum: {status}
+                                  {a.rejectReason ? ` • Sebep: ${a.rejectReason}` : ""}
+                                </div>
+                                <div style={{ color: ui.muted2, fontSize: 11, marginTop: 2 }}>
+                                  Başvuru: {fmt(a.createdAt)}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+                                <Button ui={ui} variant="ok" onClick={() => business.adminApprove(a)} disabled={!isPending}>
+                                  Onayla
+                                </Button>
+                                <Button ui={ui} variant="danger" onClick={() => business.openReject(a)} disabled={!isPending}>
+                                  Reddet
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <Button
-                              ui={ui}
-                              variant="ok"
-                              onClick={() => business.adminApprove(a)}
-                              disabled={!isPending}
-                            >
-                              Onayla
+                        );
+                      })}
+                    </div>
+                    <Pagination
+                      ui={ui}
+                      page={appsPageData.page}
+                      pages={appsPageData.pages}
+                      onPrev={() => setAppsPage((p) => Math.max(1, p - 1))}
+                      onNext={() => setAppsPage((p) => Math.min(appsPageData.pages, p + 1))}
+                    />
+                  </>
+                )}
+              </div>
+
+              {/* Approved businesses */}
+              <div style={{ marginTop: 24 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 10 }}>Onaylı işletmeler</h3>
+                {bizPageData.total === 0 ? (
+                  <EmptyState ui={ui} icon="🏪" title="Kayıtlı işletme yok" />
+                ) : (
+                  <>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      {bizPageData.items.map((b) => (
+                        <div
+                          key={b.id}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                            border: `1px solid ${ui.border}`,
+                            borderRadius: 14,
+                            padding: 12,
+                            background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                          }}
+                        >
+                          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                            <Avatar ui={ui} src={b.avatar} size={44} label={b.name} />
+                            <div>
+                              <div style={{ fontWeight: 800 }}>{b.name}</div>
+                              <div style={{ color: ui.muted, fontSize: 13 }}>
+                                {b.category} • {b.city} • @{b.ownerUsername || "-"}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <Button ui={ui} variant="blue" onClick={() => openEditBiz(b)}>
+                              Detay / Düzenle
                             </Button>
-                            <Button
-                              ui={ui}
-                              variant="danger"
-                              onClick={() => business.openReject(a)}
-                              disabled={!isPending}
-                            >
-                              Reddet
+                            <Button ui={ui} variant="danger" onClick={() => business.openDelete("biz", b)}>
+                              Sil
                             </Button>
                           </div>
                         </div>
+                      ))}
+                    </div>
+                    <Pagination
+                      ui={ui}
+                      page={bizPageData.page}
+                      pages={bizPageData.pages}
+                      onPrev={() => setBizPage((p) => Math.max(1, p - 1))}
+                      onNext={() => setBizPage((p) => Math.min(bizPageData.pages, p + 1))}
+                    />
+                  </>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* ----- KULLANICILAR ----- */}
+          {activeSection === "users" && (
+            <Card ui={ui} id="admin-users">
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>Kullanıcı yönetimi</h2>
+                  <p style={{ color: ui.muted, marginTop: 4, fontSize: 13 }}>Düzenleme ve askıya alma.</p>
+                </div>
+                <input
+                  value={userQuery}
+                  onChange={(e) => {
+                    setUserQuery(e.target.value);
+                    setUsersPage(1);
+                  }}
+                  placeholder="Kullanıcı ara..."
+                  style={inputStyle(ui, { minWidth: 220 })}
+                />
+              </div>
+              {usersPageData.total === 0 ? (
+                <EmptyState ui={ui} icon="👤" title="Kullanıcı bulunamadı" />
+              ) : (
+                <>
+                  <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+                    {usersPageData.items.map((u) => (
+                      <div
+                        key={u.id}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          border: `1px solid ${ui.border}`,
+                          borderRadius: 14,
+                          padding: 12,
+                          background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                          <Avatar ui={ui} src={u.avatar} size={44} label={u.username} />
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                              <Chip ui={ui} onClick={() => profile.openProfileByUsername(u.username)}>
+                                @{u.username}
+                              </Chip>
+                              <span style={{ color: ui.muted, fontSize: 13 }}>Durum: {u.Tier || "Onaylı"}</span>
+                              <span style={{ color: ui.muted2, fontSize: 12 }}>XP: {u.xp || 0}</span>
+                            </div>
+                            <div style={{ color: ui.muted2, fontSize: 12, marginTop: 4 }}>Kayıt: {fmt(u.createdAt)}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <Button ui={ui} variant="blue" onClick={() => openEditUser(u)}>
+                            Yönet
+                          </Button>
+                          <Button
+                            ui={ui}
+                            variant="danger"
+                            onClick={() => business.openDelete("user", u)}
+                            disabled={normalizeUsername(u.username) === normalizeUsername(currentUser?.username)}
+                            title="Kendini silemezsin"
+                          >
+                            Askıya al / Sil
+                          </Button>
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                  <Pagination
+                    ui={ui}
+                    page={usersPageData.page}
+                    pages={usersPageData.pages}
+                    onPrev={() => setUsersPage((p) => Math.max(1, p - 1))}
+                    onNext={() => setUsersPage((p) => Math.min(usersPageData.pages, p + 1))}
+                  />
+                </>
+              )}
+            </Card>
+          )}
+
+          {/* ----- RANDEVULAR ----- */}
+          {activeSection === "appointments" && (
+            <Card ui={ui} id="admin-appts">
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>Randevular</h2>
+                  <p style={{ color: ui.muted, marginTop: 4, fontSize: 13 }}>İşletmelere yönlendirilen talepler.</p>
+                </div>
+                <input
+                  value={apptQuery}
+                  onChange={(e) => {
+                    setApptQuery(e.target.value);
+                    setApptsPage(1);
+                  }}
+                  placeholder="Randevu ara..."
+                  style={inputStyle(ui, { minWidth: 220 })}
+                />
+              </div>
+              {apptsPageData.total === 0 ? (
+                <EmptyState
+                  ui={ui}
+                  icon="📅"
+                  title="Henüz randevu yok"
+                  subtitle="Randevu talepleri burada listelenir."
+                />
+              ) : (
+                <>
+                  <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+                    {apptsSummaryPage.items.map(([bizName, rows]) => (
+                      <div
+                        key={bizName}
+                        style={{
+                          border: `1px solid ${ui.border}`,
+                          borderRadius: 14,
+                          padding: 14,
+                          background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        <div style={{ fontWeight: 800, marginBottom: 8 }}>{bizName}</div>
+                        {rows.map((r, idx) => (
+                          <div
+                            key={`${bizName}-${idx}`}
+                            style={{
+                              color: ui.muted,
+                              fontSize: 13,
+                              marginBottom: 6,
+                              paddingLeft: 8,
+                              borderLeft: `3px solid ${ui.border}`,
+                            }}
+                          >
+                            {r.dateLabel} • @{r.fromUsername}
+                            {r.status && r.status !== "pending" ? ` • ${r.status}` : ""}
+                            {r.note ? ` • Not: ${r.note}` : ""}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <Pagination
+                    ui={ui}
+                    page={apptsSummaryPage.page}
+                    pages={apptsSummaryPage.pages}
+                    onPrev={() => setApptsPage((p) => Math.max(1, p - 1))}
+                    onNext={() => setApptsPage((p) => Math.min(apptsSummaryPage.pages, p + 1))}
+                  />
+                </>
+              )}
+            </Card>
+          )}
+
+          {/* ----- LOGLAR ----- */}
+          {activeSection === "logs" && (
+            <Card ui={ui} id="admin-logs">
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>Loglar</h2>
+                  <p style={{ color: ui.muted, marginTop: 4, fontSize: 13 }}>Tüm admin işlemleri; detay için genişlet.</p>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <input
+                    value={logFilterAction}
+                    onChange={(e) => {
+                      setLogFilterAction(e.target.value);
+                      setLogsPage(1);
+                    }}
+                    placeholder="Aksiyon filtresi..."
+                    style={inputStyle(ui, { minWidth: 140 })}
+                  />
+                  <input
+                    value={logQuery}
+                    onChange={(e) => {
+                      setLogQuery(e.target.value);
+                      setLogsPage(1);
+                    }}
+                    placeholder="Log ara..."
+                    style={inputStyle(ui, { minWidth: 180 })}
+                  />
+                </div>
+              </div>
+              {logsPageData.total === 0 ? (
+                <EmptyState ui={ui} icon="📜" title="Henüz log yok" subtitle="Admin işlemleri burada görünür." />
+              ) : (
+                <>
+                  <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+                    {logsPageData.items.map((l) => {
+                      const { title, color } = getLogDisplay(l.action, l.payload);
+                      const isExpanded = expandedLogId === l.id;
+                      return (
+                        <div
+                          key={l.id}
+                          style={{
+                            border: `1px solid ${ui.border}`,
+                            borderRadius: 14,
+                            padding: 12,
+                            background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                              <LogBadge ui={ui} color={color} />
+                              <span style={{ fontWeight: 800, fontSize: 14 }}>{title}</span>
+                            </div>
+                            <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(l.createdAt)}</div>
+                          </div>
+                          <div style={{ marginTop: 8, fontSize: 13, color: ui.muted }}>Admin: @{l.admin}</div>
+                          {Object.keys(l.payload || {}).length > 0 && (
+                            <div style={{ marginTop: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedLogId(isExpanded ? null : l.id)}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: ui.blueBtn || ui.blue,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  padding: 0,
+                                }}
+                              >
+                                {isExpanded ? "Detayı gizle" : "Detayı gör"}
+                              </button>
+                              {isExpanded && (
+                                <pre
+                                  style={{
+                                    marginTop: 8,
+                                    padding: 10,
+                                    borderRadius: 8,
+                                    background: ui.mode === "dark" ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.06)",
+                                    fontSize: 11,
+                                    overflow: "auto",
+                                    color: ui.muted2,
+                                  }}
+                                >
+                                  {JSON.stringify(l.payload, null, 2)}
+                                </pre>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
                   <Pagination
                     ui={ui}
-                    page={appsPageData.page}
-                    pages={appsPageData.pages}
-                    onPrev={() => setAppsPage((p) => Math.max(1, p - 1))}
-                    onNext={() => setAppsPage((p) => Math.min(appsPageData.pages, p + 1))}
+                    page={logsPageData.page}
+                    pages={logsPageData.pages}
+                    onPrev={() => setLogsPage((p) => Math.max(1, p - 1))}
+                    onNext={() => setLogsPage((p) => Math.min(logsPageData.pages, p + 1))}
                   />
                 </>
               )}
-            </div>
-
-            {bizPageData.total === 0 ? (
-              <div style={{ color: ui.muted, marginTop: 12 }}>Kayıtlı işletme yok.</div>
-            ) : (
-              <>
-                <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                  {bizPageData.items.map((b) => (
-                    <div
-                      key={b.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 12,
-                        flexWrap: "wrap",
-                        border: `1px solid ${ui.border}`,
-                        borderRadius: 16,
-                        padding: 12,
-                        background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                      }}
-                    >
-                      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                        <Avatar ui={ui} src={b.avatar} size={44} label={b.name} />
-                        <div>
-                          <div style={{ fontWeight: 950 }}>{b.name}</div>
-                          <div style={{ color: ui.muted, fontSize: 13 }}>
-                            {b.category} • owner: @{b.ownerUsername || "-"}
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <Button ui={ui} variant="blue" onClick={() => openEditBiz(b)}>
-                          Yönet / Düzenle
-                        </Button>
-                        <Button ui={ui} variant="danger" onClick={() => business.openDelete("biz", b)}>
-                          Sil
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Pagination
-                  ui={ui}
-                  page={bizPageData.page}
-                  pages={bizPageData.pages}
-                  onPrev={() => setBizPage((p) => Math.max(1, p - 1))}
-                  onNext={() => setBizPage((p) => Math.min(bizPageData.pages, p + 1))}
-                />
-              </>
-            )}
-          </Card>
-          ) : null}
-
-          {activeSection === "appointments" ? (
-          <Card ui={ui} id="admin-appts">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 950 }}>Randevu Talepleri</div>
-                <div style={{ color: ui.muted, marginTop: 4 }}>İşletmelere yönlendirilen talepler</div>
-              </div>
-              <input
-                value={apptQuery}
-                onChange={(e) => {
-                  setApptQuery(e.target.value);
-                  setApptsPage(1);
-                }}
-                placeholder="Randevu ara..."
-                style={inputStyle(ui, { minWidth: 220 })}
-              />
-            </div>
-            {apptsPageData.total === 0 ? (
-              <div style={{ color: ui.muted, marginTop: 12 }}>Henüz randevu yok.</div>
-            ) : (
-              <>
-                <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                  {apptsSummaryPage.items.map(([bizName, rows]) => (
-                    <div
-                      key={bizName}
-                      style={{
-                        border: `1px solid ${ui.border}`,
-                        borderRadius: 16,
-                        padding: 12,
-                        background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                      }}
-                    >
-                      <div style={{ fontWeight: 950, marginBottom: 6 }}>{bizName}</div>
-                      {rows.map((r, idx) => (
-                        <div key={`${bizName}-${idx}`} style={{ color: ui.muted, fontSize: 12, marginBottom: 4 }}>
-                          {r.dateLabel} • @{r.fromUsername}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-                <Pagination
-                  ui={ui}
-                  page={apptsSummaryPage.page}
-                  pages={apptsSummaryPage.pages}
-                  onPrev={() => setApptsPage((p) => Math.max(1, p - 1))}
-                  onNext={() => setApptsPage((p) => Math.min(apptsSummaryPage.pages, p + 1))}
-                />
-              </>
-            )}
-          </Card>
-          ) : null}
-
-          {activeSection === "users" ? (
-          <Card ui={ui} id="admin-users">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 950 }}>Kullanıcı Yönetimi</div>
-                <div style={{ color: ui.muted, marginTop: 4 }}>Düzenle / Askıya Al</div>
-              </div>
-              <input
-                value={userQuery}
-                onChange={(e) => {
-                  setUserQuery(e.target.value);
-                  setUsersPage(1);
-                }}
-                placeholder="Kullanıcı ara..."
-                style={inputStyle(ui, { minWidth: 220 })}
-              />
-            </div>
-            {usersPageData.total === 0 ? (
-              <div style={{ color: ui.muted, marginTop: 12 }}>Kullanıcı bulunamadı.</div>
-            ) : (
-              <>
-                <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                  {usersPageData.items.map((u) => (
-                    <div
-                      key={u.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 12,
-                        flexWrap: "wrap",
-                        border: `1px solid ${ui.border}`,
-                        borderRadius: 16,
-                        padding: 12,
-                        background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                      }}
-                    >
-                      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                        <Avatar ui={ui} src={u.avatar} size={44} label={u.username} />
-                        <div>
-                          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                            <Chip ui={ui} onClick={() => profile.openProfileByUsername(u.username)}>
-                              @{u.username}
-                            </Chip>
-                            <span style={{ color: ui.muted }}>Durum: {u.Tier || "Onaylı"}</span>
-                            <span style={{ color: ui.muted }}>Katkı: {u.xp || 0}</span>
-                          </div>
-                          <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(u.createdAt)}</div>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <Button ui={ui} variant="blue" onClick={() => openEditUser(u)}>
-                          Yönet / Düzenle
-                        </Button>
-                        <Button
-                          ui={ui}
-                          variant="danger"
-                          onClick={() => business.openDelete("user", u)}
-                          disabled={normalizeUsername(u.username) === normalizeUsername(currentUser?.username)}
-                          title="Kendini silemezsin"
-                        >
-                          Sil
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Pagination
-                  ui={ui}
-                  page={usersPageData.page}
-                  pages={usersPageData.pages}
-                  onPrev={() => setUsersPage((p) => Math.max(1, p - 1))}
-                  onNext={() => setUsersPage((p) => Math.min(usersPageData.pages, p + 1))}
-                />
-              </>
-            )}
-          </Card>
-          ) : null}
-
-          {activeSection === "logs" ? (
-          <Card ui={ui} id="admin-logs">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 950 }}>Loglar</div>
-                <div style={{ color: ui.muted, marginTop: 4 }}>Tüm admin işlemleri burada kayıtlı tutulur.</div>
-              </div>
-              <input
-                value={logQuery}
-                onChange={(e) => {
-                  setLogQuery(e.target.value);
-                  setLogsPage(1);
-                }}
-                placeholder="Log ara..."
-                style={inputStyle(ui, { minWidth: 220 })}
-              />
-            </div>
-            {logsPageData.total === 0 ? (
-              <div style={{ color: ui.muted, marginTop: 12 }}>Henüz log yok.</div>
-            ) : (
-              <>
-                <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                  {logsPageData.items.map((l) => (
-                    <div
-                      key={l.id}
-                      style={{
-                        border: `1px solid ${ui.border}`,
-                        borderRadius: 16,
-                        padding: 12,
-                        background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                        <div style={{ fontWeight: 950 }}>{l.action}</div>
-                        <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(l.createdAt)}</div>
-                      </div>
-                      <div style={{ marginTop: 6, color: ui.muted }}>Admin: @{l.admin}</div>
-                      <div style={{ marginTop: 6, color: ui.muted2, fontSize: 12 }}>
-                        {JSON.stringify(l.payload)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Pagination
-                  ui={ui}
-                  page={logsPageData.page}
-                  pages={logsPageData.pages}
-                  onPrev={() => setLogsPage((p) => Math.max(1, p - 1))}
-                  onNext={() => setLogsPage((p) => Math.min(logsPageData.pages, p + 1))}
-                />
-              </>
-            )}
-          </Card>
-          ) : null}
-
-          {activeSection === "reports" ? (
-          <Card ui={ui} id="admin-reports">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 950 }}>Kötüye Kullanım</div>
-                <div style={{ color: ui.muted, marginTop: 4 }}>Kullanıcı bildirimleri</div>
-              </div>
-              <input
-                value={reportQuery}
-                onChange={(e) => {
-                  setReportQuery(e.target.value);
-                  setReportsPage(1);
-                }}
-                placeholder="Bildirim ara..."
-                style={inputStyle(ui, { minWidth: 220 })}
-              />
-            </div>
-            {reportsPageData.total === 0 ? (
-              <div style={{ color: ui.muted, marginTop: 12 }}>Bildirim bulunamadı.</div>
-            ) : (
-              <>
-                <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                  {reportsPageData.items.map((r) => {
-                    const typeLabel =
-                      r.targetType === "hub_post"
-                        ? "Hub Paylaşımı"
-                        : r.targetType === "hub_comment"
-                        ? "Hub Yorumu"
-                        : r.targetType === "user_profile"
-                        ? "Kullanıcı"
-                        : r.targetType === "business_profile" || r.targetType === "business"
-                        ? "İşletme"
-                        : "Diğer";
-                    return (
-                      <div
-                        key={r.id}
-                        style={{
-                          border: `1px solid ${ui.border}`,
-                          borderRadius: 16,
-                          padding: 12,
-                          background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                          <div>
-                            <div style={{ fontWeight: 950 }}>{typeLabel}</div>
-                            <div style={{ color: ui.muted, marginTop: 4, fontSize: 12 }}>
-                              Raporlayan: @{r.reporterUsername || "-"}
-                            </div>
-                            <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
-                              Hedef: {r.targetLabel || r.targetOwner || r.targetId || "-"}
-                            </div>
-                          </div>
-                          <div style={{ color: ui.muted2, fontSize: 12 }}>{fmt(r.createdAt)}</div>
-                        </div>
-                        <div style={{ marginTop: 8, color: ui.text }}>{r.reason || "-"}</div>
-                        <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          {r.targetType === "hub_post" ? (
-                            <Button
-                              ui={ui}
-                              variant="danger"
-                              onClick={() => business.openDelete("hub_post", r)}
-                            >
-                              İçeriği Kaldır
-                            </Button>
-                          ) : null}
-                          <Button
-                            ui={ui}
-                            variant="ok"
-                            onClick={() => business.openDelete("user", { id: r.targetOwnerId || r.targetOwner })}
-                          >
-                            Kullanıcıyı Askıya Al
-                          </Button>
-                          <Button
-                            ui={ui}
-                            onClick={() => business.openDelete("report", r)}
-                          >
-                            Çözüldü Olarak İşaretle
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <Pagination
-                  ui={ui}
-                  page={reportsPageData.page}
-                  pages={reportsPageData.pages}
-                  onPrev={() => setReportsPage((p) => Math.max(1, p - 1))}
-                  onNext={() => setReportsPage((p) => Math.min(reportsPageData.pages, p + 1))}
-                />
-              </>
-            )}
-          </Card>
-          ) : null}
+            </Card>
+          )}
         </div>
       </div>
     </div>

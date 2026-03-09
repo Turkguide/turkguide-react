@@ -127,6 +127,7 @@ function AppContent() {
   const [dms, setDms] = useState([]);
   const [appts, setAppts] = useState([]);
   const [reports, setReports] = useState([]);
+  const [hubPostsTodayCount, setHubPostsTodayCount] = useState(0);
   const [blockedUsernames, setBlockedUsernames] = useState([]);
   const [blockedByUsernames, setBlockedByUsernames] = useState([]);
   const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
@@ -363,6 +364,15 @@ useEffect(() => {
         }));
         setReports(mapped);
       }
+
+      // Today's HUB posts count for admin dashboard
+      const startOfToday = new Date();
+      startOfToday.setUTCHours(0, 0, 0, 0);
+      const { count } = await supabase
+        .from("hub_posts")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", startOfToday.toISOString());
+      if (!cancelled && typeof count === "number") setHubPostsTodayCount(count);
     } catch (e) {
       console.warn("admin data fetch error:", e);
     }
@@ -1518,6 +1528,7 @@ return (
                 profile={profile}
                 openEditBiz={businessEdit.openEditBiz}
                 openEditUser={userManagement.openEditUser}
+                hubPostsTodayCount={hubPostsTodayCount}
               />
             )}
           </div>
