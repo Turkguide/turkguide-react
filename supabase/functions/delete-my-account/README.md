@@ -24,7 +24,7 @@ supabase functions deploy delete-my-account
    - `admin_logs` (admin_id — FK to auth.users, must run before auth delete)
    - `profiles` (id)
 4. Calls `auth.admin.deleteUser(userId)`.
-5. Returns `{ ok: true }` or `{ error: "..." }`.
+5. Returns `{ ok: true }` or on failure `{ error, step?, code?, details? }` (HTTP 500). Frontend shows `error` and `step` to the user.
 
 ## Tables cleaned
 

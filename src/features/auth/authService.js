@@ -81,15 +81,31 @@ export const authService = {
 
   /**
    * Delete account via Edge Function (service role deletes all user data + auth user).
-   * Caller must clear session / redirect on success; on failure throws.
+   * Caller must clear session / redirect on success; on failure throws with server message when available.
    */
   async deleteAccount() {
     if (!supabase?.functions?.invoke) {
       throw new Error("Hesap silme şu an kullanılamıyor.");
     }
     const { data, error } = await supabase.functions.invoke("delete-my-account", { method: "POST" });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+    if (data?.error) {
+      const step = data.step ? ` [${data.step}]` : "";
+      throw new Error(String(data.error) + step);
+    }
+    if (error) {
+      if (error?.context && typeof error.context.json === "function") {
+        try {
+          const body = await error.context.json();
+          if (body?.error) {
+            const step = body.step ? ` [${body.step}]` : "";
+            throw new Error(String(body.error) + step);
+          }
+        } catch (e) {
+          if (e?.message && e.message !== error.message) throw e;
+        }
+      }
+      throw error;
+    }
   },
 
   /**

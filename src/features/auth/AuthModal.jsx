@@ -199,10 +199,6 @@ export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegi
             Vazgeç
           </Button>
         </div>
-
-        <div style={{ marginTop: 10, color: ui.muted, fontSize: 12 }}>
-          Not: Eğer Supabase bağlı değilse "Kaydı Tamamla" tıklayınca hata verebilir.
-        </div>
       </Modal>
 
       {/* Terms / Community Guidelines viewer — in-app so user can return without losing signup data */}
