@@ -122,11 +122,12 @@ Deno.serve(async (req) => {
     return errResponse(500, { error: "Server configuration error", step: "config" });
   }
 
-  // Client without global auth header — we pass the token only to getUser(token)
-  const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
+  // Edge Function'da getUser() client'ın Authorization header'ı ile çağrılmalı (getUser(jwt) bazen Invalid JWT döner)
+  const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
 
-  // Validate JWT with Auth server (single source of truth; getClaims can fail with new keys)
-  const { data: userData, error: userError } = await supabaseAnon.auth.getUser(token);
+  const { data: userData, error: userError } = await supabaseAnon.auth.getUser();
   console.log(JSON.stringify({
     step: "getUser_result",
     hasUser: !!userData?.user,
