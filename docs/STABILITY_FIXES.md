@@ -16,8 +16,8 @@
    - **Fix:** Single update to `profiles` only. Timeout increased to 15s. Clear error handling; no fallback to a second table.
 
 4. **Report submit (Bildir)**  
-   - No double-submit guard; no timeout on session refresh, so UI could hang.  
-   - **Fix:** `submittingReport` state to disable button and show "Gönderiliyor…". Session refresh + getSession wrapped in `Promise.race` with 10s timeout. `setSubmittingReport(false)` in `finally`.
+   - No double-submit guard; short session timeout caused "Bağlantı zaman aşımına uğradı" on slow networks.  
+   - **Fix:** Use `user` from state only (no pre-call session fetch). On RPC auth/jwt error: `refreshSession()` with 20s timeout, catch so we don’t throw, then retry RPC. Whole operation capped at 28s; on timeout or network error show: "İşlem uzadı veya bağlantı kurulamadı. Lütfen ağ bağlantınızı kontrol edip tekrar deneyin." (no "Bağlantı zaman aşımına uğradı"). `submittingReport` + `finally` unchanged.
 
 ## Files changed
 

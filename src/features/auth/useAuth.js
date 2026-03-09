@@ -7,7 +7,7 @@ import { normalizeUsername } from "../../utils/helpers";
 /**
  * Hook for authentication operations
  */
-export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTermsGate, setTermsChecked, setActive, setShowSettings, setShowBizApply, setProfileOpen, setProfileTarget, setShowEditUser, setEditUserCtx, setShowDm, setDmTarget, setDmText, setShowAppt, setApptBizId, setApptMsg }) {
+export function useAuth({ user, setUser, setShowAuth, setShowRegister, setActive, setShowSettings, setShowBizApply, setProfileOpen, setProfileTarget, setShowEditUser, setEditUserCtx, setShowDm, setDmTarget, setDmText, setShowAppt, setApptBizId, setApptMsg }) {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authUsername, setAuthUsername] = useState("");
@@ -80,7 +80,6 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
 
   /**
    * Require authentication - shows auth modal if not logged in.
-   * When requireTerms is set, if in-memory acceptedTermsAt is missing, fetches once from DB so actions stay stable after token refresh.
    */
   async function requireAuth(options = {}) {
     if (!user) {
@@ -89,38 +88,6 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
     }
     if (user?.bannedAt) {
       alert("Hesabın askıya alındı. Destek için bize ulaş.");
-      return false;
-    }
-    if (options.requireTerms && !user?.acceptedTermsAt) {
-      if (user?.id && supabase?.from) {
-        try {
-          const timeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("timeout")), 4000)
-          );
-          const fetchFlags = supabase
-            .from("profiles")
-            .select("accepted_terms_at, banned_at")
-            .eq("id", user.id)
-            .single();
-          const res = await Promise.race([fetchFlags, timeout]);
-          const data = res?.data;
-          if (data?.accepted_terms_at) {
-            setUser((prev) =>
-              prev?.id === user.id
-                ? { ...prev, acceptedTermsAt: data.accepted_terms_at, bannedAt: data.banned_at ?? prev?.bannedAt }
-                : prev
-            );
-            return true;
-          }
-        } catch (e) {}
-      }
-      if (setShowTermsGate) setShowTermsGate(true);
-      if (setTermsChecked) setTermsChecked(false);
-      try {
-        if (typeof window !== "undefined" && window.dispatchEvent) {
-          window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
-        }
-      } catch (_) {}
       return false;
     }
     if (options.requireVerified && user?.emailVerified === false) {
@@ -146,10 +113,6 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
 
       // 2) REGISTER
       if (mode === "register") {
-        if (options.termsAccepted !== true) {
-          alert("Devam etmek için Kullanım Şartları ve Gizlilik Politikası'nı kabul etmelisiniz.");
-          return;
-        }
         if (!email || !pass || !username) {
           alert("Email, şifre ve kullanıcı adı zorunlu.");
           return;
@@ -212,17 +175,6 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
           } catch (_) {}
           setShowAuth(true); // doğrulama için modal açık kalsın
         } else {
-          const userId = data.user.id;
-          let acceptedTermsAt = null;
-          if (options.termsAccepted === true) {
-            acceptedTermsAt = new Date().toISOString();
-            try {
-              await supabase.from("profiles").update({ accepted_terms_at: acceptedTermsAt }).eq("id", userId);
-              try {
-                await supabase.from("users").update({ termsAccepted: true, accepted_terms_at: acceptedTermsAt }).eq("id", userId);
-              } catch (_) {}
-            } catch (_) {}
-          }
           alert("Kayıt alındı ve giriş yapıldı.");
           setUser((prev) => {
             const next = {
@@ -241,14 +193,13 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
               emailVerified:
                 !!(data.user.email_confirmed_at ?? data.user.confirmed_at) && !data.user.new_email,
               newEmailPending: data.user.new_email ?? null,
-              acceptedTermsAt: acceptedTermsAt ?? prev?.acceptedTermsAt ?? null,
+              acceptedTermsAt: prev?.acceptedTermsAt ?? null,
             };
             if (prev?.id === data.user.id) {
               next.bannedAt = prev.bannedAt ?? null;
             }
             return next;
           });
-          if (setTermsChecked) setTermsChecked(true);
           // ✅ Login olduysa da ana sayfa: İşletmeler
           setActive("biz");
           try {

@@ -38,7 +38,6 @@ import { SettingsModal } from "./features/settings";
 
 // Features - Auth
 import { useAuthState, useAuthCallback, useAuth, AuthModal } from "./features/auth";
-import { setPendingAcceptedTerms } from "./features/auth/pendingProfileFlags";
 
 // Features - Business
 import { useBusiness, useBusinessEdit, BizApplyForm } from "./features/business";
@@ -130,13 +129,6 @@ function AppContent() {
   const [blockedUsernames, setBlockedUsernames] = useState([]);
   const [blockedByUsernames, setBlockedByUsernames] = useState([]);
   const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
-  const [reportCtx, setReportCtx] = useState(null);
-  const [reportReason, setReportReason] = useState("");
-  const [submittingReport, setSubmittingReport] = useState(false);
-  const reportModalOpenedAtRef = useRef(0);
-  const [showTermsGate, setShowTermsGate] = useState(false);
-  const [termsChecked, setTermsChecked] = useState(false);
-  const [acceptingTerms, setAcceptingTerms] = useState(false);
 
   const [_infoPage, _setInfoPage] = useState(null);
   // reserved: "about" | "help" | "privacy" | "terms" | "contact" | null
@@ -209,17 +201,6 @@ useEffect(() => {
   window.addEventListener("popstate", onPopState);
   return () => window.removeEventListener("popstate", onPopState);
 }, [active]);
-
-useEffect(() => {
-  const handler = () => requestTermsGate();
-  window.addEventListener("tg:requestTermsGate", handler);
-  return () => window.removeEventListener("tg:requestTermsGate", handler);
-}, []);
-
-// DB'den veya restore'dan acceptedTermsAt gelince modal açıksa kapat
-useEffect(() => {
-  if (user?.acceptedTermsAt && showTermsGate) setShowTermsGate(false);
-}, [user?.acceptedTermsAt, showTermsGate]);
 
 useEffect(() => {
   if (import.meta.env.DEV) try { console.log("active", active); } catch (_ignored) { /* noop */ }
@@ -558,8 +539,6 @@ useEffect(() => {
     setUser,
     setShowAuth,
     setShowRegister,
-    setShowTermsGate,
-    setTermsChecked,
     setActive,
     setShowSettings: settingsHook.setShowSettings,
     setShowBizApply: (value) => {
@@ -1121,240 +1100,8 @@ function clearFilters() {
   }
 }
 
-async function openReport(ctx) {
-  try {
-    if (!(await requireAuth({ requireTerms: true }))) return;
-    setReportCtx(ctx || null);
-    setReportReason("");
-    reportModalOpenedAtRef.current = Date.now();
-  } catch (e) {
-    if (import.meta.env.DEV) console.error("openReport error:", e);
-    alert("Şikayet ekranı açılamadı. Lütfen tekrar deneyin.");
-  }
-}
-
-async function submitReport() {
-  if (!reportCtx) return;
-  const reason = String(reportReason || "").trim();
-  if (!reason) {
-    alert("Şikayet sebebi zorunludur.");
-    return;
-  }
-  if (submittingReport) return;
-  setSubmittingReport(true);
-
-  if (!supabase?.auth?.getSession) {
-    alert("Bağlantı hazır değil. Lütfen sayfayı yenileyin.");
-    setSubmittingReport(false);
-    return;
-  }
-  let reporterId = null;
-  let reporterUsername = user?.username ?? "";
-  const sessionTimeoutMs = 25000;
-  try {
-    const sessionPromise = (async () => {
-      const { data: existing } = await supabase.auth.getSession();
-      if (existing?.session?.user?.id) return existing.session.user;
-      await supabase.auth.refreshSession();
-      const { data: sessionData } = await supabase.auth.getSession();
-      return sessionData?.session?.user ?? null;
-    })();
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("session_timeout")), sessionTimeoutMs)
-    );
-    const sessionUser = await Promise.race([sessionPromise, timeoutPromise]);
-    if (!sessionUser?.id) {
-      alert("Oturum bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.");
-      setSubmittingReport(false);
-      return;
-    }
-    reporterId = sessionUser.id;
-    reporterUsername = (sessionUser.user_metadata?.username ?? sessionUser.email ?? reporterUsername) || "user";
-  } catch (e) {
-    if (String(e?.message) === "session_timeout") {
-      alert("Bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.");
-    } else {
-      alert("Oturum doğrulanamadı. Lütfen çıkış yapıp tekrar giriş yapın.");
-    }
-    setSubmittingReport(false);
-    return;
-  }
-
-  const normalizedTargetOwner = normalizeUsername(reportCtx.targetOwner || "");
-  const inferredOwnerId =
-    reportCtx.targetOwnerId ||
-    (reportCtx.type === "user_profile" ? reportCtx.targetId : null) ||
-    (normalizedTargetOwner
-      ? (users || []).find((u) => normalizeUsername(u.username) === normalizedTargetOwner)?.id || null
-      : null);
-
-  const payload = {
-    id: uuid(),
-    created_at: new Date().toISOString(),
-    reporter_id: reporterId,
-    reporter_username: reporterUsername || "",
-    target_type: reportCtx.type || "",
-    target_id: String(reportCtx.targetId || ""),
-    target_parent_id: reportCtx.targetParentId ? String(reportCtx.targetParentId) : null,
-    target_owner: reportCtx.targetOwner || "",
-    target_owner_id: inferredOwnerId ? String(inferredOwnerId) : null,
-    target_label: reportCtx.targetLabel || "",
-    reason,
-    status: "open",
-  };
-
-  try {
-    if (!supabase?.from) throw new Error("Bağlantı yok.");
-    if (typeof supabase?.rpc !== "function") {
-      alert("Şikayet özelliği şu an kullanılamıyor. Lütfen daha sonra deneyin.");
-      return;
-    }
-    // RPC ile insert: reporter_id sunucuda auth.uid() ile set edilir, user/admin aynı şekilde çalışır
-    const { data: newId, error: rpcError } = await supabase.rpc("insert_report", {
-      p_reporter_username: payload.reporter_username,
-      p_target_type: payload.target_type,
-      p_target_id: payload.target_id,
-      p_target_owner: payload.target_owner,
-      p_target_label: payload.target_label,
-      p_reason: payload.reason,
-    });
-    if (rpcError) throw rpcError;
-    const insertedId = newId ?? payload.id;
-    const createdAt = Date.now();
-    const reportItem = {
-      id: insertedId,
-      createdAt,
-      reporterId: payload.reporter_id,
-      reporterUsername: payload.reporter_username,
-      targetType: payload.target_type,
-      targetId: payload.target_id,
-      targetParentId: payload.target_parent_id || "",
-      targetOwner: payload.target_owner,
-      targetOwnerId: payload.target_owner_id || "",
-      targetLabel: payload.target_label,
-      reason: payload.reason,
-      status: payload.status,
-    };
-    setReports((prev) => [reportItem, ...(prev || [])]);
-
-    // Hide reported content locally for reporter
-    if (reportCtx.type === "hub_post") {
-      setPosts((prev) => (prev || []).filter((p) => String(p.id) !== String(reportCtx.targetId)));
-    }
-    if (reportCtx.type === "hub_comment") {
-      setPosts((prev) =>
-        (prev || []).map((p) => ({
-          ...p,
-          comments:
-            String(p.id) === String(reportCtx.targetParentId)
-              ? (p.comments || []).filter((c) => String(c.id) !== String(reportCtx.targetId))
-              : p.comments,
-        }))
-      );
-    }
-    if (reportCtx.type === "business" || reportCtx.type === "business_profile") {
-      setBiz((prev) => (prev || []).filter((b) => String(b.id) !== String(reportCtx.targetId)));
-    }
-    if (reportCtx.type === "user_profile") {
-      setUsers((prev) =>
-        (prev || []).map((u) =>
-          String(u.id) === String(reportCtx.targetId) ? { ...u, status: "reported" } : u
-        )
-      );
-    }
-
-    (DEFAULT_ADMINS || []).forEach((adminU) => {
-      if (!adminU) return;
-      notifications.createNotification?.({
-        type: "report",
-        fromUsername: user?.username || "user",
-        toUsername: adminU,
-        postId: null,
-        commentId: null,
-        metadata: {
-          targetType: reportCtx.type || "",
-          targetId: String(reportCtx.targetId || ""),
-          reason,
-        },
-      });
-    });
-
-    alert("Bildirim alındı. İnceleme için yönlendirildi.");
-    setReportCtx(null);
-    setReportReason("");
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn("report submit error:", e);
-    const msg = String(e?.message || e || "");
-    const isRls = /row-level security|violates.*policy/i.test(msg);
-    const isRpcMissing = /function.*does not exist|rpc.*not found/i.test(msg);
-    if (isRpcMissing) {
-      alert("Şikayet sistemi henüz aktif değil. Lütfen daha sonra deneyin veya destek ile iletişime geçin.");
-    } else if (isRls) {
-      alert(
-        "Şikayet gönderilemedi. Oturum sunucuda tanınmıyor olabilir. Lütfen çıkış yapıp tekrar giriş yapın."
-      );
-    } else {
-      alert("Şikayet gönderilemedi. " + (msg ? msg : "Lütfen tekrar deneyin."));
-    }
-  } finally {
-    setSubmittingReport(false);
-  }
-}
-
-/**
- * Accept terms and persist to DB (profiles only). Returns true if saved successfully.
- * Single write to profiles; 15s timeout so "Kaydediliyor" never sticks.
- */
-async function acceptTerms() {
-  if (!supabase?.from || !supabase?.auth?.getSession) {
-    alert("Bağlantı hazır değil. Sayfayı yenileyip tekrar deneyin.");
-    return false;
-  }
-  let userId = user?.id || null;
-  const TIMEOUT_MS = 15000;
-
-  const run = async () => {
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError && import.meta.env.DEV) console.error("acceptTerms session error:", sessionError);
-    userId = userId || sessionData?.session?.user?.id || null;
-    if (!userId) {
-      alert("Oturum bulunamadı. Lütfen tekrar giriş yap.");
-      return false;
-    }
-    const acceptedAt = new Date().toISOString();
-    const { error: profilesError } = await supabase
-      .from("profiles")
-      .update({ accepted_terms_at: acceptedAt })
-      .eq("id", userId);
-    if (profilesError) {
-      if (import.meta.env.DEV) console.warn("acceptTerms profiles update error:", profilesError);
-      alert("Kabul kaydedilemedi. Sayfayı yenileyip tekrar deneyin.");
-      return false;
-    }
-    setPendingAcceptedTerms(userId, acceptedAt);
-    setUser((prev) => (prev ? { ...prev, acceptedTermsAt: acceptedAt } : prev));
-    return true;
-  };
-
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("timeout")), TIMEOUT_MS)
-  );
-  try {
-    const ok = await Promise.race([run(), timeoutPromise]);
-    return ok === true;
-  } catch (e) {
-    if (String(e?.message) === "timeout") {
-      alert("Kayıt zaman aşımına uğradı. Lütfen tekrar deneyin.");
-    } else {
-      if (import.meta.env.DEV) console.error("acceptTerms error:", e);
-      alert("Kabul işlemi başarısız oldu. Lütfen tekrar deneyin.");
-    }
-    return false;
-  }
-}
-
 async function blockUser(targetUser) {
-  if (!(await requireAuth({ requireTerms: true }))) return;
+  if (!(await requireAuth())) return;
   if (!user?.id || !targetUser?.id) return;
   try {
     if (!supabase?.from) return;
@@ -1364,48 +1111,6 @@ async function blockUser(targetUser) {
     });
     if (error) throw error;
     setBlockedUsernames((prev) => Array.from(new Set([...(prev || []), targetUser.username])));
-
-    // Notify developer (Apple Guideline 1.2: blocking must notify developer of inappropriate content)
-    const reportPayload = {
-      reporter_id: user.id,
-      reporter_username: user.username || "",
-      target_type: "user_block",
-      target_id: String(targetUser.id),
-      target_owner: targetUser.username || "",
-      target_label: "User blocked (reported as abusive/inappropriate)",
-      reason: "Blocked by user; developer notified for review.",
-      status: "open",
-    };
-    try {
-      const { data: reportRow, error: reportErr } = await supabase
-        .from("reports")
-        .insert(reportPayload)
-        .select("id, created_at")
-        .single();
-      if (!reportErr && reportRow) {
-        const createdAt = reportRow.created_at ? new Date(reportRow.created_at).getTime() : Date.now();
-        setReports((prev) => [
-          {
-            id: reportRow.id,
-            createdAt,
-            reporterId: reportPayload.reporter_id,
-            reporterUsername: reportPayload.reporter_username,
-            targetType: reportPayload.target_type,
-            targetId: reportPayload.target_id,
-            targetParentId: "",
-            targetOwner: reportPayload.target_owner,
-            targetOwnerId: "",
-            targetLabel: reportPayload.target_label,
-            reason: reportPayload.reason,
-            status: reportPayload.status,
-          },
-          ...(prev || []),
-        ]);
-      }
-    } catch (reportE) {
-      console.warn("blockUser: report insert failed", reportE);
-    }
-
     alert("Kullanıcı engellendi.");
   } catch (e) {
     console.warn("blockUser error:", e);
@@ -1414,7 +1119,7 @@ async function blockUser(targetUser) {
 }
 
 async function unblockUser(targetUser) {
-  if (!(await requireAuth({ requireTerms: true }))) return;
+  if (!(await requireAuth())) return;
   if (!user?.id || !targetUser?.id) return;
   try {
     if (!supabase?.from) return;
@@ -1430,11 +1135,6 @@ async function unblockUser(targetUser) {
     console.warn("unblockUser error:", e);
     alert("Engel kaldırma başarısız oldu.");
   }
-}
-
-function requestTermsGate() {
-  setTermsChecked(false);
-  setShowTermsGate(true);
 }
 
 function getDmOtherUsername(message, me) {
@@ -1584,7 +1284,6 @@ return (
     openCall={openCall}
     messages={messages}
     apptsForBiz={apptsForBiz}
-    onReportBiz={openReport}
   />
 )}
 
@@ -1664,7 +1363,6 @@ return (
             users={users}
             pickHubMedia={hub.pickHubMedia}
             hubShare={hub.hubShare}
-            onReportPost={openReport}
           />
         )}
 
@@ -1944,99 +1642,10 @@ return (
         openDirections={openDirections}
         openCall={openCall}
         onEditUser={userManagement.openEditUser}
-        onReport={openReport}
         onBlockUser={blockUser}
         onUnblockUser={unblockUser}
         blockedUsernames={blockedUsernames}
       />
-
-      {/* REPORT MODAL — açıldıktan kısa süre backdrop ile kapatma (mobilde aynı dokunuş kapanmayı tetiklemesin) */}
-      <Modal
-        ui={ui}
-        open={!!reportCtx}
-        title="Şikayet Et"
-        onClose={() => {
-          if (Date.now() - reportModalOpenedAtRef.current < 400) return;
-          setReportCtx(null);
-          setReportReason("");
-        }}
-        width={620}
-      >
-        <div style={{ display: "grid", gap: 12 }}>
-          <div style={{ color: ui.muted, fontSize: 13 }}>
-            Raporlanan :{" "}
-            <b style={{ color: ui.text }}>
-              {reportCtx?.targetLabel || reportCtx?.targetOwner || reportCtx?.targetId || "-"}
-            </b>
-          </div>
-          <textarea
-            value={reportReason}
-            onChange={(e) => setReportReason(e.target.value)}
-            placeholder="Şikayet sebebini yazın (zorunlu)..."
-            style={inputStyle(ui, { minHeight: 120, resize: "vertical" })}
-          />
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <Button ui={ui} onClick={() => { setReportCtx(null); setReportReason(""); }} disabled={submittingReport}>
-              Vazgeç
-            </Button>
-            <Button ui={ui} variant="danger" onClick={submitReport} disabled={submittingReport}>
-              {submittingReport ? "Gönderiliyor…" : "Gönder"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* TERMS ACCEPTANCE GATE */}
-      <Modal
-        ui={ui}
-        open={showTermsGate}
-        title="Kullanım Şartları"
-        onClose={() => setShowTermsGate(false)}
-        width={720}
-      >
-        <div style={{ display: "grid", gap: 12 }}>
-          <div style={{ color: ui.muted }}>
-            Devam etmek için Kullanım Şartları'nı kabul etmelisiniz.
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button ui={ui} onClick={() => window.open("/terms.html", "_blank", "noopener,noreferrer")}>
-              Terms of Service
-            </Button>
-            <Button ui={ui} onClick={() => window.open("/privacy.html", "_blank", "noopener,noreferrer")}>
-              Privacy Policy
-            </Button>
-          </div>
-          <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
-            <input
-              type="checkbox"
-              checked={termsChecked}
-              onChange={(e) => setTermsChecked(e.target.checked)}
-            />
-            I have read and accept the Terms of Service.
-          </label>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <Button ui={ui} onClick={() => setShowTermsGate(false)}>
-              Cancel
-            </Button>
-            <Button
-              ui={ui}
-              variant="ok"
-              disabled={!termsChecked || acceptingTerms}
-              onClick={async () => {
-                setAcceptingTerms(true);
-                try {
-                  const ok = await acceptTerms();
-                  if (ok) setShowTermsGate(false);
-                } finally {
-                  setAcceptingTerms(false);
-                }
-              }}
-            >
-              {acceptingTerms ? "Kaydediliyor..." : "Accept"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* SETTINGS MODAL */}
       <SettingsModal
@@ -2050,7 +1659,6 @@ return (
         user={user}
         deleteAccount={auth.deleteAccount}
         logout={auth.logout}
-        onAcceptTerms={acceptTerms}
       />
 
       {/* AUTH MODAL */}

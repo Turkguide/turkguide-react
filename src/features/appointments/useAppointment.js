@@ -12,7 +12,7 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
   const [apptDateTime, setApptDateTime] = useState("");
 
   async function openAppointment(bizId) {
-    if (!(await requireAuth({ requireTerms: true }))) return;
+    if (!(await requireAuth())) return;
     setApptBizId(bizId);
     setApptMsg("");
     setApptDateTime("");
@@ -20,7 +20,7 @@ export function useAppointment({ user, appts, setAppts, biz, requireAuth }) {
   }
 
   async function submitAppointment() {
-    if (!(await requireAuth({ requireTerms: true }))) return;
+    if (!(await requireAuth())) return;
     const bizId = apptBizId;
     const msg = String(apptMsg || "").trim();
     const requestedAt = String(apptDateTime || "").trim();

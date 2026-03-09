@@ -14,7 +14,6 @@ export function SettingsModal({
   user,
   deleteAccount,
   logout,
-  onAcceptTerms,
 }) {
   return (
     <Modal
@@ -130,11 +129,6 @@ export function SettingsModal({
               >
                 Contact
               </Button>
-              {!user?.acceptedTermsAt ? (
-                <Button ui={ui} variant="ok" onClick={onAcceptTerms} size="sm">
-                  Accept Terms
-                </Button>
-              ) : null}
             </div>
 
             <div
