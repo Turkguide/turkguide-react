@@ -8,6 +8,15 @@ Edge Function for permanent user account deletion. Uses service role to clean al
 supabase functions deploy delete-my-account
 ```
 
+Deploy to the **same** Supabase project the web app uses. The app must have `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` pointing to this project.
+
+## CORS
+
+The function returns full CORS headers so browser requests from your production origin succeed:
+
+- `OPTIONS` → 204 with `Access-Control-Allow-Origin`, `Allow-Headers`, `Allow-Methods: POST, OPTIONS`
+- All responses include the same CORS headers.
+
 ## Behavior
 
 1. Client calls `supabase.functions.invoke("delete-my-account", { method: "POST" })` with session (JWT sent automatically).
