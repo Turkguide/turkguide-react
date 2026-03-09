@@ -87,8 +87,20 @@ export const authService = {
   async deleteAccount() {
     const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim().replace(/\/$/, "");
     const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
+    // Anon key must be from same project as URL: Dashboard → Project Settings → API → anon public
     const fnName = "delete-my-account";
     const timeoutMs = 35000;
+    const expectedProjectRef = "jxmgvbyhdhhokxzsmvmy";
+    const projectRefFromUrl = supabaseUrl ? (() => {
+      try {
+        return new URL(supabaseUrl).hostname.replace(".supabase.co", "") || "";
+      } catch {
+        return "";
+      }
+    })() : "";
+    if (import.meta.env.DEV && projectRefFromUrl && projectRefFromUrl !== expectedProjectRef) {
+      console.warn("[deleteAccount] Project ref mismatch: frontend URL suggests", projectRefFromUrl, "expected", expectedProjectRef);
+    }
 
     if (!supabase?.auth?.getSession) {
       throw new Error("Hesap silme şu an kullanılamıyor.");
@@ -139,9 +151,14 @@ export const authService = {
     } catch (_) {}
 
     if (!res.ok) {
-      const msg = body?.error ?? body?.message ?? "Hesap silinirken sunucu hatası.";
-      const step = body?.step ? " (" + body.step + ")" : "";
-      throw new Error(String(msg) + step);
+      let msg = body?.error ?? body?.message ?? "Hesap silinirken sunucu hatası.";
+      const step = body?.step ? " [" + body.step + "]" : "";
+      const detail = body?.detail ? " (" + body.detail + ")" : "";
+      msg = String(msg) + step + detail;
+      if (res.status === 401 && /invalid|expired|jwt|token|missing|authorization/i.test(msg)) {
+        msg += " Çıkış yapıp tekrar giriş yapın, ardından hesap silmeyi tekrar deneyin.";
+      }
+      throw new Error(msg);
     }
   },
 
