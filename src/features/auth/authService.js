@@ -86,7 +86,7 @@ export const authService = {
    */
   async deleteAccount() {
     const fnName = "delete-my-account";
-    const timeoutMs = 15000;
+    const timeoutMs = 12000;
     const log = (label, obj) => {
       console.log("[deleteAccount] " + label, obj);
     };
@@ -122,7 +122,7 @@ export const authService = {
     });
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.")), timeoutMs)
+      setTimeout(() => reject(new Error("İstek zaman aşımına uğradı. Tekrar deneyin.")), timeoutMs)
     );
     const invokePromise = supabase.functions.invoke(fnName, { method: "POST" });
 

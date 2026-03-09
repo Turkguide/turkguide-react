@@ -378,11 +378,11 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
    */
   async function deleteAccount() {
     if (!supabase?.auth) throw new Error("Bağlantı hazır değil.");
-    const timeoutMs = 15000;
+    const timeoutMs = 12000;
     setDeletingAccount(true);
-    const safetyMs = 30000;
+    const safetyMs = 15000;
     const safetyTimer = setTimeout(() => {
-      console.warn("[deleteAccount] safety: 30s elapsed, forcing loading off");
+      console.warn("[deleteAccount] safety: 15s elapsed, forcing loading off");
       setDeletingAccount(false);
     }, safetyMs);
     try {
