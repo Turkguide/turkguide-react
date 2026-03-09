@@ -119,11 +119,19 @@ export const authService = {
       throw new Error(e?.message || "Bağlantı hatası. Lütfen ağınızı kontrol edip tekrar deneyin.");
     }
     clearTimeout(timeoutId);
-    const body = await res.json().catch(() => ({}));
+    const rawText = await res.text().catch(() => "");
+    let body = {};
+    try {
+      if (rawText && rawText.trim().startsWith("{")) body = JSON.parse(rawText);
+    } catch (_) {}
+
     if (!res.ok) {
       const msg = body?.error ? String(body.error) : "Hesap silinirken sunucu hatası oluştu.";
       const step = body?.step ? ` (${body.step})` : "";
-      throw new Error(msg + step);
+      const fallback = !body?.error && rawText
+        ? " Lütfen Edge Function'ın deploy edildiğini ve doğru projede olduğunu kontrol edin."
+        : "";
+      throw new Error(msg + step + fallback);
     }
   },
 

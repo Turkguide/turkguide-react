@@ -52,6 +52,14 @@ function errResponse(status: number, body: Record<string, unknown>) {
 }
 
 Deno.serve(async (req) => {
+  const safeRespond = (status: number, payload: Record<string, unknown>) => {
+    return new Response(JSON.stringify(payload), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  };
+
+  try {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -199,4 +207,15 @@ Deno.serve(async (req) => {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const details = e instanceof Error ? (e.stack ?? undefined) : undefined;
+    console.error(JSON.stringify({ step: "unhandled", code: "EXCEPTION", message, details }));
+    return safeRespond(500, {
+      error: message,
+      step: "unhandled",
+      code: "EXCEPTION",
+      details,
+    });
+  }
 });
