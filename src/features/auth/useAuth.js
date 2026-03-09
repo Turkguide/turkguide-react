@@ -326,10 +326,12 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
   }
 
   /**
-   * Delete account
+   * Delete account: confirmation, then Edge Function deletes auth user + profile; then clear session and reset.
    */
   async function deleteAccount() {
-    const ok = confirm("Hesabın kalıcı olarak silinecek. Emin misin?");
+    const ok = confirm(
+      "Hesabınız kalıcı olarak silinecek. Tüm verileriniz kaldırılacak. Bu işlem geri alınamaz.\n\nEmin misiniz?"
+    );
     if (!ok) return;
 
     if (!supabase?.auth) {
@@ -337,17 +339,25 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
       return;
     }
     try {
+      const timeoutMs = 20000;
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("deleteAccount timeout")), 1500)
+        setTimeout(() => reject(new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.")), timeoutMs)
       );
       await Promise.race([authService.deleteAccount(), timeout]);
-      alert("Hesabın silindi.");
+      alert("Hesabınız silindi.");
       hardResetToHome();
       return;
     } catch (e) {
       if (import.meta.env.DEV) console.error("deleteAccount error:", e);
       const detail = e?.message || e?.error_description || "";
-      alert(`Hesap silinirken hata oluştu.${detail ? `\n${detail}` : ""}`);
+      const msg = detail.toLowerCase();
+      if (/timeout|zaman aşımı/i.test(msg)) {
+        alert("İstek zaman aşımına uğradı. Lütfen ağ bağlantınızı kontrol edip tekrar deneyin.");
+      } else if (/configuration|hata|unavailable|function/i.test(msg)) {
+        alert("Hesap silme şu an kullanılamıyor. Lütfen daha sonra deneyin veya destek ile iletişime geçin.");
+      } else {
+        alert("Hesap silinirken hata oluştu." + (detail ? "\n\n" + detail : ""));
+      }
       hardResetToHome();
     }
   }

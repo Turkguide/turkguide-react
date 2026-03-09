@@ -80,20 +80,25 @@ export const authService = {
   },
 
   /**
-   * Delete account (RPC call)
+   * Delete account via Edge Function (service role deletes auth user + profile).
+   * Client session is cleared by caller after success; signOut may fail once user is deleted.
    */
   async deleteAccount() {
-    if (!supabase) {
-      throw new Error("Supabase hazır değil.");
+    if (!supabase?.functions?.invoke) {
+      throw new Error("Supabase hazır değil veya hesap silme özelliği kullanılamıyor.");
     }
 
-    const { error } = await supabase.rpc("delete_my_account");
+    const { data, error } = await supabase.functions.invoke("delete-my-account", {
+      method: "POST",
+    });
+
     if (error) {
       throw error;
     }
 
-    // Sign out after deletion
-    await supabase.auth.signOut();
+    if (data?.error) {
+      throw new Error(data.error);
+    }
   },
 
   /**
