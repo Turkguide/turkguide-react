@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, Button, Avatar, Chip, inputStyle } from "../../components/ui";
-import { fmt, normalizeUsername, getMetric } from "../../utils/helpers";
+import { fmt, normalizeUsername } from "../../utils/helpers";
 
 const PAGE_SIZE = 8;
 
@@ -115,8 +115,11 @@ function getLogDisplay(action, payload) {
   if (a.includes("HUB_CONTENT_REMOVED") || a.includes("CONTENT_REMOVED")) {
     return { title: "İçerik kaldırıldı", color: "red" };
   }
-  if (a.includes("USER_DELETE") || a.includes("USER_SUSPEND") || a.includes("BUSINESS_DELETE")) {
-    return { title: a.includes("USER") ? "Kullanıcı askıya alındı / silindi" : "İşletme silindi", color: "red" };
+  if (a.includes("USER_DELETE") || a.includes("USER_SUSPEND")) {
+    return { title: "Kullanıcı askıya alındı", color: "red" };
+  }
+  if (a.includes("BUSINESS_DELETE")) {
+    return { title: "İşletme silindi", color: "red" };
   }
   if (a.includes("BUSINESS_APPROVE")) {
     return { title: "İşletme onaylandı", color: "green" };
@@ -175,16 +178,16 @@ function EmptyState({ ui, icon, title, subtitle }) {
     <div
       style={{
         textAlign: "center",
-        padding: "32px 20px",
+        padding: "24px 16px",
         color: ui.muted,
         border: `1px dashed ${ui.border}`,
-        borderRadius: 16,
+        borderRadius: 12,
         background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.02)",
       }}
     >
-      <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.6 }}>{icon}</div>
-      <div style={{ fontWeight: 700, fontSize: 15, color: ui.text }}>{title}</div>
-      {subtitle ? <div style={{ fontSize: 13, marginTop: 4 }}>{subtitle}</div> : null}
+      <div style={{ fontSize: 28, marginBottom: 6, opacity: 0.6 }}>{icon}</div>
+      <div style={{ fontWeight: 700, fontSize: 14, color: ui.text }}>{title}</div>
+      {subtitle ? <div style={{ fontSize: 12, marginTop: 4 }}>{subtitle}</div> : null}
     </div>
   );
 }
@@ -392,8 +395,8 @@ export function AdminPanel({
       <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 240px) 1fr", gap: 20 }}>
         {/* ----- SIDEBAR ----- */}
         <Card ui={ui} style={{ height: "fit-content", position: "sticky", top: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: ui.muted2, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>
-            Admin
+          <div style={{ fontSize: 11, fontWeight: 800, color: ui.muted2, letterSpacing: 0.8, marginBottom: 10 }}>
+            ADMIN
           </div>
           <nav style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {NAV_ITEMS.map(({ id, label, Icon }) => (
@@ -426,27 +429,49 @@ export function AdminPanel({
           </nav>
         </Card>
 
-        <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
-          {/* ----- DASHBOARD HEADER ----- */}
-          <Card ui={ui}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-              <div>
-                <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Admin Panel</h1>
-                <p style={{ color: ui.muted, marginTop: 6, fontSize: 14 }}>Yönetim ve moderasyon tek ekranda.</p>
+        <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+          {/* ----- COMPACT HEADER (section-specific) ----- */}
+          {(() => {
+            const headers = {
+              dashboard: { title: "Dashboard", subtitle: "Özet ve son aktiviteler" },
+              reports: { title: "Moderasyon", subtitle: "Raporlanan içerik ve kullanıcılar" },
+              businesses: { title: "İşletmeler", subtitle: "Başvurular ve onaylı işletmeler" },
+              users: { title: "Kullanıcılar", subtitle: "Hesap yönetimi" },
+              appointments: { title: "Randevular", subtitle: "Randevu talepleri" },
+              logs: { title: "Loglar", subtitle: "Admin işlem geçmişi" },
+            };
+            const h = headers[activeSection] || { title: "Admin", subtitle: "" };
+            return (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  paddingBottom: 4,
+                  borderBottom: `1px solid ${ui.border}`,
+                }}
+              >
+                <div>
+                  <h1 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{h.title}</h1>
+                  {h.subtitle ? (
+                    <p style={{ color: ui.muted, marginTop: 2, fontSize: 13 }}>{h.subtitle}</p>
+                  ) : null}
+                </div>
+                <Chip ui={ui}>@{currentUser?.username || "-"}</Chip>
               </div>
-              <Chip ui={ui}>@{currentUser?.username || "-"}</Chip>
-            </div>
-          </Card>
+            );
+          })()}
 
-          {/* ----- DASHBOARD KPIs ----- */}
+          {/* ----- DASHBOARD ----- */}
           {activeSection === "dashboard" && (
-            <Card ui={ui} id="admin-kpi">
-              <h2 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 16px 0" }}>Özet</h2>
+            <>
               <div
                 style={{
                   display: "grid",
-                  gap: 14,
-                  gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+                  gap: 10,
+                  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
                 }}
               >
                 {kpiCards.map((k) => (
@@ -454,27 +479,61 @@ export function AdminPanel({
                     key={k.label}
                     style={{
                       border: `1px solid ${ui.border}`,
-                      borderRadius: 14,
-                      padding: 14,
-                      background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                      borderRadius: 12,
+                      padding: 10,
+                      background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
                     }}
                   >
-                    <div style={{ fontSize: 12, color: ui.muted2, fontWeight: 600 }}>{k.label}</div>
-                    <div style={{ fontSize: 24, fontWeight: 900, marginTop: 6 }}>{k.value}</div>
+                    <div style={{ fontSize: 11, color: ui.muted2, fontWeight: 600 }}>{k.label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, marginTop: 4 }}>{k.value}</div>
                   </div>
                 ))}
               </div>
-            </Card>
+              {/* Recent moderation + recent admin actions */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+                <Card ui={ui} style={{ padding: 12 }}>
+                  <h3 style={{ fontSize: 13, fontWeight: 800, margin: "0 0 10px 0", color: ui.muted2 }}>Son moderasyon</h3>
+                  {safeReports.filter((r) => String(r.status || "").toLowerCase() !== "resolved").length === 0 ? (
+                    <p style={{ fontSize: 12, color: ui.muted, margin: 0 }}>Açık rapor yok.</p>
+                  ) : (
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: ui.text }}>
+                      {safeReports
+                        .filter((r) => String(r.status || "").toLowerCase() !== "resolved")
+                        .slice(0, 5)
+                        .map((r) => (
+                          <li key={r.id} style={{ marginBottom: 4 }}>
+                            @{r.reporterUsername || "-"} → {r.targetType || "?"} · {fmt(r.createdAt)}
+                          </li>
+                        ))}
+                    </ul>
+                  )}
+                </Card>
+                <Card ui={ui} style={{ padding: 12 }}>
+                  <h3 style={{ fontSize: 13, fontWeight: 800, margin: "0 0 10px 0", color: ui.muted2 }}>Son admin işlemleri</h3>
+                  {safeLogs.length === 0 ? (
+                    <p style={{ fontSize: 12, color: ui.muted, margin: 0 }}>Henüz log yok.</p>
+                  ) : (
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: ui.text }}>
+                      {safeLogs.slice(0, 5).map((l) => {
+                        const { title } = getLogDisplay(l.action, l.payload);
+                        return (
+                          <li key={l.id} style={{ marginBottom: 4 }}>
+                            {title} · @{l.admin} · {fmt(l.createdAt)}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </Card>
+              </div>
+            </>
           )}
 
           {/* ----- MODERASYON ----- */}
           {activeSection === "reports" && (
-            <Card ui={ui} id="admin-reports">
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-                <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>Moderasyon</h2>
-                  <p style={{ color: ui.muted, marginTop: 4, fontSize: 13 }}>Raporlanan içerik ve kullanıcılar.</p>
-                </div>
+            <Card ui={ui} id="admin-reports" style={{ padding: 12 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: ui.muted2 }}>Filtreler</span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                   <select
                     value={reportFilterStatus}
@@ -535,32 +594,44 @@ export function AdminPanel({
                           ? "İşletme"
                           : "Diğer";
                       const isResolved = String(r.status || "").toLowerCase() === "resolved";
+                      const thumbUrl = r.targetImageUrl || r.target_image || null;
                       return (
                         <div
                           key={r.id}
                           style={{
                             border: `1px solid ${ui.border}`,
-                            borderRadius: 14,
-                            padding: 14,
-                            background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                            borderRadius: 12,
+                            padding: 12,
+                            background: ui.mode === "light" ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                            {thumbUrl ? (
+                              <div
+                                style={{
+                                  width: 56,
+                                  height: 56,
+                                  borderRadius: 8,
+                                  overflow: "hidden",
+                                  flexShrink: 0,
+                                  background: ui.mode === "dark" ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.06)",
+                                }}
+                              >
+                                <img src={thumbUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              </div>
+                            ) : null}
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                <span style={{ fontWeight: 800, fontSize: 14 }}>{typeLabel}</span>
+                                <span style={{ fontWeight: 800, fontSize: 13 }}>{typeLabel}</span>
                                 {isResolved && (
                                   <Chip ui={ui} style={{ fontSize: 11 }}>Çözüldü</Chip>
                                 )}
                               </div>
-                              <div style={{ color: ui.muted, marginTop: 6, fontSize: 13 }}>
-                                Raporlayan: @{r.reporterUsername || "-"}
+                              <div style={{ color: ui.muted, marginTop: 4, fontSize: 12 }}>
+                                Raporlayan: @{r.reporterUsername || "-"} · Hedef: {r.targetLabel || r.targetOwner || r.targetId || "-"}
                               </div>
-                              <div style={{ color: ui.muted2, marginTop: 4, fontSize: 12 }}>
-                                Hedef: {r.targetLabel || r.targetOwner || r.targetId || "-"}
-                              </div>
-                              <div style={{ marginTop: 8, fontSize: 13 }}>{r.reason || "-"}</div>
-                              <div style={{ color: ui.muted2, fontSize: 12, marginTop: 6 }}>{fmt(r.createdAt)}</div>
+                              <div style={{ marginTop: 6, fontSize: 12 }}>{r.reason || "—"}</div>
+                              <div style={{ color: ui.muted2, fontSize: 11, marginTop: 4 }}>{fmt(r.createdAt)}</div>
                             </div>
                           </div>
                           <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -614,12 +685,8 @@ export function AdminPanel({
 
           {/* ----- İŞLETMELER ----- */}
           {activeSection === "businesses" && (
-            <Card ui={ui} id="admin-biz">
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-                <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>İşletme yönetimi</h2>
-                  <p style={{ color: ui.muted, marginTop: 4, fontSize: 13 }}>Başvurular ve onaylı işletmeler.</p>
-                </div>
+            <Card ui={ui} id="admin-biz" style={{ padding: 12 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
                 <input
                   value={bizQuery}
                   onChange={(e) => {
@@ -703,7 +770,7 @@ export function AdminPanel({
               <div style={{ marginTop: 24 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 10 }}>Onaylı işletmeler</h3>
                 {bizPageData.total === 0 ? (
-                  <EmptyState ui={ui} icon="🏪" title="Kayıtlı işletme yok" />
+                  <EmptyState ui={ui} icon="🏪" title="Kayıtlı işletme yok" subtitle="Onaylı işletme listesi boş." />
                 ) : (
                   <>
                     <div style={{ display: "grid", gap: 10 }}>
@@ -757,12 +824,8 @@ export function AdminPanel({
 
           {/* ----- KULLANICILAR ----- */}
           {activeSection === "users" && (
-            <Card ui={ui} id="admin-users">
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
-                <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>Kullanıcı yönetimi</h2>
-                  <p style={{ color: ui.muted, marginTop: 4, fontSize: 13 }}>Düzenleme ve askıya alma.</p>
-                </div>
+            <Card ui={ui} id="admin-users" style={{ padding: 12 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
                 <input
                   value={userQuery}
                   onChange={(e) => {
@@ -774,7 +837,7 @@ export function AdminPanel({
                 />
               </div>
               {usersPageData.total === 0 ? (
-                <EmptyState ui={ui} icon="👤" title="Kullanıcı bulunamadı" />
+                <EmptyState ui={ui} icon="👤" title="Kullanıcı bulunamadı" subtitle="Liste boş veya arama sonucu yok." />
               ) : (
                 <>
                   <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
@@ -801,7 +864,11 @@ export function AdminPanel({
                                 @{u.username}
                               </Chip>
                               <span style={{ color: ui.muted, fontSize: 13 }}>Durum: {u.Tier || "Onaylı"}</span>
-                              <span style={{ color: ui.muted2, fontSize: 12 }}>XP: {u.xp || 0}</span>
+                              {(u.postCount != null || u.commentCount != null) && (
+                                <span style={{ color: ui.muted2, fontSize: 12 }}>
+                                  Paylaşım: {u.postCount ?? "—"} · Yorum: {u.commentCount ?? "—"}
+                                </span>
+                              )}
                             </div>
                             <div style={{ color: ui.muted2, fontSize: 12, marginTop: 4 }}>Kayıt: {fmt(u.createdAt)}</div>
                           </div>
@@ -837,12 +904,8 @@ export function AdminPanel({
 
           {/* ----- RANDEVULAR ----- */}
           {activeSection === "appointments" && (
-            <Card ui={ui} id="admin-appts">
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
-                <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>Randevular</h2>
-                  <p style={{ color: ui.muted, marginTop: 4, fontSize: 13 }}>İşletmelere yönlendirilen talepler.</p>
-                </div>
+            <Card ui={ui} id="admin-appts" style={{ padding: 12 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
                 <input
                   value={apptQuery}
                   onChange={(e) => {
@@ -907,12 +970,9 @@ export function AdminPanel({
 
           {/* ----- LOGLAR ----- */}
           {activeSection === "logs" && (
-            <Card ui={ui} id="admin-logs">
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
-                <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0 }}>Loglar</h2>
-                  <p style={{ color: ui.muted, marginTop: 4, fontSize: 13 }}>Tüm admin işlemleri; detay için genişlet.</p>
-                </div>
+            <Card ui={ui} id="admin-logs" style={{ padding: 12 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: ui.muted2 }}>Filtreler</span>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <input
                     value={logFilterAction}
