@@ -126,10 +126,15 @@ export const authService = {
     } catch (_) {}
 
     if (!res.ok) {
-      const msg = body?.error ? String(body.error) : "Hesap silinirken sunucu hatası oluştu.";
-      const step = body?.step ? ` (${body.step})` : "";
-      const fallback = !body?.error && rawText
-        ? " Lütfen Edge Function'ın deploy edildiğini ve doğru projede olduğunu kontrol edin."
+      const statusHint = res.status === 404
+        ? " Edge Function bulunamadı (404) — deploy edin: supabase functions deploy delete-my-account"
+        : res.status >= 500
+          ? " Sunucu hatası (" + res.status + "). Edge Function'ı deploy edip Supabase loglarına bakın."
+          : "";
+      const msg = body?.error ? String(body.error) : "Hesap silinirken sunucu hatası oluştu (" + res.status + ").";
+      const step = body?.step ? " Adım: " + body.step + "." : "";
+      const fallback = !body?.error
+        ? statusHint || " Lütfen Edge Function'ın deploy edildiğini ve doğru projede olduğunu kontrol edin."
         : "";
       throw new Error(msg + step + fallback);
     }

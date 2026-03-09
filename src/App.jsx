@@ -1986,7 +1986,7 @@ return (
                   if (/zaman aşımı|timeout/i.test(msg)) {
                     alert("İstek zaman aşımına uğradı. Lütfen ağ bağlantınızı kontrol edip tekrar deneyin.");
                   } else {
-                    alert("Hesap silinirken hata oluştu.\n\n" + (e?.message || e || ""));
+                    alert(e?.message || "Hesap silinirken hata oluştu.");
                   }
                 }
               }}
