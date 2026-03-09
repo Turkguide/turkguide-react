@@ -14,6 +14,22 @@ Bu rehber, TurkGuide uygulamasını TestFlight’a ve Apple App Store onayına h
 
 ---
 
+## 1.2 Guideline 1.2 – User Generated Content (UGC) Uyumluluğu
+
+Apple, kullanıcı içeriği (gönderi, yorum, HUB) barındıran uygulamalarda aşağıdaki güvenlik mekanizmalarının bulunmasını ister. TurkGuide’da hepsi uygulanmıştır:
+
+| Gereksinim | Uygulama |
+|------------|----------|
+| **Report (Şikayet) butonu** | Gönderi menüsünde “Bildir”, yorum menüsünde “Bildir”, kullanıcı ve işletme profilinde “Bildir” butonu. Tıklanınca sebep seçenekleri (spam, taciz, uygunsuz içerik, nefret söylemi, şiddet, diğer) ile modal açılır; rapor `reports` tablosuna kaydedilir. |
+| **Terms of Service kabulü** | Kayıt formunda “Kullanım Şartları ve Topluluk Kuralları’nı kabul ediyorum” checkbox’ı zorunlu. İçerik paylaşmadan önce kabul edilmemişse “Kullanım Şartları” gate modal’ı gösterilir. Kabul `profiles.accepted_terms_at` ile saklanır. |
+| **Community Guidelines sayfası** | `/community-guidelines.html` (Yasaklı içerikler, ihlal sonuçları, TR/EN). Ayarlar ve Terms modal’dan link verilir. |
+| **Admin moderasyonu** | Admin panelinde “Kötüye Kullanım” sekmesinde raporlar listelenir; “İçeriği Kaldır” (gönderi), “Kullanıcıyı Askıya Al”, “Çözüldü Olarak İşaretle” aksiyonları mevcut. Gönderi/yorum silme HUB ve admin akışında var. |
+| **Block (Engelle)** | Kullanıcı profilinde “Engelle” / “Engeli Kaldır” butonu; `user_blocks` tablosuna yazılır. |
+
+Rapor gönderimi: `insert_report` RPC’si kullanılır; timeout/network hatalarında kullanıcıya net mesaj gösterilir, çift gönderim buton devre dışı bırakılarak engellenir.
+
+---
+
 ## 2. Her TestFlight / App Store Build’i Öncesi
 
 ### 2.1 Web build ve iOS’a kopyalama

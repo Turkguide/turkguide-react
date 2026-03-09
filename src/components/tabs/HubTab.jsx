@@ -14,6 +14,7 @@ export function HubTab({
   users: _users,
   pickHubMedia,
   hubShare,
+  onReportPost,
 }) {
   function renderTextWithHashtags(text) {
     const value = String(text || "");
@@ -392,8 +393,89 @@ export function HubTab({
                                       >
                                         🗑️ Sil
                                       </button>
+                                      <button
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                          e.stopPropagation();
+                                          onReportPost?.({
+                                            type: "hub_post",
+                                            targetId: p.id,
+                                            targetOwner: p.byUsername || "",
+                                            targetLabel: String(p.content || "").slice(0, 120),
+                                          });
+                                          hub.setPostMenuOpenId(null);
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onReportPost?.({
+                                            type: "hub_post",
+                                            targetId: p.id,
+                                            targetOwner: p.byUsername || "",
+                                            targetLabel: String(p.content || "").slice(0, 120),
+                                          });
+                                          hub.setPostMenuOpenId(null);
+                                        }}
+                                        style={{
+                                          width: "100%",
+                                          padding: "10px 12px",
+                                          textAlign: "left",
+                                          border: "none",
+                                          background: "transparent",
+                                          color: ui.text,
+                                          cursor: "pointer",
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        🚩 Bildir
+                                      </button>
                                     </>
-                                  ) : null}
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        if (!user) {
+                                          setShowAuth?.(true);
+                                          hub.setPostMenuOpenId(null);
+                                          return;
+                                        }
+                                        onReportPost?.({
+                                          type: "hub_post",
+                                          targetId: p.id,
+                                          targetOwner: p.byUsername || "",
+                                          targetLabel: String(p.content || "").slice(0, 120),
+                                        });
+                                        hub.setPostMenuOpenId(null);
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!user) {
+                                          setShowAuth?.(true);
+                                          hub.setPostMenuOpenId(null);
+                                          return;
+                                        }
+                                        onReportPost?.({
+                                          type: "hub_post",
+                                          targetId: p.id,
+                                          targetOwner: p.byUsername || "",
+                                          targetLabel: String(p.content || "").slice(0, 120),
+                                        });
+                                        hub.setPostMenuOpenId(null);
+                                      }}
+                                      style={{
+                                        width: "100%",
+                                        padding: "10px 12px",
+                                        textAlign: "left",
+                                        border: "none",
+                                        background: "transparent",
+                                        color: ui.text,
+                                        cursor: "pointer",
+                                        fontWeight: 900,
+                                      }}
+                                    >
+                                      🚩 Bildir
+                                    </button>
+                                  )}
                                 </div>
                               ) : null}
                             </div>
@@ -776,8 +858,81 @@ export function HubTab({
                                               >
                                                 🗑️ Sil
                                               </button>
+                                              <button
+                                                type="button"
+                                                onMouseDown={(e) => {
+                                                  e.stopPropagation();
+                                                  onReportPost?.({
+                                                    type: "hub_comment",
+                                                    targetId: c.id,
+                                                    targetParentId: p.id,
+                                                    targetOwner: c.byUsername || "",
+                                                    targetLabel: String(c.text || "").slice(0, 120),
+                                                  });
+                                                  hub.setCommentMenuOpenKey(null);
+                                                }}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  onReportPost?.({
+                                                    type: "hub_comment",
+                                                    targetId: c.id,
+                                                    targetParentId: p.id,
+                                                    targetOwner: c.byUsername || "",
+                                                    targetLabel: String(c.text || "").slice(0, 120),
+                                                  });
+                                                  hub.setCommentMenuOpenKey(null);
+                                                }}
+                                                style={{
+                                                  width: "100%",
+                                                  textAlign: "left",
+                                                  border: "none",
+                                                  background: "transparent",
+                                                  cursor: "pointer",
+                                                  padding: "10px 10px",
+                                                  borderRadius: 12,
+                                                  fontWeight: 900,
+                                                  color: ui.text,
+                                                }}
+                                                title="Yorumu bildir"
+                                              >
+                                                🚩 Bildir
+                                              </button>
                                             </>
-                                          ) : null}
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (!user) {
+                                                  setShowAuth?.(true);
+                                                  hub.setCommentMenuOpenKey(null);
+                                                  return;
+                                                }
+                                                onReportPost?.({
+                                                  type: "hub_comment",
+                                                  targetId: c.id,
+                                                  targetParentId: p.id,
+                                                  targetOwner: c.byUsername || "",
+                                                  targetLabel: String(c.text || "").slice(0, 120),
+                                                });
+                                                hub.setCommentMenuOpenKey(null);
+                                              }}
+                                              style={{
+                                                width: "100%",
+                                                textAlign: "left",
+                                                border: "none",
+                                                background: "transparent",
+                                                cursor: "pointer",
+                                                padding: "10px 10px",
+                                                borderRadius: 12,
+                                                fontWeight: 900,
+                                                color: ui.text,
+                                              }}
+                                              title="Yorumu bildir"
+                                            >
+                                              🚩 Bildir
+                                            </button>
+                                          )}
                                         </div>
                                       ) : null}
                                     </div>

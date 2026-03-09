@@ -14,6 +14,7 @@ export function ProfileModal({
   openDirections,
   openCall,
   onEditUser,
+  onReport,
   onBlockUser,
   onUnblockUser,
   blockedUsernames = [],
@@ -46,6 +47,28 @@ export function ProfileModal({
             </div>
             {normalizeUsername(user?.username) !== normalizeUsername(profileData.user.username) ? (
               <>
+                <Button
+                  ui={ui}
+                  variant="blue"
+                  onClick={() =>
+                    onReport?.({
+                      type: "user_profile",
+                      targetId: profileData.user.id,
+                      targetOwner: profileData.user.username || "",
+                      targetLabel: `@${profileData.user.username || ""}`,
+                    })
+                  }
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    boxShadow: "none",
+                    padding: "8px 12px",
+                    fontWeight: 900,
+                    color: ui.text,
+                  }}
+                >
+                  🚩 Bildir
+                </Button>
                 {blockedUsernames.includes(profileData.user.username) ? (
                   <Button
                     ui={ui}
@@ -283,6 +306,22 @@ export function ProfileModal({
                   >
                     <span style={icon}>💬</span>
                     <span style={{ fontSize: 13 }}>Mesaj</span>
+                  </button>
+                  <button
+                    type="button"
+                    style={act}
+                    onClick={() =>
+                      onReport?.({
+                        type: "business_profile",
+                        targetId: profileData.biz.id,
+                        targetOwner: profileData.biz.ownerUsername || "",
+                        targetLabel: profileData.biz.name || "",
+                      })
+                    }
+                    title="Bildir"
+                  >
+                    <span style={icon}>🚩</span>
+                    <span style={{ fontSize: 13 }}>Bildir</span>
                   </button>
                 </>
               );

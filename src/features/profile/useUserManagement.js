@@ -56,6 +56,11 @@ export function useUserManagement({
    * Save edited user
    */
   async function saveEditUser() {
+    if (typeof user !== "undefined" && !user?.acceptedTermsAt) {
+      alert("Profil güncellemek için Kullanım Şartları'nı kabul etmelisin.");
+      setSavingEditUser(false);
+      return;
+    }
     setEditUserError("");
     setSavingEditUser(true);
     const u = editUserCtx;

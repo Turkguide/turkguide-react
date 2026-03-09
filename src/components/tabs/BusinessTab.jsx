@@ -22,6 +22,7 @@ export function BusinessTab({
   openCall,
   messages,
   apptsForBiz,
+  onReportBiz,
 }) {
   return (
     <>
@@ -184,6 +185,22 @@ export function BusinessTab({
                       >
                         💬 Mesaj Gönder
                       </Button>
+                      {!canEditAvatar ? (
+                        <Button
+                          ui={ui}
+                          onClick={() =>
+                            onReportBiz?.({
+                              type: "business",
+                              targetId: b.id,
+                              targetOwner: b.ownerUsername || "",
+                              targetLabel: b.name || "",
+                            })
+                          }
+                          style={{ background: "transparent", boxShadow: "none" }}
+                        >
+                          🚩 Bildir
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 );

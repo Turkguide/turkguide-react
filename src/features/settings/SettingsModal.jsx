@@ -14,6 +14,7 @@ export function SettingsModal({
   user,
   deleteAccount,
   logout,
+  onAcceptTerms,
 }) {
   return (
     <Modal
@@ -129,6 +130,11 @@ export function SettingsModal({
               >
                 Contact
               </Button>
+              {onAcceptTerms && !user?.acceptedTermsAt ? (
+                <Button ui={ui} variant="ok" onClick={onAcceptTerms} size="sm">
+                  Kullanım Şartlarını Kabul Et
+                </Button>
+              ) : null}
             </div>
 
             <div

@@ -38,6 +38,7 @@ import { SettingsModal } from "./features/settings";
 
 // Features - Auth
 import { useAuthState, useAuthCallback, useAuth, AuthModal } from "./features/auth";
+import { setPendingAcceptedTerms } from "./features/auth/pendingProfileFlags";
 
 // Features - Business
 import { useBusiness, useBusinessEdit, BizApplyForm } from "./features/business";
@@ -130,6 +131,17 @@ function AppContent() {
   const [blockedByUsernames, setBlockedByUsernames] = useState([]);
   const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
 
+  // Report modal (Apple Guideline 1.2 – UGC safety)
+  const [reportCtx, setReportCtx] = useState(null);
+  const [reportReasonCode, setReportReasonCode] = useState("");
+  const [reportReasonDetail, setReportReasonDetail] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
+
+  // Terms of Service gate (Apple Guideline 1.2)
+  const [showTermsGate, setShowTermsGate] = useState(false);
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [acceptingTerms, setAcceptingTerms] = useState(false);
+
   const [_infoPage, _setInfoPage] = useState(null);
   // reserved: "about" | "help" | "privacy" | "terms" | "contact" | null
 
@@ -201,6 +213,19 @@ useEffect(() => {
   window.addEventListener("popstate", onPopState);
   return () => window.removeEventListener("popstate", onPopState);
 }, [active]);
+
+useEffect(() => {
+  const handler = () => {
+    setTermsChecked(false);
+    setShowTermsGate(true);
+  };
+  window.addEventListener("tg:requestTermsGate", handler);
+  return () => window.removeEventListener("tg:requestTermsGate", handler);
+}, []);
+
+useEffect(() => {
+  if (user?.acceptedTermsAt && showTermsGate) setShowTermsGate(false);
+}, [user?.acceptedTermsAt, showTermsGate]);
 
 useEffect(() => {
   if (import.meta.env.DEV) try { console.log("active", active); } catch (_ignored) { /* noop */ }
@@ -539,6 +564,8 @@ useEffect(() => {
     setUser,
     setShowAuth,
     setShowRegister,
+    setShowTermsGate,
+    setTermsChecked,
     setActive,
     setShowSettings: settingsHook.setShowSettings,
     setShowBizApply: (value) => {
@@ -1100,6 +1127,165 @@ function clearFilters() {
   }
 }
 
+// Report reasons for Apple Guideline 1.2 (UGC safety)
+const REPORT_REASONS = [
+  { value: "spam", label: "Spam" },
+  { value: "harassment", label: "Taciz / Zorbalık" },
+  { value: "inappropriate_content", label: "Uygunsuz içerik" },
+  { value: "hate_speech", label: "Nefret söylemi" },
+  { value: "violence", label: "Şiddet veya tehdit" },
+  { value: "other", label: "Diğer" },
+];
+
+async function openReport(ctx) {
+  if (!ctx) return;
+  try {
+    if (!(await requireAuth({ requireTerms: true }))) return;
+    setReportCtx(ctx);
+    setReportReasonCode("");
+    setReportReasonDetail("");
+  } catch (e) {
+    if (import.meta.env.DEV) console.error("openReport error:", e);
+    alert("Şikayet ekranı açılamadı. Lütfen tekrar deneyin.");
+  }
+}
+
+async function submitReport() {
+  if (!reportCtx || !user?.id) return;
+  const reasonCode = String(reportReasonCode || "").trim();
+  if (!reasonCode) {
+    alert("Lütfen bir şikayet sebebi seçin.");
+    return;
+  }
+  if (submittingReport) return;
+  setSubmittingReport(true);
+
+  const reporterUsername = user?.username ?? user?.email ?? "user";
+  const detail = String(reportReasonDetail || "").trim();
+  const reasonText = REPORT_REASONS.find((r) => r.value === reasonCode)?.label || reasonCode;
+  const reason = detail ? `${reasonText}: ${detail}` : reasonText;
+
+  const callRpc = () =>
+    supabase.rpc("insert_report", {
+      p_reporter_username: reporterUsername,
+      p_target_type: reportCtx.type || "",
+      p_target_id: String(reportCtx.targetId || ""),
+      p_target_owner: reportCtx.targetOwner || "",
+      p_target_label: reportCtx.targetLabel || "",
+      p_reason: reason,
+    });
+
+  const REPORT_TIMEOUT_MS = 25000;
+  const run = async () => {
+    if (!supabase?.rpc) throw new Error("Şikayet özelliği şu an kullanılamıyor.");
+    let result = await callRpc();
+    if (result?.error && /jwt|session|unauthorized|PGRST301|row-level security/i.test(String(result.error?.message || ""))) {
+      try {
+        await Promise.race([
+          supabase.auth.refreshSession(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("refresh_timeout")), 18000)),
+        ]);
+      } catch (_) {}
+      result = await callRpc();
+    }
+    return result;
+  };
+
+  try {
+    const result = await Promise.race([
+      run(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("report_timeout")), REPORT_TIMEOUT_MS)),
+    ]);
+    const err = result?.error;
+    if (err) throw err;
+    const insertedId = result?.data ?? uuid();
+    setReports((prev) => [
+      {
+        id: insertedId,
+        createdAt: Date.now(),
+        reporterId: user.id,
+        reporterUsername,
+        targetType: reportCtx.type,
+        targetId: String(reportCtx.targetId || ""),
+        targetLabel: reportCtx.targetLabel || "",
+        reason,
+        status: "open",
+      },
+      ...(prev || []),
+    ]);
+    if (reportCtx.type === "hub_post") {
+      setPosts((prev) => (prev || []).filter((p) => String(p.id) !== String(reportCtx.targetId)));
+    }
+    if (reportCtx.type === "hub_comment") {
+      setPosts((prev) =>
+        (prev || []).map((p) => ({
+          ...p,
+          comments:
+            String(p.id) === String(reportCtx.targetParentId)
+              ? (p.comments || []).filter((c) => String(c.id) !== String(reportCtx.targetId))
+              : p.comments,
+        }))
+      );
+    }
+    alert("Şikayetiniz alındı. İnceleme için yönlendirildi.");
+    setReportCtx(null);
+    setReportReasonCode("");
+    setReportReasonDetail("");
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("submitReport error:", e);
+    const msg = String(e?.message || "").toLowerCase();
+    if (/report_timeout|refresh_timeout|timeout|timed out|fetch|network|bağlantı/i.test(msg)) {
+      alert("İşlem uzadı veya bağlantı kurulamadı. Lütfen ağ bağlantınızı kontrol edip tekrar deneyin.");
+    } else if (/row-level security|violates.*policy/i.test(msg)) {
+      alert("Şikayet gönderilemedi. Oturum sunucuda tanınmıyor olabilir. Lütfen çıkış yapıp tekrar giriş yapın.");
+    } else {
+      alert("Şikayet gönderilemedi. " + (e?.message ? String(e.message) : "Lütfen tekrar deneyin."));
+    }
+  } finally {
+    setSubmittingReport(false);
+  }
+}
+
+async function acceptTerms() {
+  if (!supabase?.from || !supabase?.auth?.getSession) {
+    alert("Bağlantı hazır değil. Sayfayı yenileyip tekrar deneyin.");
+    return false;
+  }
+  let userId = user?.id || null;
+  const TIMEOUT_MS = 15000;
+  const run = async () => {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError && import.meta.env.DEV) console.error("acceptTerms session error:", sessionError);
+    userId = userId || sessionData?.session?.user?.id || null;
+    if (!userId) {
+      alert("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+      return false;
+    }
+    const acceptedAt = new Date().toISOString();
+    const { error } = await supabase.from("profiles").update({ accepted_terms_at: acceptedAt }).eq("id", userId);
+    if (error) {
+      if (import.meta.env.DEV) console.warn("acceptTerms profiles update error:", error);
+      alert("Kabul kaydedilemedi. Sayfayı yenileyip tekrar deneyin.");
+      return false;
+    }
+    setPendingAcceptedTerms(userId, acceptedAt);
+    setUser((prev) => (prev ? { ...prev, acceptedTermsAt: acceptedAt } : prev));
+    return true;
+  };
+  try {
+    const ok = await Promise.race([run(), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), TIMEOUT_MS))]);
+    return ok === true;
+  } catch (e) {
+    if (String(e?.message) === "timeout") {
+      alert("Kayıt zaman aşımına uğradı. Lütfen tekrar deneyin.");
+    } else {
+      if (import.meta.env.DEV) console.error("acceptTerms error:", e);
+      alert("Kabul işlemi başarısız oldu. Lütfen tekrar deneyin.");
+    }
+    return false;
+  }
+}
+
 async function blockUser(targetUser) {
   if (!(await requireAuth())) return;
   if (!user?.id || !targetUser?.id) return;
@@ -1284,6 +1470,7 @@ return (
     openCall={openCall}
     messages={messages}
     apptsForBiz={apptsForBiz}
+    onReportBiz={openReport}
   />
 )}
 
@@ -1363,6 +1550,7 @@ return (
             users={users}
             pickHubMedia={hub.pickHubMedia}
             hubShare={hub.hubShare}
+            onReportPost={openReport}
           />
         )}
 
@@ -1642,10 +1830,116 @@ return (
         openDirections={openDirections}
         openCall={openCall}
         onEditUser={userManagement.openEditUser}
+        onReport={openReport}
         onBlockUser={blockUser}
         onUnblockUser={unblockUser}
         blockedUsernames={blockedUsernames}
       />
+
+      {/* REPORT MODAL (Apple Guideline 1.2 – UGC) */}
+      <Modal
+        ui={ui}
+        open={!!reportCtx}
+        title="Şikayet Et"
+        onClose={() => {
+          setReportCtx(null);
+          setReportReasonCode("");
+          setReportReasonDetail("");
+        }}
+        width={520}
+      >
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ color: ui.muted, fontSize: 13 }}>
+            Raporlanan: <b style={{ color: ui.text }}>{reportCtx?.targetLabel || reportCtx?.targetOwner || reportCtx?.targetId || "—"}</b>
+          </div>
+          <label style={{ fontSize: 14, fontWeight: 600 }}>Sebep (zorunlu)</label>
+          <select
+            value={reportReasonCode}
+            onChange={(e) => setReportReasonCode(e.target.value)}
+            style={{
+              ...inputStyle(ui),
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: `1px solid ${ui.border}`,
+            }}
+          >
+            <option value="">— Sebep seçin —</option>
+            {REPORT_REASONS.map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
+          </select>
+          <label style={{ fontSize: 13, color: ui.muted }}>Ek detay (isteğe bağlı)</label>
+          <textarea
+            value={reportReasonDetail}
+            onChange={(e) => setReportReasonDetail(e.target.value)}
+            placeholder="Ek bilgi yazabilirsiniz..."
+            style={inputStyle(ui, { minHeight: 80, resize: "vertical" })}
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <Button
+              ui={ui}
+              onClick={() => {
+                setReportCtx(null);
+                setReportReasonCode("");
+                setReportReasonDetail("");
+              }}
+              disabled={submittingReport}
+            >
+              Vazgeç
+            </Button>
+            <Button ui={ui} variant="danger" onClick={submitReport} disabled={submittingReport}>
+              {submittingReport ? "Gönderiliyor…" : "Gönder"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* TERMS OF SERVICE GATE (Apple Guideline 1.2) */}
+      <Modal ui={ui} open={showTermsGate} title="Kullanım Şartları" onClose={() => setShowTermsGate(false)} width={640}>
+        <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ color: ui.muted }}>
+            Devam etmek için Kullanım Şartları ve Topluluk Kuralları'nı kabul etmelisiniz.
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Button ui={ui} onClick={() => window.open("/terms.html", "_blank", "noopener,noreferrer")}>
+              Kullanım Şartları
+            </Button>
+            <Button ui={ui} onClick={() => window.open("/community-guidelines.html", "_blank", "noopener,noreferrer")}>
+              Topluluk Kuralları
+            </Button>
+            <Button ui={ui} onClick={() => window.open("/privacy.html", "_blank", "noopener,noreferrer")}>
+              Gizlilik Politikası
+            </Button>
+          </div>
+          <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
+            <input
+              type="checkbox"
+              checked={termsChecked}
+              onChange={(e) => setTermsChecked(e.target.checked)}
+            />
+            <span>Kullanım Şartları ve Topluluk Kuralları'nı okudum ve kabul ediyorum.</span>
+          </label>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <Button ui={ui} onClick={() => setShowTermsGate(false)}>İptal</Button>
+            <Button
+              ui={ui}
+              variant="ok"
+              disabled={!termsChecked || acceptingTerms}
+              onClick={async () => {
+                setAcceptingTerms(true);
+                try {
+                  const ok = await acceptTerms();
+                  if (ok) setShowTermsGate(false);
+                } finally {
+                  setAcceptingTerms(false);
+                }
+              }}
+            >
+              {acceptingTerms ? "Kaydediliyor…" : "Kabul Et"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* SETTINGS MODAL */}
       <SettingsModal
@@ -1659,6 +1953,7 @@ return (
         user={user}
         deleteAccount={auth.deleteAccount}
         logout={auth.logout}
+        onAcceptTerms={acceptTerms}
       />
 
       {/* AUTH MODAL */}
