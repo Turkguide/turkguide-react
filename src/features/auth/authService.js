@@ -81,84 +81,68 @@ export const authService = {
 
   /**
    * Delete account via Edge Function.
-   * Uses direct fetch() with Authorization + apikey so it works reliably (invoke was timing out).
-   * Apple requires working account deletion.
+   * Uses supabase.functions.invoke() with explicit Authorization header so the gateway receives the Bearer token.
    */
   async deleteAccount() {
-    const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim().replace(/\/$/, "");
-    const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
-    // Anon key must be from same project as URL: Dashboard → Project Settings → API → anon public
     const fnName = "delete-my-account";
     const timeoutMs = 35000;
-    const expectedProjectRef = "jxmgvbyhdhhokxzsmvmy";
-    const projectRefFromUrl = supabaseUrl ? (() => {
-      try {
-        return new URL(supabaseUrl).hostname.replace(".supabase.co", "") || "";
-      } catch {
-        return "";
-      }
-    })() : "";
-    if (import.meta.env.DEV && projectRefFromUrl && projectRefFromUrl !== expectedProjectRef) {
-      console.warn("[deleteAccount] Project ref mismatch: frontend URL suggests", projectRefFromUrl, "expected", expectedProjectRef);
-    }
 
     if (!supabase?.auth?.getSession) {
       throw new Error("Hesap silme şu an kullanılamıyor.");
     }
+
     const { data: sessionData } = await supabase.auth.getSession();
-    let token = sessionData?.session?.access_token;
-    if (!token) {
-      await supabase.auth.refreshSession();
-      const { data: after } = await supabase.auth.getSession();
-      token = after?.session?.access_token;
+    if (!sessionData?.session) {
+      throw new Error("Oturum bulunamadı. Lütfen giriş yapın.");
     }
-    if (!token || typeof token !== "string") {
+    await supabase.auth.refreshSession();
+    const { data: afterRefresh } = await supabase.auth.getSession();
+    if (!afterRefresh?.session?.access_token) {
       throw new Error("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
     }
-    if (!supabaseUrl || !anonKey) {
-      throw new Error("Hesap silme yapılandırması eksik.");
-    }
+    const token = afterRefresh.session.access_token;
 
-    const url = `${supabaseUrl}/functions/v1/${fnName}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.")), timeoutMs)
+    );
+    const invokePromise = supabase.functions.invoke(fnName, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    let res;
+    let result;
     try {
-      res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          apikey: anonKey,
-        },
-        body: JSON.stringify({}),
-        signal: controller.signal,
-      });
+      result = await Promise.race([invokePromise, timeoutPromise]);
     } catch (e) {
-      clearTimeout(timeoutId);
-      if (e?.name === "AbortError") {
-        throw new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.");
-      }
+      if (e?.message?.includes("zaman aşımı")) throw e;
       throw new Error("Bağlantı hatası: " + (e?.message || "tekrar deneyin."));
     }
-    clearTimeout(timeoutId);
 
-    const raw = await res.text().catch(() => "");
-    let body = {};
-    try {
-      if (raw?.trim().startsWith("{")) body = JSON.parse(raw);
-    } catch (_) {}
-
-    if (!res.ok) {
-      let msg = body?.error ?? body?.message ?? "Hesap silinirken sunucu hatası.";
-      const step = body?.step ? " [" + body.step + "]" : "";
-      const detail = body?.detail ? " (" + body.detail + ")" : "";
-      msg = String(msg) + step + detail;
-      if (res.status === 401 && /invalid|expired|jwt|token|missing|authorization/i.test(msg)) {
+    const { data, error } = result ?? {};
+    if (error) {
+      let msg = error?.message ?? "Hesap silinirken sunucu hatası.";
+      try {
+        const ctx = error.context;
+        if (ctx && typeof ctx.json === "function") {
+          const body = await ctx.json();
+          if (body?.error) msg = String(body.error);
+          if (body?.step) msg += " [" + body.step + "]";
+        } else if (ctx && typeof ctx.text === "function") {
+          const raw = await ctx.text();
+          const body = raw?.trim().startsWith("{") ? JSON.parse(raw) : {};
+          if (body?.error) msg = String(body.error);
+          if (body?.step) msg += " [" + body.step + "]";
+        }
+      } catch (_) {}
+      if (/invalid|expired|jwt|token|missing|authorization/i.test(msg)) {
         msg += " Çıkış yapıp tekrar giriş yapın, ardından hesap silmeyi tekrar deneyin.";
       }
       throw new Error(msg);
+    }
+    if (data && data.ok !== true && (data?.error || data?.message)) {
+      throw new Error(data.error || data.message || "Hesap silinirken hata oluştu.");
     }
   },
 
