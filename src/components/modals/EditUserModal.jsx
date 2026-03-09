@@ -205,7 +205,18 @@ export function EditUserModal({
           <div style={{ color: ui.red, fontSize: 12, fontWeight: 700 }}>{editUserError}</div>
         ) : null}
         <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-          <Button ui={ui} variant="solidBlue" onClick={onSave} disabled={savingEditUser}>
+          <Button
+            ui={ui}
+            variant="solidBlue"
+            onClick={async () => {
+              try {
+                await onSave?.();
+              } catch (e) {
+                alert(e?.message || "Kaydetme sırasında hata oluştu.");
+              }
+            }}
+            disabled={savingEditUser}
+          >
             {savingEditUser ? "Kaydediliyor..." : "Kaydet"}
           </Button>
           <Button ui={ui} onClick={onClose}>

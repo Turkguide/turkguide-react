@@ -80,11 +80,12 @@ export const authService = {
   },
 
   /**
-   * Delete account via Edge Function. Uses fetch so we always get the real error body from the server.
+   * Delete account via Edge Function. Uses fetch + timeout so we get the real error from the server.
    */
   async deleteAccount() {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || "";
     const fnName = "delete-my-account";
+    const timeoutMs = 25000;
     if (!supabase?.auth?.getSession) {
       throw new Error("Hesap silme şu an kullanılamıyor.");
     }
@@ -97,14 +98,27 @@ export const authService = {
       throw new Error("Hesap silme yapılandırması eksik.");
     }
     const url = `${supabaseUrl.replace(/\/$/, "")}/functions/v1/${fnName}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({}),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+        signal: controller.signal,
+      });
+    } catch (e) {
+      clearTimeout(timeoutId);
+      if (e?.name === "AbortError") {
+        throw new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.");
+      }
+      throw new Error(e?.message || "Bağlantı hatası. Lütfen ağınızı kontrol edip tekrar deneyin.");
+    }
+    clearTimeout(timeoutId);
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
       const msg = body?.error ? String(body.error) : "Hesap silinirken sunucu hatası oluştu.";
