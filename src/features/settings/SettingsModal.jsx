@@ -12,9 +12,9 @@ export function SettingsModal({
   themePref,
   setThemePref,
   user,
-  deleteAccount,
   logout,
   onAcceptTerms,
+  onRequestDeleteAccount,
 }) {
   return (
     <Modal
@@ -150,10 +150,34 @@ export function SettingsModal({
               <Button ui={ui} onClick={logout} size="sm">
                 Çıkış Yap
               </Button>
-              <Button ui={ui} onClick={deleteAccount} variant="danger" size="sm">
-                🗑️ Hesabı Sil
-              </Button>
             </div>
+
+            {onRequestDeleteAccount ? (
+              <div
+                style={{
+                  marginTop: 24,
+                  paddingTop: 20,
+                  paddingBottom: 8,
+                  borderTop: `2px solid ${ui.mode === "light" ? "rgba(200,60,60,0.25)" : "rgba(255,100,100,0.2)"}`,
+                  background: ui.mode === "light" ? "rgba(200,60,60,0.06)" : "rgba(255,80,80,0.06)",
+                  borderRadius: 12,
+                  padding: 16,
+                }}
+              >
+                <div style={{ fontWeight: 950, fontSize: 13, color: ui.muted, marginBottom: 8 }}>
+                  Tehlikeli bölge
+                </div>
+                <Button
+                  ui={ui}
+                  variant="danger"
+                  size="sm"
+                  onClick={onRequestDeleteAccount}
+                  style={{ marginTop: 4 }}
+                >
+                  🗑️ Hesabı Sil
+                </Button>
+              </div>
+            ) : null}
           </>
         )}
       </div>

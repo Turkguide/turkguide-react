@@ -11,6 +11,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authUsername, setAuthUsername] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   /**
    * Hard reset - clears all UI state and storage
@@ -326,43 +327,6 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
   }
 
   /**
-   * Delete account: confirmation, then Edge Function deletes auth user + profile; then clear session and reset.
-   */
-  async function deleteAccount() {
-    const ok = confirm(
-      "Hesabınız kalıcı olarak silinecek. Tüm verileriniz kaldırılacak. Bu işlem geri alınamaz.\n\nEmin misiniz?"
-    );
-    if (!ok) return;
-
-    if (!supabase?.auth) {
-      alert("Bağlantı hazır değil. Sayfayı yenileyip tekrar deneyin.");
-      return;
-    }
-    try {
-      const timeoutMs = 20000;
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.")), timeoutMs)
-      );
-      await Promise.race([authService.deleteAccount(), timeout]);
-      alert("Hesabınız silindi.");
-      hardResetToHome();
-      return;
-    } catch (e) {
-      if (import.meta.env.DEV) console.error("deleteAccount error:", e);
-      const detail = e?.message || e?.error_description || "";
-      const msg = detail.toLowerCase();
-      if (/timeout|zaman aşımı/i.test(msg)) {
-        alert("İstek zaman aşımına uğradı. Lütfen ağ bağlantınızı kontrol edip tekrar deneyin.");
-      } else if (/configuration|hata|unavailable|function/i.test(msg)) {
-        alert("Hesap silme şu an kullanılamıyor. Lütfen daha sonra deneyin veya destek ile iletişime geçin.");
-      } else {
-        alert("Hesap silinirken hata oluştu." + (detail ? "\n\n" + detail : ""));
-      }
-      hardResetToHome();
-    }
-  }
-
-  /**
    * OAuth login
    */
   async function oauthLogin(provider) {
@@ -400,6 +364,26 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
     return false;
   }
 
+  /**
+   * Delete account via Edge Function. On success: hardResetToHome (session cleared).
+   * On failure: throws, caller should keep user logged in and show error.
+   */
+  async function deleteAccount() {
+    if (!supabase?.auth) throw new Error("Bağlantı hazır değil.");
+    const timeoutMs = 25000;
+    setDeletingAccount(true);
+    try {
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("İstek zaman aşımına uğradı.")), timeoutMs)
+      );
+      await Promise.race([authService.deleteAccount(), timeout]);
+      hardResetToHome();
+    } catch (e) {
+      setDeletingAccount(false);
+      throw e;
+    }
+  }
+
   return {
     authEmail,
     setAuthEmail,
@@ -410,6 +394,7 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
     loginNow,
     logout,
     deleteAccount,
+    deletingAccount,
     oauthLogin,
     requireAuth,
     authUserExists,

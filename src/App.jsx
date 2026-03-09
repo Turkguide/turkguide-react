@@ -148,6 +148,7 @@ function AppContent() {
   // Modals
   const [showAuth, setShowAuth] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
 
   // Landing search (UI)
   const [landingSearch, setLandingSearch] = useState("");
@@ -1941,6 +1942,51 @@ return (
         </div>
       </Modal>
 
+      {/* DELETE ACCOUNT CONFIRMATION */}
+      <Modal
+        ui={ui}
+        open={showDeleteAccountConfirm}
+        title="Hesabı kalıcı olarak sil"
+        onClose={() => !auth.deletingAccount && setShowDeleteAccountConfirm(false)}
+        width={480}
+      >
+        <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ color: ui.muted, fontSize: 14 }}>
+            Hesabınız ve ilişkili tüm verileriniz (profil, paylaşımlar, yorumlar, mesajlar, randevular)
+            kalıcı olarak silinecektir. Bu işlem geri alınamaz.
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+            <Button
+              ui={ui}
+              onClick={() => setShowDeleteAccountConfirm(false)}
+              disabled={auth.deletingAccount}
+            >
+              İptal
+            </Button>
+            <Button
+              ui={ui}
+              variant="danger"
+              onClick={async () => {
+                try {
+                  await auth.deleteAccount();
+                } catch (e) {
+                  setShowDeleteAccountConfirm(false);
+                  const msg = String(e?.message || e || "").toLowerCase();
+                  if (/zaman aşımı|timeout/i.test(msg)) {
+                    alert("İstek zaman aşımına uğradı. Lütfen ağ bağlantınızı kontrol edip tekrar deneyin.");
+                  } else {
+                    alert("Hesap silinirken hata oluştu.\n\n" + (e?.message || e || ""));
+                  }
+                }
+              }}
+              disabled={auth.deletingAccount}
+            >
+              {auth.deletingAccount ? "Siliniyor…" : "Evet, hesabımı kalıcı olarak sil"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* SETTINGS MODAL */}
       <SettingsModal
         ui={ui}
@@ -1951,9 +1997,12 @@ return (
         themePref={themePref}
         setThemePref={setThemePref}
         user={user}
-        deleteAccount={auth.deleteAccount}
         logout={auth.logout}
         onAcceptTerms={acceptTerms}
+        onRequestDeleteAccount={() => {
+          settingsHook.setShowSettings(false);
+          setShowDeleteAccountConfirm(true);
+        }}
       />
 
       {/* AUTH MODAL */}

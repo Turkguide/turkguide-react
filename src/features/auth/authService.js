@@ -80,25 +80,16 @@ export const authService = {
   },
 
   /**
-   * Delete account via Edge Function (service role deletes auth user + profile).
-   * Client session is cleared by caller after success; signOut may fail once user is deleted.
+   * Delete account via Edge Function (service role deletes all user data + auth user).
+   * Caller must clear session / redirect on success; on failure throws.
    */
   async deleteAccount() {
     if (!supabase?.functions?.invoke) {
-      throw new Error("Supabase hazır değil veya hesap silme özelliği kullanılamıyor.");
+      throw new Error("Hesap silme şu an kullanılamıyor.");
     }
-
-    const { data, error } = await supabase.functions.invoke("delete-my-account", {
-      method: "POST",
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    if (data?.error) {
-      throw new Error(data.error);
-    }
+    const { data, error } = await supabase.functions.invoke("delete-my-account", { method: "POST" });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
   },
 
   /**

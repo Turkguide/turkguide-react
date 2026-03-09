@@ -1,25 +1,31 @@
 # delete-my-account
 
-Edge Function for user self-deletion. Requires **service role** to delete from `auth.users`.
+Edge Function for permanent user account deletion. Uses service role to clean all user data then remove the auth user.
 
 ## Deploy
-
-From project root:
 
 ```bash
 supabase functions deploy delete-my-account
 ```
 
-Ensure `SUPABASE_SERVICE_ROLE_KEY` is set in the project (it is available automatically in deployed functions).
-
 ## Behavior
 
-1. Client calls `supabase.functions.invoke("delete-my-account", { method: "POST" })` with the session (JWT sent automatically).
-2. Function verifies the JWT and gets the user id.
-3. Deletes the row from `public.profiles` for that user (avoids FK issues).
-4. Calls `auth.admin.deleteUser(userId)` to remove the user from Supabase Auth.
+1. Client calls `supabase.functions.invoke("delete-my-account", { method: "POST" })` with session (JWT sent automatically).
+2. Function verifies JWT and gets user id (and username from `profiles`).
+3. Deletes in order (avoids FK issues):
+   - `reports` (reporter_id)
+   - `user_blocks` (blocker_id, then blocked_id)
+   - `dms` (from_username / to_username)
+   - `notifications` (from_username / to_username)
+   - `appointments` (from_username)
+   - `hub_posts` (user_id)
+   - `biz_apps` (user_id, owner_username, applicant)
+   - `businesses` (owner_username)
+   - `admin_logs` (admin_id — FK to auth.users, must run before auth delete)
+   - `profiles` (id)
+4. Calls `auth.admin.deleteUser(userId)`.
 5. Returns `{ ok: true }` or `{ error: "..." }`.
 
-## RLS
+## Tables cleaned
 
-No RLS is needed for this flow: the function uses the service role client to delete the profile and the auth user. The client only invokes the function; it cannot delete other users.
+- reports, user_blocks, dms, notifications, appointments, hub_posts, biz_apps, businesses, admin_logs, profiles, then auth.users.
