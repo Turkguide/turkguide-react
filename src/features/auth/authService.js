@@ -80,82 +80,36 @@ export const authService = {
   },
 
   /**
-   * Delete account via Edge Function (service role deletes all user data + auth user).
-   * Caller must clear session / redirect on success; on failure throws with server message when available.
-   * Uses invoke first; if "Failed to send" (CORS/network), retries via fetch with session.
+   * Delete account via Edge Function. Uses fetch so we always get the real error body from the server.
    */
   async deleteAccount() {
-    if (!supabase?.functions?.invoke) {
-      throw new Error("Hesap silme şu an kullanılamıyor.");
-    }
-
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || "";
     const fnName = "delete-my-account";
-    if (import.meta.env.DEV) {
-      console.log("[deleteAccount] before invoke", { fnName, hasUrl: !!supabaseUrl, urlOrigin: supabaseUrl ? new URL(supabaseUrl).origin : null });
+    if (!supabase?.auth?.getSession) {
+      throw new Error("Hesap silme şu an kullanılamıyor.");
     }
-
-    let data = null;
-    let error = null;
-
-    try {
-      const result = await supabase.functions.invoke(fnName, { method: "POST" });
-      data = result?.data ?? null;
-      error = result?.error ?? null;
-    } catch (e) {
-      if (import.meta.env.DEV) {
-        console.error("[deleteAccount] invoke threw", e?.message, e);
-      }
-      throw e;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) {
+      throw new Error("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
     }
-
-    if (import.meta.env.DEV && (data || error)) {
-      console.log("[deleteAccount] after invoke", { hasData: !!data, dataError: data?.error, errorMessage: error?.message });
+    if (!supabaseUrl) {
+      throw new Error("Hesap silme yapılandırması eksik.");
     }
-
-    if (data?.error) {
-      const step = data.step ? ` [${data.step}]` : "";
-      throw new Error(String(data.error) + step);
-    }
-    if (error) {
-      const msg = error?.message || "";
-      if (msg.includes("Failed to send") && supabaseUrl) {
-        try {
-          const session = (await supabase.auth.getSession())?.data?.session;
-          if (session?.access_token) {
-            const fnUrl = `${supabaseUrl.replace(/\/$/, "")}/functions/v1/${fnName}`;
-            if (import.meta.env.DEV) console.log("[deleteAccount] retry via fetch", fnUrl);
-            const res = await fetch(fnUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({}),
-            });
-            const body = await res.json().catch(() => ({}));
-            if (!res.ok) {
-              throw new Error(body?.error ? String(body.error) + (body.step ? ` [${body.step}]` : "") : `HTTP ${res.status}`);
-            }
-            return;
-          }
-        } catch (fetchErr) {
-          if (import.meta.env.DEV) console.error("[deleteAccount] fetch fallback failed", fetchErr);
-          throw fetchErr?.message ? new Error(fetchErr.message) : fetchErr;
-        }
-      }
-      if (error?.context && typeof error.context?.json === "function") {
-        try {
-          const body = await error.context.json();
-          if (body?.error) {
-            const step = body.step ? ` [${body.step}]` : "";
-            throw new Error(String(body.error) + step);
-          }
-        } catch (e) {
-          if (e?.message && e.message !== error.message) throw e;
-        }
-      }
-      throw error;
+    const url = `${supabaseUrl.replace(/\/$/, "")}/functions/v1/${fnName}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = body?.error ? String(body.error) : "Hesap silinirken sunucu hatası oluştu.";
+      const step = body?.step ? ` (${body.step})` : "";
+      throw new Error(msg + step);
     }
   },
 

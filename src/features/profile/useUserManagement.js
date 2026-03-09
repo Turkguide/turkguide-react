@@ -409,6 +409,12 @@ export function useUserManagement({
             bannedAt: p?.bannedAt ?? null,
           }));
         }
+
+        // ✅ Kritik kısım bitti — hemen modalı kapat, loading'i kapat (takılma olmasın)
+        setSavingEditUser(false);
+        setShowEditUser(false);
+        setEditUserCtx(null);
+        admin?.addLog?.("USER_EDIT", { id: u.id, username });
       } catch (e) {
         console.error("💥 updateUser crash FULL:", e);
         const msg = "updateUser crash: " + (e?.message || JSON.stringify(e));
@@ -425,8 +431,9 @@ export function useUserManagement({
       return;
     }
 
-    // ✅ Profil popup açıksa, target username'i güncelle (Profil bulunamadı fix)
-    profile?.setProfileTarget?.((pt) => {
+    // ✅ Username remap / profil target — arka planda çalışsın, UI takılmasın
+    Promise.resolve().then(async () => {
+      profile?.setProfileTarget?.((pt) => {
       if (!pt || pt.type !== "user") return pt;
 
       const cur = normalizeUsername(pt.username || "");
@@ -642,11 +649,7 @@ export function useUserManagement({
     } else {
       // username unchanged; no remap
     }
-
-    // ✅ başarıyla buraya geldiyse kapat
-    admin?.addLog?.("USER_EDIT", { id: u.id, username });
-    setShowEditUser(false);
-    setEditUserCtx(null);
+    }).catch(() => {});
     } finally {
       setSavingEditUser(false);
     }
