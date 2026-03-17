@@ -81,9 +81,11 @@ export const authService = {
 
   /**
    * Delete account via Edge Function.
-   * Uses supabase.functions.invoke() with explicit Authorization header so the gateway receives the Bearer token.
+   * Gateway 401 önlemek için fetch ile Authorization + apikey açıkça gönderiliyor (invoke bazen header iletmiyor).
    */
   async deleteAccount() {
+    const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim().replace(/\/$/, "");
+    const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
     const fnName = "delete-my-account";
     const timeoutMs = 35000;
 
@@ -100,49 +102,53 @@ export const authService = {
     if (!afterRefresh?.session?.access_token) {
       throw new Error("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
     }
-    const token = afterRefresh.session.access_token;
-
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.")), timeoutMs)
-    );
-    const invokePromise = supabase.functions.invoke(fnName, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    let result;
-    try {
-      result = await Promise.race([invokePromise, timeoutPromise]);
-    } catch (e) {
-      if (e?.message?.includes("zaman aşımı")) throw e;
-      throw new Error("Bağlantı hatası: " + (e?.message || "tekrar deneyin."));
+    const token = String(afterRefresh.session.access_token).trim();
+    if (!token) {
+      throw new Error("Oturum token'ı alınamadı. Lütfen tekrar giriş yapın.");
     }
 
-    const { data, error } = result ?? {};
-    if (error) {
-      let msg = error?.message ?? "Hesap silinirken sunucu hatası.";
-      try {
-        const ctx = error.context;
-        if (ctx && typeof ctx.json === "function") {
-          const body = await ctx.json();
-          if (body?.error) msg = String(body.error);
-          if (body?.step) msg += " [" + body.step + "]";
-        } else if (ctx && typeof ctx.text === "function") {
-          const raw = await ctx.text();
-          const body = raw?.trim().startsWith("{") ? JSON.parse(raw) : {};
-          if (body?.error) msg = String(body.error);
-          if (body?.step) msg += " [" + body.step + "]";
-        }
-      } catch (_) {}
-      if (/invalid|expired|jwt|token|missing|authorization/i.test(msg)) {
+    if (!supabaseUrl || !anonKey) {
+      throw new Error("Hesap silme yapılandırması eksik (URL veya anon key).");
+    }
+
+    const url = `${supabaseUrl}/functions/v1/${fnName}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    let res;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          apikey: anonKey,
+        },
+        body: JSON.stringify({}),
+        signal: controller.signal,
+      });
+    } catch (e) {
+      clearTimeout(timeoutId);
+      if (e?.name === "AbortError") {
+        throw new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.");
+      }
+      throw new Error("Bağlantı hatası: " + (e?.message || "tekrar deneyin."));
+    }
+    clearTimeout(timeoutId);
+
+    const raw = await res.text().catch(() => "");
+    let body = {};
+    try {
+      if (raw?.trim().startsWith("{")) body = JSON.parse(raw);
+    } catch (_) {}
+
+    if (!res.ok) {
+      let msg = body?.error ?? body?.message ?? "Hesap silinirken sunucu hatası.";
+      if (body?.step) msg += " [" + body.step + "]";
+      if (res.status === 401 && /invalid|expired|jwt|token|missing|authorization/i.test(msg)) {
         msg += " Çıkış yapıp tekrar giriş yapın, ardından hesap silmeyi tekrar deneyin.";
       }
       throw new Error(msg);
-    }
-    if (data && data.ok !== true && (data?.error || data?.message)) {
-      throw new Error(data.error || data.message || "Hesap silinirken hata oluştu.");
     }
   },
 

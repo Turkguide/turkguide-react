@@ -9,6 +9,7 @@ Run before each production deploy or TestFlight upload.
 
 ## 2. Environment
 - [ ] `.env` or `.env.production` has `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` set
+- [ ] URL ve anon key **aynı Supabase projesinden** (Dashboard → Project Settings → API)
 - [ ] Production build is tested with real Supabase project (no blank screen on load)
 
 ## 3. Smoke Test (manual)
@@ -17,6 +18,7 @@ Run before each production deploy or TestFlight upload.
 - [ ] Accept Terms flow (if new user) and then İşletme Ekle / Bildir open correctly
 - [ ] HUB: load posts, like, comment (no infinite loop or crash)
 - [ ] Admin (if admin user): open Admin panel, open Kötüye Kullanım, list loads
+- [ ] **Hesap silme:** Ayarlar → Hesabı Sil → onay → hesap silinir, çıkış olur (detay: `docs/HESAP_SILME_CHECKLIST.md`)
 
 ## 4. iOS / Capacitor (if releasing native)
 - [ ] `npx cap sync ios`
