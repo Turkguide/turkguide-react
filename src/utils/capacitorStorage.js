@@ -13,6 +13,20 @@ function isNative() {
 
 const PREFIX = "tg_sb_";
 
+/** Native: Preferences içindeki tüm tg_sb_ anahtarlarını sil (çıkış / hesap sil sonrası). */
+export async function clearAllTgSupabasePreferences() {
+  if (!isNative()) return;
+  try {
+    const { Preferences } = await import("@capacitor/preferences");
+    const { keys } = await Preferences.keys();
+    for (const key of keys || []) {
+      if (String(key).startsWith(PREFIX)) {
+        await Preferences.remove({ key });
+      }
+    }
+  } catch (_) {}
+}
+
 export const supabaseAuthStorage = {
   getItem: async (key) => {
     if (isNative()) {

@@ -4,6 +4,7 @@ import { KEY } from "../../constants";
 import { supabase } from "../../supabaseClient";
 import { normalizeUsername } from "../../utils/helpers";
 import { setPendingAcceptedTerms } from "./pendingProfileFlags";
+import { clearAllTgSupabasePreferences } from "../../utils/capacitorStorage";
 
 /**
  * Hook for authentication operations
@@ -98,6 +99,8 @@ export function useAuth({
     try {
       window.history.replaceState({}, document.title, "/");
     } catch (_) {}
+
+    void clearAllTgSupabasePreferences();
 
     try {
       window.location.replace("/");
@@ -411,6 +414,11 @@ export function useAuth({
       clearTimeout(safetyTimer);
       // Sayfa yenilenmezse (WebView / aynı URL) UI kilitli kalmasın
       setDeletingAccount(false);
+      // Sunucu kullanıcıyı sildi; yerel oturumu özellikle Capacitor Preferences'tan temizle
+      try {
+        await authService.signOut();
+      } catch (_) {}
+      await clearAllTgSupabasePreferences();
       hardResetToHome();
     } catch (e) {
       clearTimeout(safetyTimer);

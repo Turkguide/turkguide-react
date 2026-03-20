@@ -25,7 +25,7 @@ Farklı proje veya yanlış key → Gateway 401 veya Invalid JWT.
 |------|------------------|
 | 1 | `supabase login` (bir kez) |
 | 2 | `supabase link --project-ref jxmgvbyhdhhokxzsmvmy` (proje ref kendi projen) |
-| 3 | `supabase functions deploy delete-my-account` |
+| 3 | `supabase functions deploy delete-my-account` (hub_posts: `user_id` **ve** `username` ile silinir; eski deploy tek başına eksik kalabilir) |
 | 4 | Dashboard → **Edge Functions** → `delete-my-account` listede ve yeşil mi kontrol et |
 
 ---

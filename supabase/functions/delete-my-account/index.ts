@@ -153,11 +153,14 @@ Deno.serve(async (req) => {
   });
 
   let usernameNorm = "";
+  /** hub_posts.username ile birebir silmek için (ILIKE _/% wildcards kaçınılır) */
+  let profileUsernameRaw = "";
   try {
     const { data: profile, error: profileErr } = await admin.from("profiles").select("username").eq("id", userId).single();
     if (profileErr) {
       console.warn(JSON.stringify({ step: "profiles_select", warning: profileErr.message }));
     } else {
+      profileUsernameRaw = String(profile?.username ?? "").trim();
       usernameNorm = norm(profile?.username ?? "");
     }
   } catch (_) {}
@@ -200,10 +203,18 @@ Deno.serve(async (req) => {
       const { error } = await admin.from("appointments").delete().ilike("from_username", usernameNorm);
       return error ? { error } : null;
     }),
-    async () => runStep("hub_posts", async () => {
-      const { error } = await admin.from("hub_posts").delete().eq("user_id", userId);
-      return error ? { error } : null;
-    }),
+    async () =>
+      runStep("hub_posts", async () => {
+        // Bazı satırlarda (ör. repost) user_id yok; username ile kaldır
+        const { error: e1 } = await admin.from("hub_posts").delete().eq("user_id", userId);
+        if (e1) return { error: e1 };
+        const unameForEq = profileUsernameRaw || usernameNorm;
+        if (unameForEq) {
+          const { error: e2 } = await admin.from("hub_posts").delete().eq("username", unameForEq);
+          if (e2) return { error: e2 };
+        }
+        return null;
+      }),
     async () => runStep("biz_apps_user_id", async () => {
       const { error } = await admin.from("biz_apps").delete().eq("user_id", userId);
       return error ? { error } : null;
