@@ -122,12 +122,12 @@ Deno.serve(async (req) => {
     return errResponse(500, { error: "Server configuration error", step: "config" });
   }
 
-  // Edge Function'da getUser() client'ın Authorization header'ı ile çağrılmalı (getUser(jwt) bazen Invalid JWT döner)
+  // JWT'yi açıkça ver: global header ile getUser() bazı ortamlarda (OAuth/Apple) Invalid JWT üretebiliyor.
   const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
+    auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const { data: userData, error: userError } = await supabaseAnon.auth.getUser();
+  const { data: userData, error: userError } = await supabaseAnon.auth.getUser(token);
   console.log(JSON.stringify({
     step: "getUser_result",
     hasUser: !!userData?.user,

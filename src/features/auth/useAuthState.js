@@ -4,6 +4,7 @@ import { KEY } from "../../constants";
 import { lsSet } from "../../utils/localStorage";
 import { ensureSeed } from "../../utils/seed";
 import { normalizeUsername } from "../../utils/helpers";
+import { resolveCreatedAtFromSession } from "../../utils/termsEffective";
 import { consumePendingAcceptedTerms } from "./pendingProfileFlags";
 
 /**
@@ -99,7 +100,7 @@ export function useAuthState() {
       if (!supabase?.from || !nextUser?.id) return nextUser;
       const { data, error } = await supabase
         .from("profiles")
-        .select("username, avatar, age, city, state, country, bio")
+        .select("username, avatar, age, city, state, country, bio, accepted_terms_at, banned_at, created_at")
         .eq("id", nextUser.id)
         .maybeSingle();
       if (error || !data) return nextUser;
@@ -112,6 +113,12 @@ export function useAuthState() {
       if (data.country != null) o.country = String(data.country || "");
       if (data.bio != null) o.bio = String(data.bio || "");
       if (data.age != null && data.age !== "") o.age = data.age;
+      if (data.accepted_terms_at && !o.acceptedTermsAt) o.acceptedTermsAt = data.accepted_terms_at;
+      if (data.banned_at != null && o.bannedAt == null) o.bannedAt = data.banned_at;
+      if (data.created_at && (o.createdAt == null || o.createdAt === "")) {
+        const cms = new Date(data.created_at).getTime();
+        if (Number.isFinite(cms)) o.createdAt = cms;
+      }
       return o;
     } catch (e) {
       if (import.meta.env.DEV) console.warn("mergeProfileRowFromDb:", e);
@@ -209,7 +216,7 @@ export function useAuthState() {
             avatar: md.avatar ?? "",
             Tier: md.tier ?? md.Tier ?? null,
             XP: Number(md.xp ?? md.XP ?? 0),
-            createdAt: md.createdAt ?? null,
+            createdAt: resolveCreatedAtFromSession(session, md),
             age: md.age ?? "",
             city: md.city ?? "",
             state: md.state ?? "",
@@ -250,7 +257,7 @@ export function useAuthState() {
                 avatar: md.avatar ?? "",
                 Tier: md.tier ?? md.Tier ?? null,
                 XP: Number(md.xp ?? md.XP ?? 0),
-                createdAt: md.createdAt ?? null,
+                createdAt: resolveCreatedAtFromSession(s, md),
                 age: md.age ?? "",
                 city: md.city ?? "",
                 state: md.state ?? "",

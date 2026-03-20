@@ -5,6 +5,7 @@ import { supabase } from "../../supabaseClient";
 import { normalizeUsername } from "../../utils/helpers";
 import { setPendingAcceptedTerms } from "./pendingProfileFlags";
 import { clearAllTgSupabasePreferences } from "../../utils/capacitorStorage";
+import { hasAcceptedTermsEffective } from "../../utils/termsEffective";
 
 /**
  * Hook for authentication operations
@@ -122,32 +123,68 @@ export function useAuth({
       alert("Hesabın askıya alındı. Destek için bize ulaş.");
       return false;
     }
-    if (options.requireTerms && !user?.acceptedTermsAt) {
-      if (user?.id && supabase?.from) {
+    if (options.requireTerms) {
+      if (hasAcceptedTermsEffective(user)) {
+        /* ok — mevcut ekip (kayıt tarihi öncesi) veya şartı kabul etmiş */
+      } else if (user?.id && supabase?.from) {
         try {
           const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 4000));
           const { data } = await Promise.race([
-            supabase.from("profiles").select("accepted_terms_at, banned_at").eq("id", user.id).single(),
+            supabase.from("profiles").select("accepted_terms_at, banned_at, created_at").eq("id", user.id).single(),
             timeout,
           ]);
-          if (data?.accepted_terms_at) {
+          const createdMs =
+            data?.created_at != null ? new Date(data.created_at).getTime() : null;
+          const merged = {
+            ...user,
+            acceptedTermsAt: data?.accepted_terms_at ?? user.acceptedTermsAt,
+            createdAt: user.createdAt ?? (Number.isFinite(createdMs) ? createdMs : null),
+          };
+          if (hasAcceptedTermsEffective(merged)) {
             setUser((prev) =>
               prev?.id === user.id
-                ? { ...prev, acceptedTermsAt: data.accepted_terms_at, bannedAt: data.banned_at ?? prev?.bannedAt }
+                ? {
+                    ...prev,
+                    acceptedTermsAt: data?.accepted_terms_at ?? prev.acceptedTermsAt,
+                    bannedAt: data?.banned_at ?? prev?.bannedAt,
+                    createdAt: prev.createdAt ?? (Number.isFinite(createdMs) ? createdMs : prev.createdAt),
+                  }
                 : prev
             );
-            return true;
+          } else {
+            if (setShowTermsGate) setShowTermsGate(true);
+            if (setTermsChecked) setTermsChecked(false);
+            try {
+              if (typeof window !== "undefined" && window.dispatchEvent) {
+                window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
+              }
+            } catch (_) {}
+            return false;
+          }
+        } catch (_) {
+          if (hasAcceptedTermsEffective(user)) {
+            /* DB yok / timeout; kayıt tarihi ile ekip kapsamı */
+          } else {
+            if (setShowTermsGate) setShowTermsGate(true);
+            if (setTermsChecked) setTermsChecked(false);
+            try {
+              if (typeof window !== "undefined" && window.dispatchEvent) {
+                window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
+              }
+            } catch (_) {}
+            return false;
+          }
+        }
+      } else {
+        if (setShowTermsGate) setShowTermsGate(true);
+        if (setTermsChecked) setTermsChecked(false);
+        try {
+          if (typeof window !== "undefined" && window.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
           }
         } catch (_) {}
+        return false;
       }
-      if (setShowTermsGate) setShowTermsGate(true);
-      if (setTermsChecked) setTermsChecked(false);
-      try {
-        if (typeof window !== "undefined" && window.dispatchEvent) {
-          window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
-        }
-      } catch (_) {}
-      return false;
     }
     if (options.requireVerified && user?.emailVerified === false) {
       alert("Email adresini doğrulamalısın. Mailine gelen bağlantıya tıkla.");

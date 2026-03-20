@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { normalizeUsername } from "../../utils/helpers";
+import { hasAcceptedTermsEffective } from "../../utils/termsEffective";
 
 /**
  * Hook for user management operations (edit, save, avatar)
@@ -66,17 +67,26 @@ export function useUserManagement({
     }
 
     const me = typeof user !== "undefined" ? user : null;
-    let termsOk = !!me?.acceptedTermsAt;
+    let termsOk = hasAcceptedTermsEffective(me);
     if (me && !termsOk && me.id && supabase?.from) {
       try {
         const { data } = await supabase
           .from("profiles")
-          .select("accepted_terms_at")
+          .select("accepted_terms_at, created_at")
           .eq("id", me.id)
           .single();
         if (data?.accepted_terms_at) {
           termsOk = true;
           setUser((prev) => (prev?.id === me.id ? { ...prev, acceptedTermsAt: data.accepted_terms_at } : prev));
+        } else if (data?.created_at) {
+          const cms = new Date(data.created_at).getTime();
+          const merged = { ...me, createdAt: me.createdAt ?? (Number.isFinite(cms) ? cms : null) };
+          if (hasAcceptedTermsEffective(merged)) {
+            termsOk = true;
+            setUser((prev) =>
+              prev?.id === me.id ? { ...prev, createdAt: me.createdAt ?? (Number.isFinite(cms) ? cms : prev.createdAt) } : prev
+            );
+          }
         }
       } catch (_) {}
     }

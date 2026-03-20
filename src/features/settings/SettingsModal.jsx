@@ -1,4 +1,5 @@
 import { Modal, Card, Chip, ToggleRow, Button } from "../../components/ui";
+import { hasAcceptedTermsEffective } from "../../utils/termsEffective";
 
 /**
  * Settings Modal Component
@@ -92,7 +93,9 @@ export function SettingsModal({
 
             <div style={{ fontWeight: 950, fontSize: 14, marginTop: 18 }}>Legal</div>
             <div style={{ color: ui.muted, marginTop: 6, fontSize: 12 }}>
-              {user?.acceptedTermsAt ? "Terms accepted." : "Terms not accepted yet."}
+              {hasAcceptedTermsEffective(user)
+                ? "Kullanım şartları (mevcut hesap veya kabul) kapsamında."
+                : "Kullanım şartlarını henüz kabul etmedin."}
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <Button
@@ -130,7 +133,7 @@ export function SettingsModal({
               >
                 Contact
               </Button>
-              {onAcceptTerms && !user?.acceptedTermsAt ? (
+              {onAcceptTerms && !hasAcceptedTermsEffective(user) ? (
                 <Button ui={ui} variant="ok" onClick={onAcceptTerms} size="sm">
                   Kullanım Şartlarını Kabul Et
                 </Button>

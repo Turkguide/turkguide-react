@@ -7,6 +7,7 @@ import { KEY, DEFAULT_ADMINS } from "./constants";
 // Utils
 import { lsSet } from "./utils/localStorage";
 import { now, fmt, normalizeUsername, openDirections, openCall, trackMetric, uuid } from "./utils/helpers";
+import { hasAcceptedTermsEffective } from "./utils/termsEffective";
 
 // Hooks
 import { useSystemTheme } from "./hooks/useSystemTheme";
@@ -226,8 +227,8 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  if (user?.acceptedTermsAt && showTermsGate) setShowTermsGate(false);
-}, [user?.acceptedTermsAt, showTermsGate]);
+  if (showTermsGate && user && hasAcceptedTermsEffective(user)) setShowTermsGate(false);
+}, [user, showTermsGate]);
 
 useEffect(() => {
   if (import.meta.env.DEV) try { console.log("active", active); } catch (_ignored) { /* noop */ }

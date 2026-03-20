@@ -20,3 +20,14 @@ export const DEFAULT_ADMIN_EMAILS = ["vicdanecer@icloud.com", "info@turkguide.ne
 
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
 export const MAX_VIDEO_BYTES = 12 * 1024 * 1024; // 12MB
+
+/**
+ * Bu an ve **sonrasında** oluşturulan hesaplar şartları açıkça kabul etmeli (kayıtta zorunlu).
+ * Öncesi mevcut kullanıcı / ekip sayılır (accepted_terms_at boş olsa bile).
+ * Production’da deploy anına göre ayarlayın: VITE_TERMS_ENFORCEMENT_START_ISO
+ */
+const _iso = import.meta.env.VITE_TERMS_ENFORCEMENT_START_ISO || "2026-02-24T00:00:00.000Z";
+export const TERMS_ENFORCEMENT_START_MS = (() => {
+  const n = Date.parse(_iso);
+  return Number.isFinite(n) ? n : Date.parse("2026-02-24T00:00:00.000Z");
+})();

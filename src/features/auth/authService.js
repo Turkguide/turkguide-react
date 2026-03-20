@@ -95,18 +95,27 @@ export const authService = {
       throw new Error("Hesap silme şu an kullanılamıyor.");
     }
 
-    const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+    let { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
     if (sessionErr || !sessionData?.session?.access_token) {
       throw new Error("Oturum bulunamadı. Lütfen giriş yapın.");
     }
 
-    let token = String(sessionData.session.access_token).trim();
-    if (!token) {
-      throw new Error("Oturum token'ı alınamadı. Lütfen tekrar giriş yapın.");
+    // Apple / OAuth: süresi dolmuş veya stale JWT Edge Function'da "Invalid JWT" verir.
+    // Hesap silmeden önce her zaman yenile (tek istek, güvenli token).
+    try {
+      await Promise.race([
+        supabase.auth.refreshSession(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("refresh_timeout")), 12000)),
+      ]);
+      const after = await supabase.auth.getSession();
+      if (after?.data?.session?.access_token) {
+        sessionData = after.data;
+      }
+    } catch (_) {
+      /* Eski oturumla devam; aşağıda süre kontrolü */
     }
 
-    // refreshSession bazen çok uzun sürüyor; sadece süre bitmek üzeyse kısa süreli yenile
-    const exp = sessionData.session.expires_at;
+    const exp = sessionData?.session?.expires_at;
     const nowSec = Math.floor(Date.now() / 1000);
     if (exp != null && exp <= nowSec + 120) {
       try {
@@ -115,11 +124,13 @@ export const authService = {
           new Promise((_, reject) => setTimeout(() => reject(new Error("refresh_timeout")), 8000)),
         ]);
         const { data: d2 } = await supabase.auth.getSession();
-        const t2 = String(d2?.session?.access_token || "").trim();
-        if (t2) token = t2;
-      } catch (_) {
-        // Mevcut token ile devam (çoğu zaman yeterli)
-      }
+        if (d2?.session) sessionData = d2;
+      } catch (_) {}
+    }
+
+    let token = String(sessionData?.session?.access_token || "").trim();
+    if (!token) {
+      throw new Error("Oturum token'ı alınamadı. Lütfen tekrar giriş yapın.");
     }
 
     if (!supabaseUrl || !anonKey) {
@@ -130,18 +141,36 @@ export const authService = {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    let res;
-    try {
-      res = await fetch(url, {
+    const doFetch = (accessToken) =>
+      fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
           apikey: anonKey,
         },
         body: JSON.stringify({}),
         signal: controller.signal,
       });
+
+    let res;
+    try {
+      res = await doFetch(token);
+      // 401 Invalid JWT → bir kez daha yenile ve tekrar dene (OAuth / race)
+      if (res.status === 401) {
+        try {
+          await Promise.race([
+            supabase.auth.refreshSession(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("refresh_timeout")), 12000)),
+          ]);
+          const { data: d3 } = await supabase.auth.getSession();
+          const t3 = String(d3?.session?.access_token || "").trim();
+          if (t3) {
+            token = t3;
+            res = await doFetch(token);
+          }
+        } catch (_) {}
+      }
     } catch (e) {
       clearTimeout(timeoutId);
       if (e?.name === "AbortError") {

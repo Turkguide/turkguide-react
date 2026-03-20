@@ -1,0 +1,7 @@
+-- Tek seferlik (opsiyonel): Mevcut kullanıcılar için accepted_terms_at doldur.
+-- Uygulama tarafında zaten TERMS_ENFORCEMENT_START_ISO ile "eski hesap" sayılır;
+-- bu SQL raporlama / uyumluluk için kullanılabilir.
+--
+--   UPDATE public.profiles
+--   SET accepted_terms_at = COALESCE(accepted_terms_at, created_at, now())
+--   WHERE accepted_terms_at IS NULL;
