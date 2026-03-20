@@ -4,7 +4,7 @@ import { KEY } from "../../constants";
 import { lsSet } from "../../utils/localStorage";
 import { ensureSeed } from "../../utils/seed";
 import { normalizeUsername } from "../../utils/helpers";
-import { resolveCreatedAtFromSession } from "../../utils/termsEffective";
+import { resolveCreatedAtFromSession, hasAcceptedTermsValue } from "../../utils/termsEffective";
 import { consumePendingAcceptedTerms } from "./pendingProfileFlags";
 
 /**
@@ -47,6 +47,11 @@ export function useAuthState() {
       bio: String(nextUser?.bio || "").trim() || null,
     };
     if (ageInt != null && Number.isInteger(ageInt)) payload.age = ageInt;
+    if (hasAcceptedTermsValue(nextUser?.acceptedTermsAt)) {
+      const at = nextUser.acceptedTermsAt;
+      payload.accepted_terms_at =
+        typeof at === "number" && Number.isFinite(at) ? new Date(at).toISOString() : String(at);
+    }
 
     const doUpsert = () => supabase.from("profiles").upsert(payload, { onConflict: "id" });
 
@@ -82,8 +87,9 @@ export function useAuthState() {
         .from("profiles")
         .select("accepted_terms_at, banned_at")
         .eq("id", userId)
-        .single();
-      if (error || !data) return { acceptedTermsAt: null, bannedAt: null };
+        .maybeSingle();
+      if (error) return { acceptedTermsAt: null, bannedAt: null };
+      if (!data) return { acceptedTermsAt: null, bannedAt: null };
       return {
         acceptedTermsAt: data.accepted_terms_at || null,
         bannedAt: data.banned_at || null,
@@ -113,7 +119,8 @@ export function useAuthState() {
       if (data.country != null) o.country = String(data.country || "");
       if (data.bio != null) o.bio = String(data.bio || "");
       if (data.age != null && data.age !== "") o.age = data.age;
-      if (data.accepted_terms_at && !o.acceptedTermsAt) o.acceptedTermsAt = data.accepted_terms_at;
+      /** DB kazansın: kayıtta yazılmış accepted_terms_at asla state null ile ezilmesin */
+      if (data.accepted_terms_at) o.acceptedTermsAt = data.accepted_terms_at;
       if (data.banned_at != null && o.bannedAt == null) o.bannedAt = data.banned_at;
       if (data.created_at && (o.createdAt == null || o.createdAt === "")) {
         const cms = new Date(data.created_at).getTime();
@@ -134,7 +141,7 @@ export function useAuthState() {
         .from("profiles")
         .select("accepted_terms_at, banned_at")
         .eq("id", nextUser.id)
-        .single();
+        .maybeSingle();
       if (error) return;
       if (!data) return;
       setUser((prev) =>

@@ -6,6 +6,7 @@ import { normalizeUsername } from "../../utils/helpers";
 import { setPendingAcceptedTerms } from "./pendingProfileFlags";
 import { clearAllTgSupabasePreferences } from "../../utils/capacitorStorage";
 import { hasAcceptedTermsEffective } from "../../utils/termsEffective";
+import { hydrateTermsAcceptanceFromDb } from "../../utils/termsDbHydrate";
 
 /**
  * Hook for authentication operations
@@ -124,66 +125,21 @@ export function useAuth({
       return false;
     }
     if (options.requireTerms) {
-      if (hasAcceptedTermsEffective(user)) {
-        /* ok — mevcut ekip (kayıt tarihi öncesi) veya şartı kabul etmiş */
-      } else if (user?.id && supabase?.from) {
-        try {
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 4000));
-          const { data } = await Promise.race([
-            supabase.from("profiles").select("accepted_terms_at, banned_at, created_at").eq("id", user.id).single(),
-            timeout,
-          ]);
-          const createdMs =
-            data?.created_at != null ? new Date(data.created_at).getTime() : null;
-          const merged = {
-            ...user,
-            acceptedTermsAt: data?.accepted_terms_at ?? user.acceptedTermsAt,
-            createdAt: user.createdAt ?? (Number.isFinite(createdMs) ? createdMs : null),
-          };
-          if (hasAcceptedTermsEffective(merged)) {
-            setUser((prev) =>
-              prev?.id === user.id
-                ? {
-                    ...prev,
-                    acceptedTermsAt: data?.accepted_terms_at ?? prev.acceptedTermsAt,
-                    bannedAt: data?.banned_at ?? prev?.bannedAt,
-                    createdAt: prev.createdAt ?? (Number.isFinite(createdMs) ? createdMs : prev.createdAt),
-                  }
-                : prev
-            );
-          } else {
-            if (setShowTermsGate) setShowTermsGate(true);
-            if (setTermsChecked) setTermsChecked(false);
-            try {
-              if (typeof window !== "undefined" && window.dispatchEvent) {
-                window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
-              }
-            } catch (_) {}
-            return false;
-          }
-        } catch (_) {
-          if (hasAcceptedTermsEffective(user)) {
-            /* DB yok / timeout; kayıt tarihi ile ekip kapsamı */
-          } else {
-            if (setShowTermsGate) setShowTermsGate(true);
-            if (setTermsChecked) setTermsChecked(false);
-            try {
-              if (typeof window !== "undefined" && window.dispatchEvent) {
-                window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
-              }
-            } catch (_) {}
-            return false;
-          }
+      if (!hasAcceptedTermsEffective(user)) {
+        const { ok, reason } = await hydrateTermsAcceptanceFromDb({ supabase, user, setUser });
+        if (import.meta.env.DEV && !ok) {
+          console.warn("[tg:terms:requireAuth:blocked]", { userId: user?.id, reason });
         }
-      } else {
-        if (setShowTermsGate) setShowTermsGate(true);
-        if (setTermsChecked) setTermsChecked(false);
-        try {
-          if (typeof window !== "undefined" && window.dispatchEvent) {
-            window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
-          }
-        } catch (_) {}
-        return false;
+        if (!ok) {
+          if (setShowTermsGate) setShowTermsGate(true);
+          if (setTermsChecked) setTermsChecked(false);
+          try {
+            if (typeof window !== "undefined" && window.dispatchEvent) {
+              window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
+            }
+          } catch (_) {}
+          return false;
+        }
       }
     }
     if (options.requireVerified && user?.emailVerified === false) {
@@ -277,16 +233,34 @@ export function useAuth({
         } else {
           const userId = data.user.id;
           let acceptedTermsAt = null;
-          let termsWriteOk = false;
           if (options.termsAccepted === true) {
             acceptedTermsAt = new Date().toISOString();
             setPendingAcceptedTerms(userId, acceptedTermsAt);
-            try {
-              const { error } = await supabase.from("profiles").update({ accepted_terms_at: acceptedTermsAt }).eq("id", userId);
-              termsWriteOk = !error;
-              if (error && import.meta.env.DEV) console.warn("register: accepted_terms_at update failed", error);
-            } catch (e) {
-              if (import.meta.env.DEV) console.warn("register: accepted_terms_at update exception", e);
+            /** .update() profil satırı yoksa / trigger yarışında 0 satır — upsert zorunlu */
+            const upsertRow = {
+              id: userId,
+              email,
+              username: unameKey,
+              accepted_terms_at: acceptedTermsAt,
+            };
+            for (let attempt = 0; attempt < 4; attempt++) {
+              try {
+                const { error } = await supabase
+                  .from("profiles")
+                  .upsert(upsertRow, { onConflict: "id" });
+                if (!error) {
+                  if (import.meta.env.DEV && attempt > 0) {
+                    console.log("[tg:terms:register] upsert ok after retry", attempt);
+                  }
+                  break;
+                }
+                if (import.meta.env.DEV) {
+                  console.warn("[tg:terms:register] upsert accepted_terms_at", attempt, error);
+                }
+              } catch (e) {
+                if (import.meta.env.DEV) console.warn("[tg:terms:register] upsert exception", attempt, e);
+              }
+              await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
             }
           }
           alert("Kayıt alındı ve giriş yapıldı.");

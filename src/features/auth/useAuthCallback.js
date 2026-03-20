@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { supabase } from "../../supabaseClient";
+import { resolveCreatedAtFromSession } from "../../utils/termsEffective";
+import { hydrateTermsAcceptanceFromDb } from "../../utils/termsDbHydrate";
 
 /**
  * Hook for handling auth callbacks (OAuth, email verification)
@@ -83,6 +85,22 @@ export function useAuthCallback({ setUser, setShowAuth, setActive, setLandingSea
 
           // hash'i temizle
           window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+
+          const { data: afterHash } = await supabase.auth.getSession();
+          const hs = afterHash?.session;
+          if (hs?.user) {
+            const hmd = hs.user.user_metadata || {};
+            void hydrateTermsAcceptanceFromDb({
+              supabase,
+              user: {
+                id: hs.user.id,
+                email: hs.user.email,
+                acceptedTermsAt: null,
+                createdAt: resolveCreatedAtFromSession(hs, hmd),
+              },
+              setUser,
+            });
+          }
         }
 
         // 2) ?code=... (PKCE / OAuth)
@@ -130,6 +148,16 @@ export function useAuthCallback({ setUser, setShowAuth, setActive, setLandingSea
               acceptedTermsAt: prev?.acceptedTermsAt ?? null,
               bannedAt: prev?.bannedAt ?? null,
             }));
+            void hydrateTermsAcceptanceFromDb({
+              supabase,
+              user: {
+                id: session.user.id,
+                email: session.user.email,
+                acceptedTermsAt: null,
+                createdAt: resolveCreatedAtFromSession(session, md),
+              },
+              setUser,
+            });
           }
         }
       } catch (e) {
