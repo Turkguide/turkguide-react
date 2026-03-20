@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { normalizeUsername } from "../../utils/helpers";
-import { hasAcceptedTermsEffective } from "../../utils/termsEffective";
+import { resolveTermsForProfileSave } from "../../utils/profileSaveTerms";
 
 /**
  * Hook for user management operations (edit, save, avatar)
@@ -67,31 +67,23 @@ export function useUserManagement({
     }
 
     const me = typeof user !== "undefined" ? user : null;
-    let termsOk = hasAcceptedTermsEffective(me);
-    if (me && !termsOk && me.id && supabase?.from) {
-      try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("accepted_terms_at, created_at")
-          .eq("id", me.id)
-          .single();
-        if (data?.accepted_terms_at) {
-          termsOk = true;
-          setUser((prev) => (prev?.id === me.id ? { ...prev, acceptedTermsAt: data.accepted_terms_at } : prev));
-        } else if (data?.created_at) {
-          const cms = new Date(data.created_at).getTime();
-          const merged = { ...me, createdAt: me.createdAt ?? (Number.isFinite(cms) ? cms : null) };
-          if (hasAcceptedTermsEffective(merged)) {
-            termsOk = true;
-            setUser((prev) =>
-              prev?.id === me.id ? { ...prev, createdAt: me.createdAt ?? (Number.isFinite(cms) ? cms : prev.createdAt) } : prev
-            );
-          }
-        }
-      } catch (_) {}
-    }
-    if (!termsOk && me) {
-      alert("Profil güncellemek için Kullanım Şartları'nı kabul etmelisin.");
+    /** DB tek doğruluk kaynağı; aynı save içinde setUser ile çakışmayı önlemek için taşınır */
+    let resolvedAcceptedTermsAt = me?.acceptedTermsAt ?? null;
+    const termsResolution = await resolveTermsForProfileSave({ me, supabase, setUser });
+    resolvedAcceptedTermsAt = termsResolution.resolvedAcceptedTermsAt ?? resolvedAcceptedTermsAt;
+    if (!termsResolution.ok) {
+      if (import.meta.env.DEV) {
+        console.warn("[tg:profileSave:blocked]", {
+          userId: me?.id,
+          reason: termsResolution.reason,
+          queryError: termsResolution.queryError,
+        });
+      }
+      alert(
+        me
+          ? "Profil güncellemek için Kullanım Şartları'nı kabul etmelisin."
+          : "Oturum bulunamadı. Lütfen tekrar giriş yapın."
+      );
       setSavingEditUser(false);
       return;
     }
@@ -220,7 +212,7 @@ export function useUserManagement({
       ];
     });
 
-    // kendi profiliyse user state'i de güncelle (acceptedTermsAt/bannedAt silinmesin)
+    // kendi profiliyse user state'i de güncelle (acceptedTermsAt: DB çözümü + stale closure fix)
     if (me && u.id === me.id) {
       setUser((p) => ({
         ...(p || {}),
@@ -236,7 +228,7 @@ export function useUserManagement({
         state: u.state ?? p?.state ?? "",
         country: u.country ?? p?.country ?? "",
         bio: u.bio ?? p?.bio ?? "",
-        acceptedTermsAt: p?.acceptedTermsAt ?? null,
+        acceptedTermsAt: resolvedAcceptedTermsAt ?? p?.acceptedTermsAt ?? null,
         bannedAt: p?.bannedAt ?? null,
       }));
     }

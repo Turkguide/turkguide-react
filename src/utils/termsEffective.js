@@ -31,6 +31,14 @@ export function userCreatedAtMs(user) {
   return Number.isFinite(t) ? t : null;
 }
 
+/** Kabul tarihi alanı anlamlı mı (string/number; boş değil). */
+export function hasAcceptedTermsValue(v) {
+  if (v == null || v === "") return false;
+  if (typeof v === "number") return Number.isFinite(v);
+  if (typeof v === "string") return v.trim().length > 0;
+  return true;
+}
+
 /**
  * Şartlar “kabul edilmiş” sayılır:
  * - profiles / user üzerinde acceptedTermsAt var, veya
@@ -40,7 +48,7 @@ export function userCreatedAtMs(user) {
  */
 export function hasAcceptedTermsEffective(user) {
   if (!user) return false;
-  if (user.acceptedTermsAt) return true;
+  if (hasAcceptedTermsValue(user.acceptedTermsAt)) return true;
   const t = userCreatedAtMs(user);
   if (t != null && t < TERMS_ENFORCEMENT_START_MS) return true;
   return false;

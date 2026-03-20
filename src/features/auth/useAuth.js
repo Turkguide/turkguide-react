@@ -444,7 +444,7 @@ export function useAuth({
   async function deleteAccount() {
     if (!supabase?.auth) throw new Error("Bağlantı hazır değil.");
     setDeletingAccount(true);
-    const safetyMs = 120000;
+    const safetyMs = 90000;
     const safetyTimer = setTimeout(() => setDeletingAccount(false), safetyMs);
     try {
       await authService.deleteAccount();

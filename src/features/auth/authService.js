@@ -81,51 +81,48 @@ export const authService = {
   },
 
   /**
-   * Delete account via Edge Function.
-   * Gateway 401 önlemek için fetch ile Authorization + apikey açıkça gönderiliyor (invoke bazen header iletmiyor).
+   * Delete account via Edge Function (fetch + Authorization + apikey).
+   * Yalnızca access token süresi dolmak üzereyse refreshSession; gereksiz 12s bekleme yok.
    */
   async deleteAccount() {
+    const DBG = "[tg:deleteAccount]";
     const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim().replace(/\/$/, "");
     const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
     const fnName = "delete-my-account";
-    /** Edge Function çok adımlı silme yapıyor; 35s sık yetmez */
-    const timeoutMs = 90000;
+    const timeoutMs = 75000;
 
     if (!supabase?.auth?.getSession) {
       throw new Error("Hesap silme şu an kullanılamıyor.");
     }
 
+    const raceRefresh = (ms) =>
+      Promise.race([
+        supabase.auth.refreshSession(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("refresh_timeout")), ms)),
+      ]);
+
     let { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+    if (import.meta.env.DEV) {
+      const s = sessionData?.session;
+      console.log(DBG, { userId: s?.user?.id, hasToken: !!s?.access_token, expires_at: s?.expires_at, sessionErr: sessionErr?.message });
+    }
     if (sessionErr || !sessionData?.session?.access_token) {
       throw new Error("Oturum bulunamadı. Lütfen giriş yapın.");
     }
 
-    // Apple / OAuth: süresi dolmuş veya stale JWT Edge Function'da "Invalid JWT" verir.
-    // Hesap silmeden önce her zaman yenile (tek istek, güvenli token).
-    try {
-      await Promise.race([
-        supabase.auth.refreshSession(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("refresh_timeout")), 12000)),
-      ]);
-      const after = await supabase.auth.getSession();
-      if (after?.data?.session?.access_token) {
-        sessionData = after.data;
-      }
-    } catch (_) {
-      /* Eski oturumla devam; aşağıda süre kontrolü */
-    }
-
-    const exp = sessionData?.session?.expires_at;
     const nowSec = Math.floor(Date.now() / 1000);
-    if (exp != null && exp <= nowSec + 120) {
+    const exp = sessionData.session.expires_at;
+    const needsRefresh = exp == null || exp <= nowSec + 150;
+
+    if (needsRefresh) {
+      if (import.meta.env.DEV) console.log(DBG, { action: "refreshSession", exp, nowSec });
       try {
-        await Promise.race([
-          supabase.auth.refreshSession(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("refresh_timeout")), 8000)),
-        ]);
-        const { data: d2 } = await supabase.auth.getSession();
-        if (d2?.session) sessionData = d2;
-      } catch (_) {}
+        await raceRefresh(8000);
+        const { data: after } = await supabase.auth.getSession();
+        if (after?.session?.access_token) sessionData = after;
+      } catch (_) {
+        /* mevcut token ile devam; 401 olursa aşağıda retry */
+      }
     }
 
     let token = String(sessionData?.session?.access_token || "").trim();
@@ -138,10 +135,8 @@ export const authService = {
     }
 
     const url = `${supabaseUrl}/functions/v1/${fnName}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const doFetch = (accessToken) =>
+    const doFetch = (accessToken, signal) =>
       fetch(url, {
         method: "POST",
         headers: {
@@ -150,49 +145,75 @@ export const authService = {
           apikey: anonKey,
         },
         body: JSON.stringify({}),
-        signal: controller.signal,
+        signal,
       });
 
-    let res;
-    try {
-      res = await doFetch(token);
-      // 401 Invalid JWT → bir kez daha yenile ve tekrar dene (OAuth / race)
-      if (res.status === 401) {
-        try {
-          await Promise.race([
-            supabase.auth.refreshSession(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("refresh_timeout")), 12000)),
-          ]);
-          const { data: d3 } = await supabase.auth.getSession();
-          const t3 = String(d3?.session?.access_token || "").trim();
-          if (t3) {
-            token = t3;
-            res = await doFetch(token);
-          }
-        } catch (_) {}
-      }
-    } catch (e) {
-      clearTimeout(timeoutId);
-      if (e?.name === "AbortError") {
-        throw new Error("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.");
-      }
-      throw new Error("Bağlantı hatası: " + (e?.message || "tekrar deneyin."));
-    }
-    clearTimeout(timeoutId);
+    const parseError = (res, body) => {
+      const base = body?.error ?? body?.message ?? "Hesap silinirken sunucu hatası.";
+      const parts = [base];
+      if (body?.step) parts.push(`step=${body.step}`);
+      if (body?.detail) parts.push(`detail=${body.detail}`);
+      if (body?.code) parts.push(`code=${body.code}`);
+      if (body?.authErrorName) parts.push(`authErrorName=${body.authErrorName}`);
+      if (body?.hint) parts.push(`hint=${body.hint}`);
+      parts.push(`http=${res.status}`);
+      return parts.join(" · ");
+    };
 
-    const raw = await res.text().catch(() => "");
-    let body = {};
-    try {
-      if (raw?.trim().startsWith("{")) body = JSON.parse(raw);
-    } catch (_) {}
+    const runOnce = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      let res;
+      try {
+        res = await doFetch(token, controller.signal);
+      } catch (e) {
+        clearTimeout(timeoutId);
+        if (e?.name === "AbortError") {
+          throw new Error("İstek zaman aşımına uğradı (75s). Ağ yavaş olabilir; tekrar deneyin.");
+        }
+        throw new Error("Bağlantı hatası: " + (e?.message || "tekrar deneyin."));
+      }
+      clearTimeout(timeoutId);
+      const raw = await res.text().catch(() => "");
+      let body = {};
+      try {
+        if (raw?.trim().startsWith("{")) body = JSON.parse(raw);
+      } catch (_) {}
+
+      if (import.meta.env.DEV && !res.ok) {
+        console.warn(DBG, { status: res.status, body, rawPreview: raw?.slice?.(0, 400) });
+      }
+
+      return { res, body, raw };
+    };
+
+    let { res, body } = await runOnce();
+
+    if (res.status === 401) {
+      if (import.meta.env.DEV) console.log(DBG, { action: "refresh_after_401" });
+      try {
+        await raceRefresh(8000);
+        const { data: d3 } = await supabase.auth.getSession();
+        const t3 = String(d3?.session?.access_token || "").trim();
+        if (t3) {
+          token = t3;
+          const second = await runOnce();
+          res = second.res;
+          body = second.body;
+        }
+      } catch (_) {}
+    }
 
     if (!res.ok) {
-      let msg = body?.error ?? body?.message ?? "Hesap silinirken sunucu hatası.";
-      if (body?.step) msg += " [" + body.step + "]";
-      if (res.status === 401 && /invalid|expired|jwt|token|missing|authorization/i.test(msg)) {
-        msg += " Çıkış yapıp tekrar giriş yapın, ardından hesap silmeyi tekrar deneyin.";
+      let msg = parseError(res, body);
+      if (res.status === 401 && !body?.detail) {
+        msg += " · Oturum yenilenemedi; bir kez daha deneyin.";
       }
-      throw new Error(msg);
+      const err = new Error(msg);
+      err.tgStep = body?.step;
+      err.tgDetail = body?.detail;
+      err.tgHttpStatus = res.status;
+      throw err;
     }
   },
 

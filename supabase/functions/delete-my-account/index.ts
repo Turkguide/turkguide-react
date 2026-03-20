@@ -143,6 +143,8 @@ Deno.serve(async (req) => {
       step: "auth",
       detail: "getUser_failed",
       authErrorName: userError?.name ?? null,
+      /** İstemci aynı JWT ile getUser(token) — süresi dolmuş veya proje anahtarı uyumsuz olabilir */
+      hint: "client_should_refresh_session_before_retry",
     });
   }
 
