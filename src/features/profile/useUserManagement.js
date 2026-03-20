@@ -330,7 +330,7 @@ export function useUserManagement({
           setSavingEditUser(false);
           return;
         }
-        console.log("✅ profiles upsert OK (before auth metadata)");
+        console.log("✅ profiles upsert OK (JWT metadata arka planda)");
 
         const jwtPayload = {
           ...payload,
@@ -338,120 +338,58 @@ export function useUserManagement({
             avatarStr && avatarLen > 0 && avatarLen <= MAX_AVATAR_IN_JWT_CHARS ? avatarStr : null,
         };
 
-        console.log("🧪 updateUser payload:", {
+        console.log("🧪 updateUser (background) payload:", {
           ...jwtPayload,
           avatar_len_stored_in_jwt: jwtPayload.avatar ? String(jwtPayload.avatar).length : 0,
           avatar_len_full: avatarLen,
-          has_session: !!sessUser,
-          session_email: sessUser.email,
         });
 
-        let error = null;
-        let updateUserTimedOut = false;
-
-        async function updateUserWithTimeout(ms) {
-          const t = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("timeout")), ms)
-          );
-          return await Promise.race([
-            supabase.auth.updateUser({ data: jwtPayload }).then((r) => r),
-            t,
-          ]);
-        }
-
-        try {
-          let result;
+        // Oturum JWT'si (updateUser) ağda çok sürebilir — UI bunu beklemez; profil zaten profiles'ta.
+        void (async () => {
           try {
-            result = await updateUserWithTimeout(60000);
-          } catch (e1) {
-            if (e1?.message === "timeout") {
-              console.warn("⚠️ updateUser 60s timeout, retry once (profiles already saved)");
-              try {
-                result = await updateUserWithTimeout(90000);
-              } catch (e2) {
-                if (e2?.message === "timeout") {
-                  updateUserTimedOut = true;
-                  console.warn("⚠️ updateUser timed out after retry — profil DB'de, oturum metadata gecikmiş olabilir");
-                  result = null;
-                } else {
+            const runWithCap = async (ms) => {
+              const t = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("timeout")), ms)
+              );
+              return await Promise.race([
+                supabase.auth.updateUser({ data: jwtPayload }).then((r) => r),
+                t,
+              ]);
+            };
+            let r;
+            try {
+              r = await runWithCap(45000);
+            } catch (e1) {
+              if (e1?.message === "timeout") {
+                try {
+                  r = await runWithCap(60000);
+                } catch (e2) {
+                  if (e2?.message === "timeout") {
+                    console.warn("⚠️ updateUser arka planda zaman aşımı — refreshSession deneniyor");
+                    await supabase.auth.refreshSession().catch(() => {});
+                    return;
+                  }
                   throw e2;
                 }
+              } else {
+                throw e1;
               }
-            } else {
-              throw e1;
             }
+            if (r?.error) {
+              console.warn("⚠️ updateUser (background) hata:", r.error);
+              return;
+            }
+            await supabase.auth.refreshSession().catch(() => {});
+          } catch (e) {
+            console.warn("⚠️ updateUser background:", e);
           }
-          if (result?.error) error = result.error;
-        } catch (e) {
-          console.error("❌ updateUser exception:", e);
-          throw e;
-        }
+        })();
 
-        if (error) {
-          console.error("❌ updateUser error FULL:", error);
-          const msg =
-            "updateUser error: " +
-              (error.message || "") +
-              "\nstatus: " +
-              (error.status || "") +
-              "\nname: " +
-              (error.name || "") +
-              "\nJSON: " +
-              JSON.stringify(error);
-          setEditUserError(msg);
-          alert(msg);
-          setSavingEditUser(false);
-          return;
-        }
-
-        console.log(updateUserTimedOut ? "⚠️ updateUser metadata skipped (timeout, DB OK)" : "✅ updateUser OK");
-
-        // 🔁 Yerel state — önce (alert/refreshSession UI'ı kilitlemesin)
-        setUsers((prev) =>
-          (prev || []).map((x) =>
-            String(x?.id) === String(u?.id)
-              ? {
-                  ...x,
-                  username,
-                  avatar: avatarStr ? avatarStr : (x?.avatar || ""),
-                  XP: Number(u?.XP ?? x?.XP ?? 0),
-                  age: u?.age ?? x?.age ?? "",
-                  city: u?.city ?? x?.city ?? "",
-                  state: u?.state ?? x?.state ?? "",
-                  country: u?.country ?? x?.country ?? "",
-                  bio: u?.bio ?? x?.bio ?? "",
-                }
-              : x
-          )
-        );
-
-        if (user && String(user?.id) === String(u?.id)) {
-          setUser((p) => ({
-            ...(p || {}),
-            username,
-            avatar: avatarStr ? avatarStr : (p?.avatar || ""),
-            XP: Number(u?.XP ?? p?.XP ?? 0),
-            age: u?.age ?? p?.age ?? "",
-            city: u?.city ?? p?.city ?? "",
-            state: u?.state ?? p?.state ?? "",
-            country: u?.country ?? p?.country ?? "",
-            bio: u?.bio ?? p?.bio ?? "",
-            acceptedTermsAt: p?.acceptedTermsAt ?? null,
-            bannedAt: p?.bannedAt ?? null,
-          }));
-        }
-
-        // ✅ "Kaydediliyor" hemen kalksın — refreshSession asla await etme (ağda takılır)
         setSavingEditUser(false);
         setShowEditUser(false);
         setEditUserCtx(null);
         admin?.addLog?.("USER_EDIT", { id: u.id, username });
-
         alert("Profil güncellendi.");
-
-        if (updateUserTimedOut) {
-          void supabase.auth.refreshSession().catch(() => {});
-        }
       } catch (e) {
         console.error("💥 updateUser crash FULL:", e);
         const msg = "updateUser crash: " + (e?.message || JSON.stringify(e));
