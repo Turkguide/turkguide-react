@@ -20,6 +20,17 @@ function norm(s: string | null | undefined): string {
 
 type StepResult = { step: string; success: true } | { step: string; success: false; code: string; message: string; details?: string };
 
+function isSchemaMissingError(errLike: unknown): boolean {
+  const err = errLike as { code?: string; message?: string };
+  const code = String(err?.code ?? "").toUpperCase();
+  const msg = String(err?.message ?? "").toLowerCase();
+  return (
+    code === "42P01" || // undefined_table
+    code === "42703" || // undefined_column
+    /does not exist|could not find|undefined table|undefined column|schema cache|pgrst/i.test(msg)
+  );
+}
+
 async function runStep(
   step: string,
   fn: () => Promise<{ error: unknown } | null>
@@ -37,6 +48,56 @@ async function runStep(
     console.log(JSON.stringify({ step, success: true }));
     return { step, success: true };
   } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const details = e instanceof Error ? (e.stack ?? undefined) : undefined;
+    console.error(JSON.stringify({ step, success: false, code: "EXCEPTION", message, details }));
+    return { step, success: false, code: "EXCEPTION", message, details };
+  }
+}
+
+async function runOptionalStep(
+  step: string,
+  fn: () => Promise<{ error: unknown } | null>
+): Promise<StepResult> {
+  try {
+    const result = await fn();
+    if (result?.error) {
+      if (isSchemaMissingError(result.error)) {
+        const err = result.error as { code?: string; message?: string };
+        console.warn(
+          JSON.stringify({
+            step,
+            success: true,
+            skipped: true,
+            reason: "schema_missing",
+            code: err?.code ?? null,
+            message: err?.message ?? null,
+          })
+        );
+        return { step, success: true };
+      }
+      const err = result.error as { code?: string; message?: string; details?: string };
+      const code = err?.code != null ? String(err.code) : "UNKNOWN";
+      const message = err?.message != null ? String(err.message) : "Unknown error";
+      const details = err?.details != null ? String(err.details) : undefined;
+      console.error(JSON.stringify({ step, success: false, code, message, details }));
+      return { step, success: false, code, message, details };
+    }
+    console.log(JSON.stringify({ step, success: true }));
+    return { step, success: true };
+  } catch (e) {
+    if (isSchemaMissingError(e)) {
+      console.warn(
+        JSON.stringify({
+          step,
+          success: true,
+          skipped: true,
+          reason: "schema_missing_exception",
+          message: e instanceof Error ? e.message : String(e),
+        })
+      );
+      return { step, success: true };
+    }
     const message = e instanceof Error ? e.message : String(e);
     const details = e instanceof Error ? (e.stack ?? undefined) : undefined;
     console.error(JSON.stringify({ step, success: false, code: "EXCEPTION", message, details }));
@@ -168,39 +229,39 @@ Deno.serve(async (req) => {
   } catch (_) {}
 
   const steps: Array<() => Promise<StepResult>> = [
-    async () => runStep("reports", async () => {
+    async () => runOptionalStep("reports", async () => {
       const { error } = await admin.from("reports").delete().eq("reporter_id", userId);
       return error ? { error } : null;
     }),
-    async () => runStep("user_blocks_blocker", async () => {
+    async () => runOptionalStep("user_blocks_blocker", async () => {
       const { error } = await admin.from("user_blocks").delete().eq("blocker_id", userId);
       return error ? { error } : null;
     }),
-    async () => runStep("user_blocks_blocked", async () => {
+    async () => runOptionalStep("user_blocks_blocked", async () => {
       const { error } = await admin.from("user_blocks").delete().eq("blocked_id", userId);
       return error ? { error } : null;
     }),
-    async () => runStep("dms_from", async () => {
+    async () => runOptionalStep("dms_from", async () => {
       if (!usernameNorm) return null;
       const { error } = await admin.from("dms").delete().ilike("from_username", usernameNorm);
       return error ? { error } : null;
     }),
-    async () => runStep("dms_to", async () => {
+    async () => runOptionalStep("dms_to", async () => {
       if (!usernameNorm) return null;
       const { error } = await admin.from("dms").delete().ilike("to_username", usernameNorm);
       return error ? { error } : null;
     }),
-    async () => runStep("notifications_from", async () => {
+    async () => runOptionalStep("notifications_from", async () => {
       if (!usernameNorm) return null;
       const { error } = await admin.from("notifications").delete().ilike("from_username", usernameNorm);
       return error ? { error } : null;
     }),
-    async () => runStep("notifications_to", async () => {
+    async () => runOptionalStep("notifications_to", async () => {
       if (!usernameNorm) return null;
       const { error } = await admin.from("notifications").delete().ilike("to_username", usernameNorm);
       return error ? { error } : null;
     }),
-    async () => runStep("appointments", async () => {
+    async () => runOptionalStep("appointments", async () => {
       if (!usernameNorm) return null;
       const { error } = await admin.from("appointments").delete().ilike("from_username", usernameNorm);
       return error ? { error } : null;
@@ -224,26 +285,26 @@ Deno.serve(async (req) => {
         }
         return null;
       }),
-    async () => runStep("biz_apps_user_id", async () => {
+    async () => runOptionalStep("biz_apps_user_id", async () => {
       const { error } = await admin.from("biz_apps").delete().eq("user_id", userId);
       return error ? { error } : null;
     }),
-    async () => runStep("biz_apps_owner", async () => {
+    async () => runOptionalStep("biz_apps_owner", async () => {
       if (!usernameNorm) return null;
       const { error } = await admin.from("biz_apps").delete().ilike("owner_username", usernameNorm);
       return error ? { error } : null;
     }),
-    async () => runStep("biz_apps_applicant", async () => {
+    async () => runOptionalStep("biz_apps_applicant", async () => {
       if (!usernameNorm) return null;
       const { error } = await admin.from("biz_apps").delete().ilike("applicant", usernameNorm);
       return error ? { error } : null;
     }),
-    async () => runStep("businesses", async () => {
+    async () => runOptionalStep("businesses", async () => {
       if (!usernameNorm) return null;
       const { error } = await admin.from("businesses").delete().ilike("owner_username", usernameNorm);
       return error ? { error } : null;
     }),
-    async () => runStep("admin_logs", async () => {
+    async () => runOptionalStep("admin_logs", async () => {
       const { error } = await admin.from("admin_logs").delete().eq("admin_id", userId);
       return error ? { error } : null;
     }),

@@ -110,25 +110,39 @@ export const authService = {
       throw new Error("Oturum bulunamadı. Lütfen giriş yapın.");
     }
 
-    const nowSec = Math.floor(Date.now() / 1000);
-    const exp = sessionData.session.expires_at;
-    const needsRefresh = exp == null || exp <= nowSec + 150;
-
-    if (needsRefresh) {
-      if (import.meta.env.DEV) console.log(DBG, { action: "refreshSession", exp, nowSec });
+    const validateToken = async (token) => {
+      if (!token) return false;
       try {
-        await raceRefresh(8000);
-        const { data: after } = await supabase.auth.getSession();
-        if (after?.session?.access_token) sessionData = after;
+        const { data, error } = await supabase.auth.getUser(token);
+        return !error && !!data?.user?.id;
       } catch (_) {
-        /* mevcut token ile devam; 401 olursa aşağıda retry */
+        return false;
       }
-    }
+    };
 
-    let token = String(sessionData?.session?.access_token || "").trim();
-    if (!token) {
-      throw new Error("Oturum token'ı alınamadı. Lütfen tekrar giriş yapın.");
-    }
+    const getValidatedToken = async () => {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const exp = sessionData?.session?.expires_at;
+      const current = String(sessionData?.session?.access_token || "").trim();
+      const needsRefresh = exp == null || exp <= nowSec + 150;
+
+      if (!needsRefresh && (await validateToken(current))) return current;
+
+      if (import.meta.env.DEV) {
+        console.log(DBG, { action: "refreshSession_preflight", exp, nowSec, reason: needsRefresh ? "expiring" : "invalid_token" });
+      }
+      await raceRefresh(20000);
+      const { data: refreshed } = await supabase.auth.getSession();
+      const next = String(refreshed?.session?.access_token || "").trim();
+      if (!next) throw new Error("Oturum yenilenemedi. Lütfen tekrar giriş yapın.");
+      if (!(await validateToken(next))) {
+        throw new Error("Oturum geçersiz (Invalid JWT). Lütfen çıkış yapıp tekrar giriş yapın.");
+      }
+      sessionData = refreshed;
+      return next;
+    };
+
+    let token = await getValidatedToken();
 
     if (!supabaseUrl || !anonKey) {
       throw new Error("Hesap silme yapılandırması eksik (URL veya anon key).");
@@ -192,10 +206,10 @@ export const authService = {
     if (res.status === 401) {
       if (import.meta.env.DEV) console.log(DBG, { action: "refresh_after_401" });
       try {
-        await raceRefresh(8000);
+        await raceRefresh(20000);
         const { data: d3 } = await supabase.auth.getSession();
         const t3 = String(d3?.session?.access_token || "").trim();
-        if (t3) {
+        if (t3 && (await validateToken(t3))) {
           token = t3;
           const second = await runOnce();
           res = second.res;
