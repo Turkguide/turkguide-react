@@ -125,12 +125,13 @@ export function useAuth({
       return false;
     }
     if (options.requireTerms) {
-      if (!hasAcceptedTermsEffective(user)) {
+      /** Stale state güvenilmez — her kapalı işlemde DB ile senkron (blok yalnızca DB boş + grandfather yok). */
+      if (user?.id && supabase?.from) {
         const { ok, reason } = await hydrateTermsAcceptanceFromDb({ supabase, user, setUser });
-        if (import.meta.env.DEV && !ok) {
-          console.warn("[tg:terms:requireAuth:blocked]", { userId: user?.id, reason });
-        }
         if (!ok) {
+          if (import.meta.env.DEV) {
+            console.warn("[tg:terms:requireAuth:blocked]", { userId: user?.id, reason });
+          }
           if (setShowTermsGate) setShowTermsGate(true);
           if (setTermsChecked) setTermsChecked(false);
           try {
@@ -140,6 +141,15 @@ export function useAuth({
           } catch (_) {}
           return false;
         }
+      } else if (!hasAcceptedTermsEffective(user)) {
+        if (setShowTermsGate) setShowTermsGate(true);
+        if (setTermsChecked) setTermsChecked(false);
+        try {
+          if (typeof window !== "undefined" && window.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
+          }
+        } catch (_) {}
+        return false;
       }
     }
     if (options.requireVerified && user?.emailVerified === false) {

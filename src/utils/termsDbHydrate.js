@@ -22,11 +22,25 @@ export async function hydrateTermsAcceptanceFromDb({ supabase, user, setUser }) 
     .eq("id", userId)
     .maybeSingle();
 
+  const dbRaw = data?.accepted_terms_at ?? null;
+  try {
+    const debug =
+      import.meta.env.DEV ||
+      (typeof localStorage !== "undefined" && localStorage.getItem("tg_terms_debug") === "1");
+    if (debug) {
+      console.log("TERMS DEBUG:", {
+        userId,
+        userState: user?.acceptedTermsAt ?? null,
+        dbValue: dbRaw,
+        queryError: error?.message ?? null,
+      });
+    }
+  } catch (_) {}
   if (import.meta.env.DEV) {
     console.log(DBG, {
       userId,
       frontendAcceptedTermsAt: user?.acceptedTermsAt ?? null,
-      dbAcceptedTermsAt: data?.accepted_terms_at ?? null,
+      dbAcceptedTermsAt: dbRaw,
       error: error?.message ?? null,
     });
   }
@@ -39,7 +53,7 @@ export async function hydrateTermsAcceptanceFromDb({ supabase, user, setUser }) 
     return { ok, reason: "query_error", dbAcceptedTermsAt: null };
   }
 
-  const dbAt = data?.accepted_terms_at ?? null;
+  const dbAt = dbRaw;
   if (hasAcceptedTermsValue(dbAt)) {
     setUser?.((prev) =>
       String(prev?.id) === String(userId)

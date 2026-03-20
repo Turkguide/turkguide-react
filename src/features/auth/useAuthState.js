@@ -179,12 +179,21 @@ export function useAuthState() {
 
     function applyProfileFlags(nextUser) {
       const prev = userRef.current;
-      // Pending: Accept tıklandığı anda setUser commit olmadan auth callback çalışabilir; önce pending oku
       const pendingAccepted = consumePendingAcceptedTerms(nextUser.id);
+      /**
+       * KRİTİK: fetchProfileFlags ile gelen DB değeri korunmalı.
+       * Eski sıra pending ?? prev — prev stale null iken DB’deki accepted_terms_at siliniyordu.
+       * Doğru sıra: taze DB (nextUser) → pending (kısa yarış) → prev.
+       */
       nextUser.acceptedTermsAt =
-        pendingAccepted ?? (prev?.id === nextUser.id ? prev.acceptedTermsAt : null) ?? null;
+        nextUser.acceptedTermsAt ??
+        pendingAccepted ??
+        (prev?.id === nextUser.id ? prev.acceptedTermsAt : null) ??
+        null;
       nextUser.bannedAt =
-        prev?.id === nextUser.id ? (prev.bannedAt ?? null) : null;
+        nextUser.bannedAt ??
+        (prev?.id === nextUser.id ? prev.bannedAt : null) ??
+        null;
     }
 
     const restoreAndListen = async () => {
