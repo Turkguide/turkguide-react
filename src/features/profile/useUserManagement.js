@@ -406,15 +406,7 @@ export function useUserManagement({
 
         console.log(updateUserTimedOut ? "⚠️ updateUser metadata skipped (timeout, DB OK)" : "✅ updateUser OK");
 
-        // Profil zaten profiles'ta; yerel state güncelleniyor. Zaman aşımında bile kullanıcıya tek mesaj.
-        alert("Profil güncellendi.");
-        if (updateUserTimedOut) {
-          try {
-            await supabase.auth.refreshSession();
-          } catch (_) {}
-        }
-
-        // 🔁 Supabase başarılı → local state'i GARANTİ senkronla
+        // 🔁 Yerel state — önce (alert/refreshSession UI'ı kilitlemesin)
         setUsers((prev) =>
           (prev || []).map((x) =>
             String(x?.id) === String(u?.id)
@@ -433,7 +425,6 @@ export function useUserManagement({
           )
         );
 
-        // 👤 kendi hesabıysa user state'i de güncelle (acceptedTermsAt/bannedAt silinmesin)
         if (user && String(user?.id) === String(u?.id)) {
           setUser((p) => ({
             ...(p || {}),
@@ -450,11 +441,17 @@ export function useUserManagement({
           }));
         }
 
-        // ✅ Kritik kısım bitti — hemen modalı kapat, loading'i kapat (takılma olmasın)
+        // ✅ "Kaydediliyor" hemen kalksın — refreshSession asla await etme (ağda takılır)
         setSavingEditUser(false);
         setShowEditUser(false);
         setEditUserCtx(null);
         admin?.addLog?.("USER_EDIT", { id: u.id, username });
+
+        alert("Profil güncellendi.");
+
+        if (updateUserTimedOut) {
+          void supabase.auth.refreshSession().catch(() => {});
+        }
       } catch (e) {
         console.error("💥 updateUser crash FULL:", e);
         const msg = "updateUser crash: " + (e?.message || JSON.stringify(e));
