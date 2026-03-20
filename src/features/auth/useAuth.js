@@ -407,16 +407,18 @@ export function useAuth({
   async function deleteAccount() {
     if (!supabase?.auth) throw new Error("Bağlantı hazır değil.");
     setDeletingAccount(true);
-    const safetyMs = 40000;
+    const safetyMs = 120000;
     const safetyTimer = setTimeout(() => setDeletingAccount(false), safetyMs);
     try {
       await authService.deleteAccount();
       clearTimeout(safetyTimer);
       // Sayfa yenilenmezse (WebView / aynı URL) UI kilitli kalmasın
       setDeletingAccount(false);
-      // Sunucu kullanıcıyı sildi; yerel oturumu özellikle Capacitor Preferences'tan temizle
+      // Kullanıcı sunucuda silindi; global signOut uzun sürebilir veya 401 — sadece yerel temizlik
       try {
-        await authService.signOut();
+        if (supabase?.auth?.signOut) {
+          await supabase.auth.signOut({ scope: "local" });
+        }
       } catch (_) {}
       await clearAllTgSupabasePreferences();
       hardResetToHome();

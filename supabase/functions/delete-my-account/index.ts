@@ -207,7 +207,14 @@ Deno.serve(async (req) => {
       runStep("hub_posts", async () => {
         // Bazı satırlarda (ör. repost) user_id yok; username ile kaldır
         const { error: e1 } = await admin.from("hub_posts").delete().eq("user_id", userId);
-        if (e1) return { error: e1 };
+        if (e1) {
+          const errRec = e1 as { message?: string; code?: string };
+          const em = String(errRec?.message ?? errRec?.code ?? "").toLowerCase();
+          // Şemada user_id kolonu yoksa ilk delete başarısız olur; username ile devam et
+          if (!/column|schema|does not exist|could not find|42703|pgrst/i.test(em)) {
+            return { error: e1 };
+          }
+        }
         const unameForEq = profileUsernameRaw || usernameNorm;
         if (unameForEq) {
           const { error: e2 } = await admin.from("hub_posts").delete().eq("username", unameForEq);

@@ -88,24 +88,38 @@ export const authService = {
     const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim().replace(/\/$/, "");
     const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
     const fnName = "delete-my-account";
-    const timeoutMs = 35000;
+    /** Edge Function çok adımlı silme yapıyor; 35s sık yetmez */
+    const timeoutMs = 90000;
 
     if (!supabase?.auth?.getSession) {
       throw new Error("Hesap silme şu an kullanılamıyor.");
     }
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData?.session) {
+    const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+    if (sessionErr || !sessionData?.session?.access_token) {
       throw new Error("Oturum bulunamadı. Lütfen giriş yapın.");
     }
-    await supabase.auth.refreshSession();
-    const { data: afterRefresh } = await supabase.auth.getSession();
-    if (!afterRefresh?.session?.access_token) {
-      throw new Error("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
-    }
-    const token = String(afterRefresh.session.access_token).trim();
+
+    let token = String(sessionData.session.access_token).trim();
     if (!token) {
       throw new Error("Oturum token'ı alınamadı. Lütfen tekrar giriş yapın.");
+    }
+
+    // refreshSession bazen çok uzun sürüyor; sadece süre bitmek üzeyse kısa süreli yenile
+    const exp = sessionData.session.expires_at;
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (exp != null && exp <= nowSec + 120) {
+      try {
+        await Promise.race([
+          supabase.auth.refreshSession(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("refresh_timeout")), 8000)),
+        ]);
+        const { data: d2 } = await supabase.auth.getSession();
+        const t2 = String(d2?.session?.access_token || "").trim();
+        if (t2) token = t2;
+      } catch (_) {
+        // Mevcut token ile devam (çoğu zaman yeterli)
+      }
     }
 
     if (!supabaseUrl || !anonKey) {
