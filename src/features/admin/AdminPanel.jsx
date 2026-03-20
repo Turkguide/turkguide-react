@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Card, Button, Avatar, Chip, inputStyle } from "../../components/ui";
 import { fmt, normalizeUsername } from "../../utils/helpers";
+import { AdminUserDetailModal } from "./AdminUserDetailModal";
 
 const PAGE_SIZE = 8;
 
@@ -238,6 +239,7 @@ export function AdminPanel({
   const [apptsPage, setApptsPage] = useState(1);
   const [logsPage, setLogsPage] = useState(1);
   const [reportsPage, setReportsPage] = useState(1);
+  const [detailUserId, setDetailUserId] = useState(null);
 
   const startTodayMs = useMemo(() => getStartOfTodayMs(), []);
 
@@ -287,7 +289,8 @@ export function AdminPanel({
     return safeUsers.filter(
       (u) =>
         String(u.username || "").toLowerCase().includes(q) ||
-        String(u.email || "").toLowerCase().includes(q)
+        String(u.email || "").toLowerCase().includes(q) ||
+        String(u.id || "").toLowerCase().includes(q)
     );
   }, [safeUsers, userQuery]);
 
@@ -832,10 +835,23 @@ export function AdminPanel({
                     setUserQuery(e.target.value);
                     setUsersPage(1);
                   }}
-                  placeholder="Kullanıcı ara..."
-                  style={inputStyle(ui, { minWidth: 220 })}
+                  placeholder="Kullanıcı ara (ad, e-posta)…"
+                  style={inputStyle(ui, { minWidth: 240 })}
                 />
+                <div style={{ color: ui.muted2, fontSize: 12 }}>Satıra veya Detay’a tıklayarak tam profili görün.</div>
               </div>
+              <AdminUserDetailModal
+                ui={ui}
+                open={!!detailUserId}
+                userId={detailUserId}
+                onClose={() => setDetailUserId(null)}
+                onManage={() => {
+                  const row = safeUsers.find((x) => String(x.id) === String(detailUserId));
+                  setDetailUserId(null);
+                  if (row) openEditUser(row);
+                }}
+                onOpenPublicProfile={(uname) => profile.openProfileByUsername(uname)}
+              />
               {usersPageData.total === 0 ? (
                 <EmptyState ui={ui} icon="👤" title="Kullanıcı bulunamadı" subtitle="Liste boş veya arama sonucu yok." />
               ) : (
@@ -851,29 +867,53 @@ export function AdminPanel({
                           flexWrap: "wrap",
                           alignItems: "center",
                           border: `1px solid ${ui.border}`,
-                          borderRadius: 14,
+                          borderRadius: 16,
                           padding: 12,
                           background: ui.mode === "light" ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+                          boxShadow: ui.mode === "light" ? "0 2px 12px rgba(0,0,0,0.04)" : "0 4px 20px rgba(0,0,0,0.2)",
                         }}
                       >
-                        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                          <Avatar ui={ui} src={u.avatar} size={44} label={u.username} />
-                          <div>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setDetailUserId(u.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setDetailUserId(u.id);
+                            }
+                          }}
+                          style={{
+                            display: "flex",
+                            gap: 12,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            cursor: "pointer",
+                            flex: "1 1 240px",
+                            minWidth: 0,
+                          }}
+                        >
+                          <Avatar ui={ui} src={u.avatar} size={48} label={u.username} />
+                          <div style={{ minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                              <Chip ui={ui} onClick={() => profile.openProfileByUsername(u.username)}>
-                                @{u.username}
-                              </Chip>
-                              <span style={{ color: ui.muted, fontSize: 13 }}>Durum: {u.Tier || "Onaylı"}</span>
+                              <span style={{ fontWeight: 950, fontSize: 15 }}>@{u.username}</span>
+                              <span style={{ color: ui.muted, fontSize: 12 }}>{u.Tier || "Onaylı"}</span>
                               {(u.postCount != null || u.commentCount != null) && (
                                 <span style={{ color: ui.muted2, fontSize: 12 }}>
                                   Paylaşım: {u.postCount ?? "—"} · Yorum: {u.commentCount ?? "—"}
                                 </span>
                               )}
                             </div>
-                            <div style={{ color: ui.muted2, fontSize: 12, marginTop: 4 }}>Kayıt: {fmt(u.createdAt)}</div>
+                            <div style={{ color: ui.muted, fontSize: 12, marginTop: 4 }}>
+                              {u.email ? <span>{u.email}</span> : <span style={{ color: ui.muted2 }}>E-posta yok</span>}
+                            </div>
+                            <div style={{ color: ui.muted2, fontSize: 12, marginTop: 2 }}>Kayıt: {fmt(u.createdAt)}</div>
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: 8 }}>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
+                          <Button ui={ui} variant="solidBlue" onClick={() => setDetailUserId(u.id)}>
+                            Detay
+                          </Button>
                           <Button ui={ui} variant="blue" onClick={() => openEditUser(u)}>
                             Yönet
                           </Button>

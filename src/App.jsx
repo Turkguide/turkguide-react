@@ -341,8 +341,17 @@ useEffect(() => {
           email: r.email || "",
           avatar: r.avatar || "",
           createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
+          updatedAt: r.updated_at ? new Date(r.updated_at).getTime() : null,
           Tier: r.tier || r.Tier || "Onaylı",
           xp: r.xp || r.XP || 0,
+          role: r.role || null,
+          age: r.age != null ? r.age : null,
+          city: r.city || "",
+          state: r.state || "",
+          country: r.country || "",
+          bio: r.bio || "",
+          acceptedTermsAt: r.accepted_terms_at ? new Date(r.accepted_terms_at).getTime() : null,
+          bannedAt: r.banned_at ? new Date(r.banned_at).getTime() : null,
         }));
         setUsers(mapped);
       }
