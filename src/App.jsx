@@ -592,6 +592,7 @@ useEffect(() => {
     setShowAppt: null, // Will be set after appointment hook
     setApptBizId: null, // Will be set after appointment hook
     setApptMsg: null, // Will be set after appointment hook
+    setShowDeleteAccountConfirm,
   });
 
   // Auth callback handling
@@ -1960,12 +1961,18 @@ return (
         title="Hesabı kalıcı olarak sil"
         onClose={() => !auth.deletingAccount && setShowDeleteAccountConfirm(false)}
         width={480}
+        zIndex={5600}
       >
         <div style={{ display: "grid", gap: 14 }}>
           <div style={{ color: ui.muted, fontSize: 14 }}>
             Hesabınız ve ilişkili tüm verileriniz (profil, paylaşımlar, yorumlar, mesajlar, randevular)
             kalıcı olarak silinecektir. Bu işlem geri alınamaz.
           </div>
+          {auth.deletingAccount ? (
+            <div style={{ color: ui.muted, fontSize: 13, fontWeight: 700 }}>
+              Hesap siliniyor… Lütfen bekleyin (birkaç saniye sürebilir).
+            </div>
+          ) : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
             <Button
               ui={ui}
@@ -2012,7 +2019,8 @@ return (
         onAcceptTerms={acceptTerms}
         onRequestDeleteAccount={() => {
           settingsHook.setShowSettings(false);
-          setShowDeleteAccountConfirm(true);
+          // Ayarlar modalı kapanırken onayı aynı tıkta açmak bazı cihazlarda ikinci pencerenin görünmemesine yol açabiliyor
+          window.setTimeout(() => setShowDeleteAccountConfirm(true), 0);
         }}
       />
 

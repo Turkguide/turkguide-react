@@ -8,7 +8,28 @@ import { setPendingAcceptedTerms } from "./pendingProfileFlags";
 /**
  * Hook for authentication operations
  */
-export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTermsGate, setTermsChecked, setActive, setShowSettings, setShowBizApply, setProfileOpen, setProfileTarget, setShowEditUser, setEditUserCtx, setShowDm, setDmTarget, setDmText, setShowAppt, setApptBizId, setApptMsg }) {
+export function useAuth({
+  user,
+  setUser,
+  setShowAuth,
+  setShowRegister,
+  setShowTermsGate,
+  setTermsChecked,
+  setActive,
+  setShowSettings,
+  setShowBizApply,
+  setProfileOpen,
+  setProfileTarget,
+  setShowEditUser,
+  setEditUserCtx,
+  setShowDm,
+  setDmTarget,
+  setDmText,
+  setShowAppt,
+  setApptBizId,
+  setApptMsg,
+  setShowDeleteAccountConfirm,
+}) {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authUsername, setAuthUsername] = useState("");
@@ -43,6 +64,11 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
       localStorage.removeItem(KEY.ADMIN_UNLOCK);
       sessionStorage.removeItem("tg_active_tab_v1");
     } catch (_) {}
+
+    setDeletingAccount(false);
+    if (typeof setShowDeleteAccountConfirm === "function") {
+      setShowDeleteAccountConfirm(false);
+    }
 
     setUser(null);
     setShowAuth(false);
@@ -383,6 +409,8 @@ export function useAuth({ user, setUser, setShowAuth, setShowRegister, setShowTe
     try {
       await authService.deleteAccount();
       clearTimeout(safetyTimer);
+      // Sayfa yenilenmezse (WebView / aynı URL) UI kilitli kalmasın
+      setDeletingAccount(false);
       hardResetToHome();
     } catch (e) {
       clearTimeout(safetyTimer);
