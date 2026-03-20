@@ -87,21 +87,24 @@ export function useAuthState() {
     }
   }
 
-  /** Fetch banned_at from profiles for a user id (for sync use on restore). */
+  /** Fetch profile flags from profiles for a user id (restore/auth sync). */
   async function fetchProfileFlags(userId) {
     try {
-      if (!supabase?.from || !userId) return { bannedAt: null };
+      if (!supabase?.from || !userId) return { bannedAt: null, acceptedTermsAt: null };
       const { data, error } = await supabase
         .from("profiles")
-        .select("banned_at")
+        .select("banned_at, accepted_terms_at")
         .eq("id", userId)
         .maybeSingle();
-      if (error) return { bannedAt: null };
-      if (!data) return { bannedAt: null };
-      return { bannedAt: data.banned_at || null };
+      if (error) return { bannedAt: null, acceptedTermsAt: null };
+      if (!data) return { bannedAt: null, acceptedTermsAt: null };
+      return {
+        bannedAt: data.banned_at || null,
+        acceptedTermsAt: data.accepted_terms_at || null,
+      };
     } catch (e) {
       if (import.meta.env.DEV) console.warn("fetchProfileFlags error:", e);
-      return { bannedAt: null };
+      return { bannedAt: null, acceptedTermsAt: null };
     }
   }
 
@@ -111,7 +114,7 @@ export function useAuthState() {
       if (!supabase?.from || !nextUser?.id) return nextUser;
       const { data, error } = await supabase
         .from("profiles")
-        .select("username, avatar, age, city, state, country, bio, banned_at, created_at")
+        .select("username, avatar, age, city, state, country, bio, banned_at, accepted_terms_at, created_at")
         .eq("id", nextUser.id)
         .maybeSingle();
       if (error || !data) return nextUser;
@@ -125,6 +128,7 @@ export function useAuthState() {
       if (data.bio != null) o.bio = String(data.bio || "");
       if (data.age != null && data.age !== "") o.age = data.age;
       if (data.banned_at != null && o.bannedAt == null) o.bannedAt = data.banned_at;
+      if (data.accepted_terms_at) o.acceptedTermsAt = data.accepted_terms_at;
       if (data.created_at && (o.createdAt == null || o.createdAt === "")) {
         const cms = new Date(data.created_at).getTime();
         if (Number.isFinite(cms)) o.createdAt = cms;
@@ -142,7 +146,7 @@ export function useAuthState() {
       if (!nextUser?.id) return;
       const { data, error } = await supabase
         .from("profiles")
-        .select("banned_at")
+        .select("banned_at, accepted_terms_at")
         .eq("id", nextUser.id)
         .maybeSingle();
       if (error) return;
@@ -152,6 +156,7 @@ export function useAuthState() {
           ? {
               ...prev,
               bannedAt: (data.banned_at ?? prev.bannedAt) ?? null,
+              acceptedTermsAt: data.accepted_terms_at ?? prev.acceptedTermsAt ?? null,
             }
           : prev
       );
@@ -185,6 +190,10 @@ export function useAuthState() {
       nextUser.bannedAt =
         nextUser.bannedAt ??
         (prev?.id === nextUser.id ? prev.bannedAt : null) ??
+        null;
+      nextUser.acceptedTermsAt =
+        nextUser.acceptedTermsAt ??
+        (prev?.id === nextUser.id ? prev.acceptedTermsAt : null) ??
         null;
     }
 
@@ -235,6 +244,7 @@ export function useAuthState() {
               !session.user.new_email,
             newEmailPending: session.user.new_email ?? null,
             bannedAt: flags?.bannedAt ?? null,
+            acceptedTermsAt: flags?.acceptedTermsAt ?? null,
           };
           applyProfileFlags(nextUser);
           nextUser = await mergeProfileRowFromDb(nextUser);
@@ -273,7 +283,8 @@ export function useAuthState() {
                 emailVerified:
                   !!(s.user.email_confirmed_at ?? s.user.confirmed_at) && !s.user.new_email,
                 newEmailPending: s.user.new_email ?? null,
-                    bannedAt: flags?.bannedAt ?? null,
+                bannedAt: flags?.bannedAt ?? null,
+                acceptedTermsAt: flags?.acceptedTermsAt ?? null,
               };
               applyProfileFlags(nextUser);
               nextUser = await mergeProfileRowFromDb(nextUser);
@@ -281,6 +292,7 @@ export function useAuthState() {
                 const next = { ...nextUser };
                 if (prev?.id === next.id) {
                   next.bannedAt = next.bannedAt ?? prev.bannedAt ?? null;
+                  next.acceptedTermsAt = next.acceptedTermsAt ?? prev.acceptedTermsAt ?? null;
                 }
                 return next;
               });

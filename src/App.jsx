@@ -5,13 +5,22 @@ import { supabase } from "./supabaseClient";
 import { KEY, DEFAULT_ADMINS } from "./constants";
 
 // Utils
-import { lsSet } from "./utils/localStorage";
-import { now, fmt, normalizeUsername, openDirections, openCall, trackMetric, uuid } from "./utils/helpers";
+import { now, fmt, normalizeUsername, openDirections, openCall } from "./utils/helpers";
 
 // Hooks
 import { useSystemTheme } from "./hooks/useSystemTheme";
 import { useFileToBase64 } from "./hooks/useFileToBase64";
 import { useBoot } from "./hooks/useBoot";
+import { useAppShellState } from "./hooks/useAppShellState";
+import { useNotificationMenu } from "./hooks/useNotificationMenu";
+import { useBizApplyScrollLock } from "./hooks/useBizApplyScrollLock";
+import { useHubLifecycle } from "./hooks/useHubLifecycle";
+import { useDmSync } from "./hooks/useDmSync";
+import { useUserBlockSync } from "./hooks/useUserBlockSync";
+import { useAdminDataSync } from "./hooks/useAdminDataSync";
+import { usePersistAppState } from "./hooks/usePersistAppState";
+import { useLandingFilters } from "./hooks/useLandingFilters";
+import { useUnreadCounts } from "./hooks/useUnreadCounts";
 
 // Theme
 import { themeTokens } from "./theme/themeTokens";
@@ -62,6 +71,9 @@ import { useAppointment } from "./features/appointments";
 
 // Features - Notifications
 import { useNotifications } from "./features/notifications";
+import { useReportActions } from "./features/reporting/useReportActions";
+import { renderNotificationText } from "./features/notifications/notificationText";
+import { useUserBlocks } from "./features/blocks/useUserBlocks";
 
 /**
  * TurkGuide MVP — Refactored App.jsx
@@ -100,15 +112,8 @@ function AppContent() {
   const { user, setUser, booted } = useAuthState();
 
   const systemTheme = useSystemTheme();
-  const [isMobile, setIsMobile] = useState(() => {
-    try {
-      return window.innerWidth < 720;
-    } catch (_ignored) {
-      return false;
-    }
-  });
+  const { isMobile, active, setActive, goBackToMainTab } = useAppShellState();
   const [themePref, setThemePref] = useState("system");
-  const scrollLockRef = useRef(0);
   const resolvedTheme = themePref === "system" ? systemTheme : themePref;
   const ui = useMemo(() => themeTokens(resolvedTheme), [resolvedTheme]);
 
@@ -129,13 +134,6 @@ function AppContent() {
   const [hubPostsTodayCount, setHubPostsTodayCount] = useState(0);
   const [blockedUsernames, setBlockedUsernames] = useState([]);
   const [blockedByUsernames, setBlockedByUsernames] = useState([]);
-  const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
-
-  // Report modal (Apple Guideline 1.2 – UGC safety)
-  const [reportCtx, setReportCtx] = useState(null);
-  const [reportReasonCode, setReportReasonCode] = useState("");
-  const [reportReasonDetail, setReportReasonDetail] = useState("");
-  const [submittingReport, setSubmittingReport] = useState(false);
 
 
   const [_infoPage, _setInfoPage] = useState(null);
@@ -162,308 +160,22 @@ function AppContent() {
   });
 
   // Tabs
-  const [active, setActive] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem("tg_active_tab_v1");
-      if (window.location.pathname === "/admin") return "admin";
-      return saved || "biz";
-    } catch (_ignored) {
-      return window.location.pathname === "/admin" ? "admin" : "biz";
-    }
-  });
-
-  const lastMainTabRef = useRef("biz");
-  useEffect(() => {
-    if (["biz", "news", "hub"].includes(active)) {
-      lastMainTabRef.current = active;
-    }
-  }, [active]);
-
-  function goBackToMainTab() {
-    setActive(lastMainTabRef.current || "biz");
-  }
-
-useEffect(() => {
-  if (active === "admin") {
-    if (window.location.pathname !== "/admin") {
-      window.history.pushState({}, document.title, "/admin");
-    }
-  } else if (window.location.pathname === "/admin") {
-    window.history.replaceState({}, document.title, "/");
-  }
-}, [active]);
-
-useEffect(() => {
-  const onResize = () => {
-    setIsMobile(window.innerWidth < 720);
-  };
-  window.addEventListener("resize", onResize);
-  return () => window.removeEventListener("resize", onResize);
-}, []);
-
-
-useEffect(() => {
-  const onPopState = () => {
-    if (window.location.pathname === "/admin") setActive("admin");
-    else if (active === "admin") setActive("biz");
-  };
-  window.addEventListener("popstate", onPopState);
-  return () => window.removeEventListener("popstate", onPopState);
-}, [active]);
 
 
 useEffect(() => {
   if (import.meta.env.DEV) try { console.log("active", active); } catch (_ignored) { /* noop */ }
 }, [active]);
 
-// ✅ KALDIĞI YERİ HATIRLA
-useEffect(() => {
-  try {
-    sessionStorage.setItem("tg_active_tab_v1", active);
-  } catch (_ignored) {}
-}, [active]);
-
-useEffect(() => {
-  if (active !== "admin" || !admin.adminMode || !supabase?.from) return;
-  let cancelled = false;
-
-  const mapAppointmentRow = (r) => ({
-    id: r.id,
-    createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
-    status: r.status || "pending",
-    bizId: r.biz_id || r.bizId,
-    bizName: r.biz_name || r.bizName || "",
-    fromUsername: r.from_username || r.fromUsername || "",
-    requestedAt: r.requested_at || r.requestedAt || null,
-    note: r.note || "",
+  useAdminDataSync({
+    active,
+    adminMode: admin.adminMode,
+    setBizApps,
+    setBiz,
+    setAppts,
+    setUsers,
+    setReports,
+    setHubPostsTodayCount,
   });
-
-  async function fetchAdminData() {
-    try {
-      if (supabase?.auth?.getSession) {
-        const { data: sData } = await supabase.auth.getSession();
-        if (!sData?.session && supabase.auth.refreshSession) {
-          await supabase.auth.refreshSession();
-        }
-        const { data: sData2 } = await supabase.auth.getSession();
-        if (!sData2?.session) {
-          console.warn("Admin fetch: oturum yok, veri çekilmedi.");
-          return;
-        }
-      }
-
-      const [appsRes, bizRes, apptRes, profilesRes, reportsRes] = await Promise.all([
-        supabase.from("biz_apps").select("*").order("created_at", { ascending: false }).limit(200),
-        supabase.from("businesses").select("*").order("created_at", { ascending: false }).limit(200),
-        supabase.from("appointments").select("*").order("created_at", { ascending: false }).limit(200),
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(200),
-        supabase.from("reports").select("*").order("created_at", { ascending: false }).limit(200),
-      ]);
-
-      if (cancelled) return;
-
-      if (!appsRes.error && Array.isArray(appsRes.data)) {
-        const mapped = appsRes.data.map((r) => ({
-          id: r.id,
-          createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
-          status: r.status || "pending",
-          applicant: r.applicant || r.applicant_username || "",
-          ownerUsername: r.owner_username || r.ownerUsername || r.applicant || "",
-          name: r.name || "",
-          category: r.category || "",
-          desc: r.desc || "",
-          country: r.country || "",
-          state: r.state || "",
-          zip: r.zip || "",
-          apt: r.apt || "",
-          address1: r.address1 || r.address_1 || "",
-          address: r.address || "",
-          city: r.city || "",
-          phoneDial: r.phone_dial || r.phoneDial || "",
-          phoneLocal: r.phone_local || r.phoneLocal || "",
-          phone: r.phone || "",
-          avatar: r.avatar || "",
-          approvedAt: r.approved_at ? new Date(r.approved_at).getTime() : null,
-          approvedBy: r.approved_by || "",
-          rejectedAt: r.rejected_at ? new Date(r.rejected_at).getTime() : null,
-          rejectedBy: r.rejected_by || "",
-          rejectReason: r.reject_reason || "",
-        }));
-        setBizApps(mapped);
-      }
-
-      if (!bizRes.error && Array.isArray(bizRes.data)) {
-        const mapped = bizRes.data.map((r) => ({
-          id: r.id,
-          createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
-          status: r.status || "approved",
-          name: r.name || "",
-          city: r.city || "",
-          address: r.address || "",
-          phone: r.phone || "",
-          category: r.category || "",
-          desc: r.desc || "",
-          avatar: r.avatar || "",
-          ownerUsername: r.owner_username || r.ownerUsername || "",
-          applicant: r.applicant || "",
-          approvedAt: r.approved_at ? new Date(r.approved_at).getTime() : null,
-          approvedBy: r.approved_by || "",
-        }));
-        setBiz(mapped);
-      }
-
-      if (!apptRes.error && Array.isArray(apptRes.data)) {
-        const mapped = apptRes.data.map(mapAppointmentRow);
-        setAppts(mapped);
-      }
-
-      if (!profilesRes.error && Array.isArray(profilesRes.data)) {
-        const mapped = profilesRes.data.map((r) => ({
-          id: r.id,
-          username: r.username || r.user_name || "",
-          email: r.email || "",
-          avatar: r.avatar || "",
-          createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
-          updatedAt: r.updated_at ? new Date(r.updated_at).getTime() : null,
-          Tier: r.tier || r.Tier || "Onaylı",
-          xp: r.xp || r.XP || 0,
-          role: r.role || null,
-          age: r.age != null ? r.age : null,
-          city: r.city || "",
-          state: r.state || "",
-          country: r.country || "",
-          bio: r.bio || "",
-          bannedAt: r.banned_at ? new Date(r.banned_at).getTime() : null,
-        }));
-        setUsers(mapped);
-      }
-
-      if (!reportsRes?.error && Array.isArray(reportsRes.data)) {
-        const mapped = reportsRes.data.map((r) => ({
-          id: r.id,
-          createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
-          reporterId: r.reporter_id || null,
-          reporterUsername: r.reporter_username || "",
-          targetType: r.target_type || "",
-          targetId: r.target_id || "",
-          targetParentId: r.target_parent_id || "",
-          targetOwner: r.target_owner || "",
-          targetOwnerId: r.target_owner_id || "",
-          targetLabel: r.target_label || "",
-          reason: r.reason || "",
-          status: r.status || "open",
-        }));
-        setReports(mapped);
-      }
-
-      // Today's HUB posts count for admin dashboard
-      const startOfToday = new Date();
-      startOfToday.setUTCHours(0, 0, 0, 0);
-      const { count } = await supabase
-        .from("hub_posts")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", startOfToday.toISOString());
-      if (!cancelled && typeof count === "number") setHubPostsTodayCount(count);
-    } catch (e) {
-      console.warn("admin data fetch error:", e);
-    }
-  }
-
-  fetchAdminData();
-
-  let channel = null;
-  if (supabase?.channel) {
-    channel = supabase
-      .channel("realtime:appointments")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "appointments" },
-        (payload) => {
-          if (cancelled) return;
-          const row = payload?.new || payload?.old;
-          if (!row) return;
-          const mapped = mapAppointmentRow(row);
-          setAppts((prev) => {
-            const list = Array.isArray(prev) ? prev : [];
-            const idx = list.findIndex((x) => x.id === mapped.id);
-            if (payload.eventType === "DELETE") {
-              return idx >= 0 ? list.filter((x) => x.id !== mapped.id) : list;
-            }
-            if (idx >= 0) {
-              const copy = [...list];
-              copy[idx] = { ...copy[idx], ...mapped };
-              return copy;
-            }
-            return [mapped, ...list];
-          });
-        }
-      )
-      .subscribe();
-  }
-
-  return () => {
-    cancelled = true;
-    try {
-      if (channel) supabase.removeChannel(channel);
-    } catch (_ignored) {}
-  };
-}, [admin.adminMode, active]);
-
-useEffect(() => {
-  if (active !== "admin" || !admin.adminMode || !supabase?.from) return;
-  let cancelled = false;
-
-  supabase
-    .from("biz_apps")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(200)
-    .then(({ data, error }) => {
-      if (cancelled) return;
-      if (error) {
-        console.warn("admin biz_apps fetch error:", error);
-        alert("Basvurular yuklenemedi: " + (error.message || ""));
-        return;
-      }
-
-      const mapped = (data || []).map((r) => ({
-        id: r.id,
-        createdAt: r.created_at ? new Date(r.created_at).getTime() : now(),
-        status: r.status || "pending",
-        applicant: r.applicant || r.applicant_username || "",
-        ownerUsername: r.owner_username || r.ownerUsername || r.applicant || "",
-        name: r.name || "",
-        category: r.category || "",
-        desc: r.desc || "",
-        country: r.country || "",
-        state: r.state || "",
-        zip: r.zip || "",
-        apt: r.apt || "",
-        address1: r.address1 || r.address_1 || "",
-        address: r.address || "",
-        city: r.city || "",
-        phoneDial: r.phone_dial || r.phoneDial || "",
-        phoneLocal: r.phone_local || r.phoneLocal || "",
-        phone: r.phone || "",
-        avatar: r.avatar || "",
-        approvedAt: r.approved_at ? new Date(r.approved_at).getTime() : null,
-        approvedBy: r.approved_by || "",
-        rejectedAt: r.rejected_at ? new Date(r.rejected_at).getTime() : null,
-        rejectedBy: r.rejected_by || "",
-        rejectReason: r.reject_reason || "",
-      }));
-      setBizApps(mapped);
-    })
-    .catch((e) => {
-      if (cancelled) return;
-      console.warn("admin biz_apps fetch crash:", e);
-      alert("Basvurular yuklenemedi.");
-    });
-
-  return () => {
-    cancelled = true;
-  };
-}, [active, admin.adminMode]);
 
   // HUB
 
@@ -473,36 +185,12 @@ useEffect(() => {
 
   
 
-useEffect(() => {
-  if (!user?.id || !supabase?.from) return;
-  let cancelled = false;
-
-  async function fetchBlocks() {
-    try {
-      const { data, error } = await supabase
-        .from("user_blocks")
-        .select("blocker_id, blocked_id")
-        .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`)
-        .limit(500);
-      if (error) throw error;
-      if (cancelled) return;
-      const rows = Array.isArray(data) ? data : [];
-      const blockedIds = rows.filter((r) => r.blocker_id === user.id).map((r) => r.blocked_id);
-      const blockedByIds = rows.filter((r) => r.blocked_id === user.id).map((r) => r.blocker_id);
-      const idToUsername = new Map((users || []).map((u) => [String(u.id), u.username]));
-      setBlockedUsernames(blockedIds.map((id) => idToUsername.get(String(id)) || String(id)));
-      setBlockedByUsernames(blockedByIds.map((id) => idToUsername.get(String(id)) || String(id)));
-    } catch (e) {
-      console.warn("fetchBlocks error:", e);
-    }
-  }
-
-  fetchBlocks();
-
-  return () => {
-    cancelled = true;
-  };
-}, [user?.id, users]);
+  useUserBlockSync({
+    userId: user?.id,
+    users,
+    setBlockedUsernames,
+    setBlockedByUsernames,
+  });
 
   function resolveUsernameAlias(uname) {
     const key = normalizeUsername(uname);
@@ -605,174 +293,7 @@ useEffect(() => {
     blockedIds: blockedUsernames,
     blockedByIds: blockedByUsernames,
   });
-
-  // 🔄 Fetch DMs from Supabase when user is ready
-  useEffect(() => {
-    if (!booted || !user || !supabase?.from) return;
-    let cancelled = false;
-
-    async function fetchDms() {
-      const me = normalizeUsername(user.username);
-      if (!me) return;
-
-      if (supabase?.auth?.getSession) {
-        try {
-          const { data: sData } = await supabase.auth.getSession();
-          if (!sData?.session && supabase.auth.refreshSession) {
-            await supabase.auth.refreshSession();
-          }
-          const { data: sData2 } = await supabase.auth.getSession();
-          if (!sData2?.session) return;
-        } catch (_ignored) {
-          return;
-        }
-      }
-
-      const ownedBizIds = (biz || [])
-        .filter((b) => normalizeUsername(b.ownerUsername) === me)
-        .map((b) => b.id)
-        .filter(Boolean);
-
-      let query = supabase
-        .from("dms")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200);
-
-      const orParts = [`from_username.ilike.${me}`, `to_username.ilike.${me}`];
-      if (ownedBizIds.length > 0) {
-        orParts.push(`to_biz_id.in.(${ownedBizIds.join(",")})`);
-      }
-
-      query = query.or(orParts.join(","));
-
-      const { data, error } = await query;
-      if (cancelled) return;
-      if (error) {
-        const msg = String(error?.message || "");
-        const looksAuth =
-          error?.status === 401 ||
-          error?.status === 403 ||
-          msg.toLowerCase().includes("jwt") ||
-          msg.toLowerCase().includes("auth");
-        if (looksAuth && supabase?.auth?.refreshSession) {
-          try {
-            await supabase.auth.refreshSession();
-            const retry = await query;
-            if (cancelled) return;
-            if (retry?.error) {
-              console.error("fetchDms error:", retry.error);
-              return;
-            }
-            const mapped = (retry.data || []).map((m) => ({
-              id: m.id,
-              createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
-              from: m.from_username,
-              toType: m.to_type,
-              toUsername: m.to_username,
-              toBizId: m.to_biz_id,
-              text: m.text || "",
-              readBy: Array.isArray(m.read_by) ? m.read_by : [],
-            }));
-            setDms(mapped);
-            return;
-          } catch (_ignored) {}
-        }
-        console.error("fetchDms error:", error);
-        return;
-      }
-
-      const mapped = (data || []).map((m) => ({
-        id: m.id,
-        createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
-        from: m.from_username,
-        toType: m.to_type,
-        toUsername: m.to_username,
-        toBizId: m.to_biz_id,
-        text: m.text || "",
-        readBy: Array.isArray(m.read_by) ? m.read_by : [],
-      }));
-
-      setDms(mapped);
-    }
-
-    fetchDms();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [booted, user, user?.username, biz]);
-
-  // 🔔 Realtime: DMs insert/update
-  useEffect(() => {
-    if (!booted || !user || !supabase?.channel) return;
-    const me = normalizeUsername(user.username);
-    if (!me) return;
-
-    const ownedBizIds = (biz || [])
-      .filter((b) => normalizeUsername(b.ownerUsername) === me)
-      .map((b) => String(b.id))
-      .filter(Boolean);
-
-    const mapRow = (m) => ({
-      id: m.id,
-      createdAt: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
-      from: m.from_username,
-      toType: m.to_type,
-      toUsername: m.to_username,
-      toBizId: m.to_biz_id,
-      text: m.text || "",
-      readBy: Array.isArray(m.read_by) ? m.read_by : [],
-    });
-
-    const isRelevant = (m) => {
-      const isToUser =
-        m.to_type === "user" && normalizeUsername(m.to_username) === me;
-      const isFromUser = normalizeUsername(m.from_username) === me;
-      const isToBiz =
-        m.to_type === "biz" && ownedBizIds.includes(String(m.to_biz_id));
-      return isToUser || isFromUser || isToBiz;
-    };
-
-    const channel = supabase
-      .channel("realtime:dms")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "dms" },
-        (payload) => {
-          const m = payload?.new;
-          if (!m || !isRelevant(m)) return;
-          const mapped = mapRow(m);
-          setDms((prev) => {
-            if ((prev || []).some((x) => String(x.id) === String(mapped.id))) {
-              return prev;
-            }
-            return [mapped, ...(prev || [])];
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "dms" },
-        (payload) => {
-          const m = payload?.new;
-          if (!m || !isRelevant(m)) return;
-          const mapped = mapRow(m);
-          setDms((prev) =>
-            (prev || []).map((x) =>
-              String(x.id) === String(mapped.id) ? mapped : x
-            )
-          );
-        }
-      )
-      .subscribe();
-
-    return () => {
-      try {
-        supabase.removeChannel(channel);
-      } catch (_ignored) {}
-    };
-  }, [booted, user, user?.username, biz]);
+  useDmSync({ booted, user, biz, setDms });
 
   // Appointment hook (must be after auth hook and business hook)
   const appointment = useAppointment({
@@ -792,20 +313,7 @@ useEffect(() => {
   function setBizAvatar(bizId, base64) {
     setBiz((prev) => prev.map((b) => (b.id === bizId ? { ...b, avatar: base64 } : b)));
   }
-  // Persist
-  useEffect(() => { if (booted) lsSet(KEY.USERS, users); }, [users, booted]);
-  useEffect(() => { if (booted) lsSet(KEY.BIZ, biz); }, [biz, booted]);
-  useEffect(() => { if (booted) lsSet(KEY.BIZ_APPS, bizApps); }, [bizApps, booted]);
-  useEffect(() => { if (booted) lsSet(KEY.POSTS, posts); }, [posts, booted]);
-  useEffect(() => { if (booted) lsSet(KEY.DMS, dms); }, [dms, booted]);
-  useEffect(() => { if (booted) lsSet(KEY.APPTS, appts); }, [appts, booted]);
-  useEffect(() => { if (booted) lsSet(KEY.THEME, themePref); }, [themePref, booted]);
-
-  useEffect(() => {
-    if (!booted) return;
-    if (user) lsSet(KEY.USER, user);
-    else localStorage.removeItem(KEY.USER);
-  }, [user, booted]);
+  usePersistAppState({ booted, users, biz, bizApps, posts, dms, appts, themePref, user });
 
   // Business edit hook (needs admin)
   const businessEdit = useBusinessEdit({
@@ -819,6 +327,10 @@ useEffect(() => {
   const notifications = useNotifications({
     user,
     booted,
+  });
+  const notificationMenu = useNotificationMenu({
+    markAllAsRead: notifications.markAllAsRead,
+    setActive,
   });
 
   const approvedBiz = useMemo(() => biz.filter((x) => x.status === "approved"), [biz]);
@@ -876,6 +388,17 @@ useEffect(() => {
 
   // Auth functions from hook
   const { requireAuth } = auth;
+  const reportActions = useReportActions({
+    user,
+    requireAuth,
+    setReports,
+    setPosts,
+  });
+  const userBlocks = useUserBlocks({
+    user,
+    requireAuth,
+    setBlockedUsernames,
+  });
 
   // Business functions from hook
   const business = useBusiness({
@@ -897,33 +420,7 @@ useEffect(() => {
     setShowBizApplyRef.current = business.setShowBizApply;
   }, [business.setShowBizApply]);
 
-  useEffect(() => {
-    if (!isMobile || !business?.showBizApply) return;
-
-    try {
-      scrollLockRef.current = window.scrollY || 0;
-      const body = document.body;
-      body.style.position = "fixed";
-      body.style.top = `-${scrollLockRef.current}px`;
-      body.style.left = "0";
-      body.style.right = "0";
-      body.style.width = "100%";
-      body.style.overflow = "hidden";
-    } catch (_ignored) {}
-
-    return () => {
-      try {
-        const body = document.body;
-        body.style.position = "";
-        body.style.top = "";
-        body.style.left = "";
-        body.style.right = "";
-        body.style.width = "";
-        body.style.overflow = "";
-        window.scrollTo(0, scrollLockRef.current || 0);
-      } catch (_ignored) {}
-    };
-  }, [isMobile, business?.showBizApply]);
+  useBizApplyScrollLock({ isMobile, showBizApply: business?.showBizApply });
 
   // HUB functions from hook
   const hub = useHub({
@@ -936,58 +433,7 @@ useEffect(() => {
     blockedByUsernames,
   });
 
-  // 🔄 Sekme tekrar görünür olduğunda session yenile + HUB verisini tazele (arka planda kalınca JWT süresi dolmasın)
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const onVisible = () => {
-      if (document.visibilityState !== "visible") return;
-      if (!supabase?.auth?.refreshSession) return;
-      Promise.resolve(supabase.auth.refreshSession())
-        .then(() => {
-          if (active === "hub" && hub?.fetchHubPosts) hub.fetchHubPosts();
-        })
-        .catch(() => {});
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [active, hub]);
-
-  // 🔄 Fetch + Realtime subscribe when HUB tab becomes active
-  useEffect(() => {
-    if (!hub || !hub.fetchHubPosts) return;
-    let channel = null;
-
-    if (active === "hub") {
-      console.log("🟣 HUB tab active -> hub.fetchHubPosts() running");
-      // initial load
-      Promise.resolve(hub.fetchHubPosts()).catch((e) =>
-        console.error("fetchHubPosts error:", e)
-      );
-
-      // realtime: any insert/update/delete on hub_posts refreshes the list
-      if (supabase?.channel) {
-        channel = supabase
-          .channel("realtime:hub_posts")
-          .on(
-            "postgres_changes",
-            { event: "*", schema: "public", table: "hub_posts" },
-            () => {
-              // keep it simple: re-fetch latest
-              Promise.resolve(hub.fetchHubPosts()).catch((e) =>
-                console.error("fetchHubPosts error:", e)
-              );
-            }
-          )
-          .subscribe();
-      }
-    }
-
-    return () => {
-      try {
-        if (channel) supabase.removeChannel(channel);
-      } catch (_ignored) {}
-    };
-  }, [active, hub]);
+  useHubLifecycle({ active, hub });
 
 // ✅ Public avatar resolver (reads from auth user -> local users[] -> cached public.profiles)
 // NOTE: Must be sync because it is used inside render. We fetch missing avatars in the background
@@ -1014,278 +460,36 @@ useEffect(() => {
 // User management functions moved to useUserManagement hook
 
 
-// ✅ Unread counters
-// - unreadDmForMe: unread message count (legacy, kept for future use)
-// - unreadThreadsForMe: unread "thread" count = farklı gönderen sayısı (badge bunu gösterecek)
-const _unreadDmForMe = useMemo(() => {
-  if (!user) return 0;
-  const me = normalizeUsername(user.username);
-
-  return dms.filter((m) => {
-    const isToUser = m.toType === "user" && normalizeUsername(m.toUsername) === me;
-    const isToBiz =
-      m.toType === "biz" &&
-      biz.some((b) => b.id === m.toBizId && normalizeUsername(b.ownerUsername) === me);
-    if (!(isToUser || isToBiz)) return false;
-    // Check if message is read by current user
-    const readBy = Array.isArray(m.readBy) ? m.readBy : [];
-    return !readBy.some((u) => normalizeUsername(u) === me);
-  });
-}, [dms, biz, user]);
-
-const unreadThreadsForMe = useMemo(() => {
-  if (!user) return 0;
-  const me = normalizeUsername(user.username);
-  const senders = new Set();
-
-  for (const m of dms) {
-    const isToUser = m.toType === "user" && normalizeUsername(m.toUsername) === me;
-    const isToBiz =
-      m.toType === "biz" &&
-      biz.some((b) => b.id === m.toBizId && normalizeUsername(b.ownerUsername) === me);
-
-    if (isToUser || isToBiz) {
-      const readBy = Array.isArray(m.readBy) ? m.readBy : [];
-      const isRead = readBy.some((u) => normalizeUsername(u) === me);
-      if (!isRead) {
-        senders.add(normalizeUsername(m.from));
-      }
-    }
-  }
-
-  return senders.size;
-}, [dms, biz, user]);
+  const { unreadThreadsForMe } = useUnreadCounts({ user, dms, biz });
 
 // Notifications
 const unreadNotificationsForMe = notifications.unreadCount;
-const touchNotificationsSeen = () => {
-  notifications.markAllAsRead();
-};
+const {
+  showNotificationsMenu,
+  touchNotificationsSeen,
+  openNotificationsMenu,
+  closeNotificationsMenu,
+  viewAllNotifications,
+} = notificationMenu;
 
-const openNotificationsMenu = () => {
-  setShowNotificationsMenu((prev) => !prev);
-};
+  const { landingDoSearch, pickCategory, clearFilters } = useLandingFilters({
+    setLandingSearch,
+    setCategoryFilter,
+  });
 
-const closeNotificationsMenu = () => {
-  setShowNotificationsMenu(false);
-};
-
-const viewAllNotifications = () => {
-  closeNotificationsMenu();
-  setActive("notifications");
-};
-
-useEffect(() => {
-  if (!showNotificationsMenu) return;
-  const handleDocPress = () => {
-    closeNotificationsMenu();
-  };
-  document.addEventListener("mousedown", handleDocPress);
-  document.addEventListener("touchstart", handleDocPress);
-  return () => {
-    document.removeEventListener("mousedown", handleDocPress);
-    document.removeEventListener("touchstart", handleDocPress);
-  };
-}, [showNotificationsMenu]);
-
-function landingDoSearch() {
-  // şu an sadece filtre input'u kullanıyoruz; buton UX için
-  trackMetric("search_click_total");
-}
-
-function pickCategory(key) {
-  setCategoryFilter(key);
-  setTimeout(() => {
-    const el = document.getElementById("biz-list");
-    el?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-  }, 50);
-}
-
-function clearFilters() {
-  setLandingSearch("");
-  setCategoryFilter("");
-}
-
-  function renderNotificationText(n) {
-  const from = n.fromUsername ? `@${n.fromUsername}` : "Bir kullanıcı";
-  switch (n.type) {
-    case "like":
-      return `${from} paylaşımınızı beğendi.`;
-    case "comment":
-      return `${from} paylaşımınıza yorum yaptı.`;
-    case "comment_reply":
-      return `${from} yorumunuza cevap verdi.`;
-    case "repost":
-      return `${from} paylaşımınızı HUB'da yeniden paylaştı.`;
-    case "report":
-      return `${from} bir içerik raporladı.`;
-      case "biz_approved":
-        return `Tebrikler! Isletmeniz onaylandi. ${n.metadata?.bizName ? `(${n.metadata.bizName})` : ""}`.trim();
-      case "biz_rejected":
-        return `Uzgunuz, isletmeniz onaylanamadi. ${
-          n.metadata?.reason ? `Sebep: ${n.metadata.reason}` : ""
-        }`.trim();
-    default:
-      return `${from} size bir bildirim gönderdi.`;
-  }
-}
-
-// Report reasons for Apple Guideline 1.2 (UGC safety)
-const REPORT_REASONS = [
-  { value: "spam", label: "Spam" },
-  { value: "harassment", label: "Taciz / Zorbalık" },
-  { value: "inappropriate_content", label: "Uygunsuz içerik" },
-  { value: "hate_speech", label: "Nefret söylemi" },
-  { value: "violence", label: "Şiddet veya tehdit" },
-  { value: "other", label: "Diğer" },
-];
-
-async function openReport(ctx) {
-  if (!ctx) return;
-  try {
-    if (!(await requireAuth())) return;
-    setReportCtx(ctx);
-    setReportReasonCode("");
-    setReportReasonDetail("");
-  } catch (e) {
-    if (import.meta.env.DEV) console.error("openReport error:", e);
-    alert("Şikayet ekranı açılamadı. Lütfen tekrar deneyin.");
-  }
-}
-
-async function submitReport() {
-  if (!reportCtx || !user?.id) return;
-  const reasonCode = String(reportReasonCode || "").trim();
-  if (!reasonCode) {
-    alert("Lütfen bir şikayet sebebi seçin.");
-    return;
-  }
-  if (submittingReport) return;
-  setSubmittingReport(true);
-
-  const reporterUsername = user?.username ?? user?.email ?? "user";
-  const detail = String(reportReasonDetail || "").trim();
-  const reasonText = REPORT_REASONS.find((r) => r.value === reasonCode)?.label || reasonCode;
-  const reason = detail ? `${reasonText}: ${detail}` : reasonText;
-
-  const callRpc = () =>
-    supabase.rpc("insert_report", {
-      p_reporter_username: reporterUsername,
-      p_target_type: reportCtx.type || "",
-      p_target_id: String(reportCtx.targetId || ""),
-      p_target_owner: reportCtx.targetOwner || "",
-      p_target_label: reportCtx.targetLabel || "",
-      p_reason: reason,
-    });
-
-  const REPORT_TIMEOUT_MS = 25000;
-  const run = async () => {
-    if (!supabase?.rpc) throw new Error("Şikayet özelliği şu an kullanılamıyor.");
-    let result = await callRpc();
-    if (result?.error && /jwt|session|unauthorized|PGRST301|row-level security/i.test(String(result.error?.message || ""))) {
-      try {
-        await Promise.race([
-          supabase.auth.refreshSession(),
-          new Promise((_, rej) => setTimeout(() => rej(new Error("refresh_timeout")), 18000)),
-        ]);
-      } catch (_) {}
-      result = await callRpc();
-    }
-    return result;
-  };
-
-  try {
-    const result = await Promise.race([
-      run(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("report_timeout")), REPORT_TIMEOUT_MS)),
-    ]);
-    const err = result?.error;
-    if (err) throw err;
-    const insertedId = result?.data ?? uuid();
-    setReports((prev) => [
-      {
-        id: insertedId,
-        createdAt: Date.now(),
-        reporterId: user.id,
-        reporterUsername,
-        targetType: reportCtx.type,
-        targetId: String(reportCtx.targetId || ""),
-        targetLabel: reportCtx.targetLabel || "",
-        reason,
-        status: "open",
-      },
-      ...(prev || []),
-    ]);
-    if (reportCtx.type === "hub_post") {
-      setPosts((prev) => (prev || []).filter((p) => String(p.id) !== String(reportCtx.targetId)));
-    }
-    if (reportCtx.type === "hub_comment") {
-      setPosts((prev) =>
-        (prev || []).map((p) => ({
-          ...p,
-          comments:
-            String(p.id) === String(reportCtx.targetParentId)
-              ? (p.comments || []).filter((c) => String(c.id) !== String(reportCtx.targetId))
-              : p.comments,
-        }))
-      );
-    }
-    alert("Şikayetiniz alındı. İnceleme için yönlendirildi.");
-    setReportCtx(null);
-    setReportReasonCode("");
-    setReportReasonDetail("");
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn("submitReport error:", e);
-    const msg = String(e?.message || "").toLowerCase();
-    if (/report_timeout|refresh_timeout|timeout|timed out|fetch|network|bağlantı/i.test(msg)) {
-      alert("İşlem uzadı veya bağlantı kurulamadı. Lütfen ağ bağlantınızı kontrol edip tekrar deneyin.");
-    } else if (/row-level security|violates.*policy/i.test(msg)) {
-      alert("Şikayet gönderilemedi. Oturum sunucuda tanınmıyor olabilir. Lütfen çıkış yapıp tekrar giriş yapın.");
-    } else {
-      alert("Şikayet gönderilemedi. " + (e?.message ? String(e.message) : "Lütfen tekrar deneyin."));
-    }
-  } finally {
-    setSubmittingReport(false);
-  }
-}
-
-
-async function blockUser(targetUser) {
-  if (!(await requireAuth())) return;
-  if (!user?.id || !targetUser?.id) return;
-  try {
-    if (!supabase?.from) return;
-    const { error } = await supabase.from("user_blocks").insert({
-      blocker_id: user.id,
-      blocked_id: targetUser.id,
-    });
-    if (error) throw error;
-    setBlockedUsernames((prev) => Array.from(new Set([...(prev || []), targetUser.username])));
-    alert("Kullanıcı engellendi.");
-  } catch (e) {
-    console.warn("blockUser error:", e);
-    alert("Engelleme başarısız oldu.");
-  }
-}
-
-async function unblockUser(targetUser) {
-  if (!(await requireAuth())) return;
-  if (!user?.id || !targetUser?.id) return;
-  try {
-    if (!supabase?.from) return;
-    const { error } = await supabase
-      .from("user_blocks")
-      .delete()
-      .eq("blocker_id", user.id)
-      .eq("blocked_id", targetUser.id);
-    if (error) throw error;
-    setBlockedUsernames((prev) => (prev || []).filter((u) => u !== targetUser.username));
-    alert("Engel kaldırıldı.");
-  } catch (e) {
-    console.warn("unblockUser error:", e);
-    alert("Engel kaldırma başarısız oldu.");
-  }
-}
+const {
+  REPORT_REASONS,
+  reportCtx,
+  setReportCtx,
+  reportReasonCode,
+  setReportReasonCode,
+  reportReasonDetail,
+  setReportReasonDetail,
+  submittingReport,
+  openReport,
+  submitReport,
+} = reportActions;
+const { blockUser, unblockUser } = userBlocks;
 
 function getDmOtherUsername(message, me) {
   if (!message) return "";

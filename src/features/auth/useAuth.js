@@ -117,7 +117,7 @@ export function useAuth({
 
   /**
    * Require authentication - shows auth modal if not logged in.
-   * Terms kabul engeli kaldırıldı; sadece auth/verified kontrolü var.
+   * Terms kontrolü yalnızca options.requireTerms=true iken çalışır.
    */
   async function requireAuth(options = {}) {
     if (!user) {
@@ -128,7 +128,7 @@ export function useAuth({
       alert("Hesabın askıya alındı. Destek için bize ulaş.");
       return false;
     }
-    if (user?.id && !isAdminIdentity(user) && supabase?.from) {
+    if (options.requireTerms && user?.id && !isAdminIdentity(user) && supabase?.from) {
       try {
         const { data, error } = await supabase
           .from("profiles")
@@ -137,6 +137,22 @@ export function useAuth({
           .maybeSingle();
         if (error) throw error;
         if (!data?.accepted_terms_at) {
+          // Eğer local state'te kabul var ama DB'de yoksa 1 kez self-heal dene
+          if (user?.acceptedTermsAt) {
+            const acceptedAt =
+              typeof user.acceptedTermsAt === "number"
+                ? new Date(user.acceptedTermsAt).toISOString()
+                : String(user.acceptedTermsAt);
+            const uname = normalizeUsername(
+              String(user?.username || "").trim() || `user_${String(user.id).slice(0, 8)}`
+            );
+            const email = String(user?.email || "").trim() || `${user.id}@apple.placeholder`;
+            const { error: upErr } = await supabase.from("profiles").upsert(
+              { id: user.id, username: uname, email, accepted_terms_at: acceptedAt },
+              { onConflict: "id" }
+            );
+            if (!upErr) return true;
+          }
           alert("Devam etmek için Kullanım Şartları'nı kabul etmelisiniz.");
           return false;
         }
