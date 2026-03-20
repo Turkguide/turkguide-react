@@ -14,6 +14,10 @@ try {
       storage: supabaseAuthStorage,
       persistSession: true,
       autoRefreshToken: true,
+      // OAuth (Apple, Google, …) uses PKCE; default client flow was "implicit" and breaks ?code= exchange.
+      flowType: "pkce",
+      // useAuthCallback handles ?code= / hash; avoids racing double exchangeCodeForSession with GoTrue init.
+      detectSessionInUrl: false,
     },
   });
   if (import.meta.env.DEV) {

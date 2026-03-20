@@ -1,4 +1,5 @@
 import { supabase } from "../../supabaseClient";
+import { getAuthRedirectUrl } from "../../utils/authRedirect";
 
 /**
  * Auth Service - Supabase authentication operations
@@ -17,7 +18,7 @@ export const authService = {
       password: password.trim(),
       options: {
         data: { username: username.trim() },
-        emailRedirectTo: "https://www.turkguide.net/auth/callback",
+        emailRedirectTo: getAuthRedirectUrl() || "https://www.turkguide.net/auth/callback",
       },
     });
 
@@ -66,7 +67,7 @@ export const authService = {
       throw new Error("Supabase hazır değil.");
     }
 
-    const redirectTo = `${window.location.origin}/auth/callback`;
+    const redirectTo = getAuthRedirectUrl() || `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
