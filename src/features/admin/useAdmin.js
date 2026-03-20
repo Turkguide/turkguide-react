@@ -79,11 +79,16 @@ export function useAdmin({ user, booted, isDev = false }) {
   const allowDevAdmin = isDev && adminUnlocked && isAdminUser(user?.username, adminConfig.admins);
   const allowEmailAdmin = DEFAULT_ADMIN_EMAILS.includes(String(user?.email || "").trim().toLowerCase());
   const allowNameAdmin = isAdminUser(user?.username, adminConfig.admins);
-  const allowFallbackAdmin = !!adminRoleError && (allowNameAdmin || allowEmailAdmin);
 
+  // Önceden sadece adminRoleError varken e-posta/isim listesi kullanılıyordu; rol sorgusu başarılı
+  // dönüp role=null/user kalınca info@turkguide.net / turkguide gibi sabit adminler hiç açılmıyordu.
   const adminMode = useMemo(
-    () => adminRole === "admin" || allowDevAdmin || allowFallbackAdmin,
-    [adminRole, allowDevAdmin, allowFallbackAdmin]
+    () =>
+      adminRole === "admin" ||
+      allowDevAdmin ||
+      allowNameAdmin ||
+      allowEmailAdmin,
+    [adminRole, allowDevAdmin, allowNameAdmin, allowEmailAdmin]
   );
   const adminUnlockedEffective = isDev ? adminUnlocked : true;
 
