@@ -7,8 +7,6 @@ import { KEY, DEFAULT_ADMINS } from "./constants";
 // Utils
 import { lsSet } from "./utils/localStorage";
 import { now, fmt, normalizeUsername, openDirections, openCall, trackMetric, uuid } from "./utils/helpers";
-import { hasAcceptedTermsEffective } from "./utils/termsEffective";
-import { termsDebugLog } from "./utils/termsDebugLog";
 
 // Hooks
 import { useSystemTheme } from "./hooks/useSystemTheme";
@@ -40,7 +38,6 @@ import { SettingsModal } from "./features/settings";
 
 // Features - Auth
 import { useAuthState, useAuthCallback, useAuth, AuthModal } from "./features/auth";
-import { setPendingAcceptedTerms } from "./features/auth/pendingProfileFlags";
 
 // Features - Business
 import { useBusiness, useBusinessEdit, BizApplyForm } from "./features/business";
@@ -140,10 +137,6 @@ function AppContent() {
   const [reportReasonDetail, setReportReasonDetail] = useState("");
   const [submittingReport, setSubmittingReport] = useState(false);
 
-  // Terms of Service gate (Apple Guideline 1.2)
-  const [showTermsGate, setShowTermsGate] = useState(false);
-  const [termsChecked, setTermsChecked] = useState(false);
-  const [acceptingTerms, setAcceptingTerms] = useState(false);
 
   const [_infoPage, _setInfoPage] = useState(null);
   // reserved: "about" | "help" | "privacy" | "terms" | "contact" | null
@@ -218,29 +211,6 @@ useEffect(() => {
   return () => window.removeEventListener("popstate", onPopState);
 }, [active]);
 
-useEffect(() => {
-  const handler = () => {
-    setTermsChecked(false);
-    setShowTermsGate(true);
-  };
-  window.addEventListener("tg:requestTermsGate", handler);
-  return () => window.removeEventListener("tg:requestTermsGate", handler);
-}, []);
-
-useEffect(() => {
-  if (showTermsGate && user && hasAcceptedTermsEffective(user)) setShowTermsGate(false);
-}, [user, showTermsGate]);
-
-useEffect(() => {
-  if (!showTermsGate) return;
-  termsDebugLog({
-    path: "termsGate:modalVisible",
-    userId: user?.id ?? null,
-    userState: user?.acceptedTermsAt ?? null,
-    hasEffectiveFrontend: user ? hasAcceptedTermsEffective(user) : null,
-    note: "Kullanım şartları modal açık",
-  });
-}, [showTermsGate, user]);
 
 useEffect(() => {
   if (import.meta.env.DEV) try { console.log("active", active); } catch (_ignored) { /* noop */ }
@@ -363,7 +333,6 @@ useEffect(() => {
           state: r.state || "",
           country: r.country || "",
           bio: r.bio || "",
-          acceptedTermsAt: r.accepted_terms_at ? new Date(r.accepted_terms_at).getTime() : null,
           bannedAt: r.banned_at ? new Date(r.banned_at).getTime() : null,
         }));
         setUsers(mapped);
@@ -597,8 +566,8 @@ useEffect(() => {
     setUser,
     setShowAuth,
     setShowRegister,
-    setShowTermsGate,
-    setTermsChecked,
+    setShowTermsGate: null,
+    setTermsChecked: null,
     setActive,
     setShowSettings: settingsHook.setShowSettings,
     setShowBizApply: (value) => {
@@ -1174,7 +1143,7 @@ const REPORT_REASONS = [
 async function openReport(ctx) {
   if (!ctx) return;
   try {
-    if (!(await requireAuth({ requireTerms: true }))) return;
+    if (!(await requireAuth())) return;
     setReportCtx(ctx);
     setReportReasonCode("");
     setReportReasonDetail("");
@@ -1280,45 +1249,6 @@ async function submitReport() {
   }
 }
 
-async function acceptTerms() {
-  if (!supabase?.from || !supabase?.auth?.getSession) {
-    alert("Bağlantı hazır değil. Sayfayı yenileyip tekrar deneyin.");
-    return false;
-  }
-  let userId = user?.id || null;
-  const TIMEOUT_MS = 15000;
-  const run = async () => {
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError && import.meta.env.DEV) console.error("acceptTerms session error:", sessionError);
-    userId = userId || sessionData?.session?.user?.id || null;
-    if (!userId) {
-      alert("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
-      return false;
-    }
-    const acceptedAt = new Date().toISOString();
-    const { error } = await supabase.from("profiles").update({ accepted_terms_at: acceptedAt }).eq("id", userId);
-    if (error) {
-      if (import.meta.env.DEV) console.warn("acceptTerms profiles update error:", error);
-      alert("Kabul kaydedilemedi. Sayfayı yenileyip tekrar deneyin.");
-      return false;
-    }
-    setPendingAcceptedTerms(userId, acceptedAt);
-    setUser((prev) => (prev ? { ...prev, acceptedTermsAt: acceptedAt } : prev));
-    return true;
-  };
-  try {
-    const ok = await Promise.race([run(), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), TIMEOUT_MS))]);
-    return ok === true;
-  } catch (e) {
-    if (String(e?.message) === "timeout") {
-      alert("Kayıt zaman aşımına uğradı. Lütfen tekrar deneyin.");
-    } else {
-      if (import.meta.env.DEV) console.error("acceptTerms error:", e);
-      alert("Kabul işlemi başarısız oldu. Lütfen tekrar deneyin.");
-    }
-    return false;
-  }
-}
 
 async function blockUser(targetUser) {
   if (!(await requireAuth())) return;
@@ -1929,52 +1859,6 @@ return (
         </div>
       </Modal>
 
-      {/* TERMS OF SERVICE GATE (Apple Guideline 1.2) */}
-      <Modal ui={ui} open={showTermsGate} title="Kullanım Şartları" onClose={() => setShowTermsGate(false)} width={640}>
-        <div style={{ display: "grid", gap: 14 }}>
-          <div style={{ color: ui.muted }}>
-            Devam etmek için Kullanım Şartları ve Topluluk Kuralları'nı kabul etmelisiniz.
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button ui={ui} onClick={() => window.open("/terms.html", "_blank", "noopener,noreferrer")}>
-              Kullanım Şartları
-            </Button>
-            <Button ui={ui} onClick={() => window.open("/community-guidelines.html", "_blank", "noopener,noreferrer")}>
-              Topluluk Kuralları
-            </Button>
-            <Button ui={ui} onClick={() => window.open("/privacy.html", "_blank", "noopener,noreferrer")}>
-              Gizlilik Politikası
-            </Button>
-          </div>
-          <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
-            <input
-              type="checkbox"
-              checked={termsChecked}
-              onChange={(e) => setTermsChecked(e.target.checked)}
-            />
-            <span>Kullanım Şartları ve Topluluk Kuralları'nı okudum ve kabul ediyorum.</span>
-          </label>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <Button ui={ui} onClick={() => setShowTermsGate(false)}>İptal</Button>
-            <Button
-              ui={ui}
-              variant="ok"
-              disabled={!termsChecked || acceptingTerms}
-              onClick={async () => {
-                setAcceptingTerms(true);
-                try {
-                  const ok = await acceptTerms();
-                  if (ok) setShowTermsGate(false);
-                } finally {
-                  setAcceptingTerms(false);
-                }
-              }}
-            >
-              {acceptingTerms ? "Kaydediliyor…" : "Kabul Et"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* DELETE ACCOUNT CONFIRMATION */}
       <Modal
@@ -2038,7 +1922,6 @@ return (
         setThemePref={setThemePref}
         user={user}
         logout={auth.logout}
-        onAcceptTerms={acceptTerms}
         onRequestDeleteAccount={() => {
           settingsHook.setShowSettings(false);
           // Ayarlar modalı kapanırken onayı aynı tıkta açmak bazı cihazlarda ikinci pencerenin görünmemesine yol açabiliyor

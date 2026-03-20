@@ -5,7 +5,6 @@ import { Modal, Button, inputStyle } from "../../components/ui";
  * Auth Modal Component - Login and Register forms
  */
 export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegister, authEmail, setAuthEmail, authPassword, setAuthPassword, authUsername, setAuthUsername, loginNow, oauthLogin }) {
-  const [registerTermsAccepted, setRegisterTermsAccepted] = useState(false);
   const [showTermsViewer, setShowTermsViewer] = useState(false);
   const [termsViewerType, setTermsViewerType] = useState(/** @type {null | 'terms' | 'community'} */ null);
 
@@ -126,12 +125,7 @@ export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegi
           style={{ ...inputStyle(ui), marginTop: 10 }}
         />
 
-        <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, marginTop: 12, color: ui.muted }}>
-          <input
-            type="checkbox"
-            checked={registerTermsAccepted}
-            onChange={(e) => setRegisterTermsAccepted(e.target.checked)}
-          />
+        <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, marginTop: 12, color: ui.muted }}>
           <span>
             <button
               type="button"
@@ -164,16 +158,16 @@ export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegi
             >
               Topluluk Kuralları
             </button>
-            ’nı okudum ve kabul ediyorum.
+            sayfalarını inceleyebilirsiniz.
           </span>
-        </label>
+        </div>
 
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
           <Button
             ui={ui}
             variant="solidBlue"
-            onClick={() => loginNow("email", "register", { termsAccepted: registerTermsAccepted })}
-            disabled={!authUsername.trim() || !authEmail.trim() || !authPassword.trim() || !registerTermsAccepted}
+            onClick={() => loginNow("email", "register")}
+            disabled={!authUsername.trim() || !authEmail.trim() || !authPassword.trim()}
             style={{ width: "100%" }}
           >
             Kaydı Tamamla

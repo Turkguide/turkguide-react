@@ -54,7 +54,7 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
    * Submit business application
    */
   async function submitBizApplication(data) {
-    if (!(await requireAuth({ requireTerms: true }))) return;
+    if (!(await requireAuth())) return;
     if (!user?.id) {
       alert("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
       return;
@@ -465,7 +465,7 @@ export function useBusiness({ user, setBiz, setBizApps, setUsers, addLog, requir
    */
   async function openBizApply() {
     try {
-      if (!(await requireAuth({ requireTerms: true }))) return;
+      if (!(await requireAuth())) return;
       setShowBizApply(true);
     } catch (e) {
       console.error("openBizApply error:", e);

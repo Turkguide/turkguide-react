@@ -126,7 +126,7 @@ export function AdminUserDetailModal({ ui, open, onClose, userId, onManage, onOp
               <Field ui={ui} label="Kayıt (profiles)">{row.created_at ? fmt(new Date(row.created_at).getTime()) : "—"}</Field>
               <Field ui={ui} label="Güncelleme">{row.updated_at ? fmt(new Date(row.updated_at).getTime()) : "—"}</Field>
               <Field ui={ui} label="Şartlar kabul">
-                {row.accepted_terms_at ? fmt(new Date(row.accepted_terms_at).getTime()) : "—"}
+                "—"
               </Field>
               <Field ui={ui} label="Askı (ban)">
                 {row.banned_at ? fmt(new Date(row.banned_at).getTime()) : "Yok"}

@@ -3,11 +3,7 @@ import { authService } from "./authService";
 import { KEY } from "../../constants";
 import { supabase } from "../../supabaseClient";
 import { normalizeUsername } from "../../utils/helpers";
-import { setPendingAcceptedTerms } from "./pendingProfileFlags";
 import { clearAllTgSupabasePreferences } from "../../utils/capacitorStorage";
-import { hasAcceptedTermsEffective } from "../../utils/termsEffective";
-import { hydrateTermsAcceptanceFromDb } from "../../utils/termsDbHydrate";
-import { termsDebugLog } from "../../utils/termsDebugLog";
 
 /**
  * Hook for authentication operations
@@ -17,8 +13,8 @@ export function useAuth({
   setUser,
   setShowAuth,
   setShowRegister,
-  setShowTermsGate,
-  setTermsChecked,
+  setShowTermsGate: _setShowTermsGate,
+  setTermsChecked: _setTermsChecked,
   setActive,
   setShowSettings,
   setShowBizApply,
@@ -114,7 +110,7 @@ export function useAuth({
 
   /**
    * Require authentication - shows auth modal if not logged in.
-   * When requireTerms is true, gates on accepted Terms of Service (Apple Guideline 1.2).
+   * Terms kabul engeli kaldırıldı; sadece auth/verified kontrolü var.
    */
   async function requireAuth(options = {}) {
     if (!user) {
@@ -124,59 +120,6 @@ export function useAuth({
     if (user?.bannedAt) {
       alert("Hesabın askıya alındı. Destek için bize ulaş.");
       return false;
-    }
-    if (options.requireTerms) {
-      termsDebugLog({
-        path: "requireAuth:requireTerms:start",
-        userId: user?.id,
-        userState: user?.acceptedTermsAt ?? null,
-      });
-      /** Stale state güvenilmez — her kapalı işlemde DB ile senkron (blok yalnızca DB boş + grandfather yok). */
-      if (user?.id && supabase?.from) {
-        const { ok, reason } = await hydrateTermsAcceptanceFromDb({ supabase, user, setUser });
-        termsDebugLog({
-          path: "requireAuth:requireTerms:afterHydrate",
-          userId: user?.id,
-          userState: user?.acceptedTermsAt ?? null,
-          ok,
-          reason,
-          willOpenGate: !ok,
-        });
-        if (!ok) {
-          if (import.meta.env.DEV) {
-            console.warn("[tg:terms:requireAuth:blocked]", { userId: user?.id, reason });
-          }
-          termsDebugLog({
-            path: "requireAuth:requireTerms:blocked_gate",
-            userId: user?.id,
-            userState: user?.acceptedTermsAt ?? null,
-            blockedReason: reason,
-          });
-          if (setShowTermsGate) setShowTermsGate(true);
-          if (setTermsChecked) setTermsChecked(false);
-          try {
-            if (typeof window !== "undefined" && window.dispatchEvent) {
-              window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
-            }
-          } catch (_) {}
-          return false;
-        }
-      } else if (!hasAcceptedTermsEffective(user)) {
-        termsDebugLog({
-          path: "requireAuth:requireTerms:blocked_no_supabase",
-          userId: user?.id,
-          userState: user?.acceptedTermsAt ?? null,
-          blockedReason: "no_supabase_or_id",
-        });
-        if (setShowTermsGate) setShowTermsGate(true);
-        if (setTermsChecked) setTermsChecked(false);
-        try {
-          if (typeof window !== "undefined" && window.dispatchEvent) {
-            window.dispatchEvent(new CustomEvent("tg:requestTermsGate"));
-          }
-        } catch (_) {}
-        return false;
-      }
     }
     if (options.requireVerified && user?.emailVerified === false) {
       alert("Email adresini doğrulamalısın. Mailine gelen bağlantıya tıkla.");
@@ -201,10 +144,6 @@ export function useAuth({
 
       // 2) REGISTER
       if (mode === "register") {
-        if (options.termsAccepted !== true) {
-          alert("Devam etmek için Kullanım Şartları ve Topluluk Kuralları'nı kabul etmelisiniz.");
-          return;
-        }
         if (!email || !pass || !username) {
           alert("Email, şifre ve kullanıcı adı zorunlu.");
           return;
@@ -267,33 +206,6 @@ export function useAuth({
           } catch (_) {}
           setShowAuth(true); // doğrulama için modal açık kalsın
         } else {
-          const userId = data.user.id;
-          let acceptedTermsAt = null;
-          if (options.termsAccepted === true) {
-            acceptedTermsAt = new Date().toISOString();
-            setPendingAcceptedTerms(userId, acceptedTermsAt);
-            /** update() satır yoksa 0 row — upsert ile kabul kalıcı yazılır */
-            const upsertRow = {
-              id: userId,
-              email,
-              username: unameKey,
-              accepted_terms_at: acceptedTermsAt,
-            };
-            for (let attempt = 0; attempt < 4; attempt++) {
-              try {
-                const { error } = await supabase
-                  .from("profiles")
-                  .upsert(upsertRow, { onConflict: "id" });
-                if (!error) break;
-                if (import.meta.env.DEV) {
-                  console.warn("[tg:terms:register] upsert accepted_terms_at", attempt, error);
-                }
-              } catch (e) {
-                if (import.meta.env.DEV) console.warn("[tg:terms:register] upsert exception", attempt, e);
-              }
-              await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
-            }
-          }
           alert("Kayıt alındı ve giriş yapıldı.");
           setUser((prev) => {
             const next = {
@@ -312,7 +224,6 @@ export function useAuth({
               emailVerified:
                 !!(data.user.email_confirmed_at ?? data.user.confirmed_at) && !data.user.new_email,
               newEmailPending: data.user.new_email ?? null,
-              acceptedTermsAt: acceptedTermsAt ?? prev?.acceptedTermsAt ?? null,
             };
             if (prev?.id === data.user.id) {
               next.bannedAt = prev.bannedAt ?? null;
@@ -360,7 +271,6 @@ export function useAuth({
             newEmailPending: data.user.new_email ?? null,
           };
           if (prev?.id === data.user.id) {
-            next.acceptedTermsAt = prev.acceptedTermsAt ?? null;
             next.bannedAt = prev.bannedAt ?? null;
           }
           return next;

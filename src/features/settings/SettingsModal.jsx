@@ -1,5 +1,4 @@
 import { Modal, Card, Chip, ToggleRow, Button } from "../../components/ui";
-import { hasAcceptedTermsEffective } from "../../utils/termsEffective";
 
 /**
  * Settings Modal Component
@@ -14,7 +13,6 @@ export function SettingsModal({
   setThemePref,
   user,
   logout,
-  onAcceptTerms,
   onRequestDeleteAccount,
 }) {
   return (
@@ -93,9 +91,7 @@ export function SettingsModal({
 
             <div style={{ fontWeight: 950, fontSize: 14, marginTop: 18 }}>Legal</div>
             <div style={{ color: ui.muted, marginTop: 6, fontSize: 12 }}>
-              {hasAcceptedTermsEffective(user)
-                ? "Kullanım şartları (mevcut hesap veya kabul) kapsamında."
-                : "Kullanım şartlarını henüz kabul etmedin."}
+              Kullanım şartları, topluluk kuralları ve diğer politikaları buradan görüntüleyebilirsiniz.
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <Button
@@ -133,11 +129,6 @@ export function SettingsModal({
               >
                 Contact
               </Button>
-              {onAcceptTerms && !hasAcceptedTermsEffective(user) ? (
-                <Button ui={ui} variant="ok" onClick={onAcceptTerms} size="sm">
-                  Kullanım Şartlarını Kabul Et
-                </Button>
-              ) : null}
             </div>
 
             <div

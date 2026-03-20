@@ -4,8 +4,21 @@ import { KEY } from "../../constants";
 import { lsSet } from "../../utils/localStorage";
 import { ensureSeed } from "../../utils/seed";
 import { normalizeUsername } from "../../utils/helpers";
-import { resolveCreatedAtFromSession, hasAcceptedTermsValue } from "../../utils/termsEffective";
-import { consumePendingAcceptedTerms } from "./pendingProfileFlags";
+
+function resolveCreatedAtFromSession(session, md = {}) {
+  const m = md.createdAt;
+  if (m != null) {
+    if (typeof m === "number" && Number.isFinite(m)) return m;
+    const t = Date.parse(String(m));
+    return Number.isFinite(t) ? t : null;
+  }
+  const ca = session?.user?.created_at;
+  if (ca) {
+    const ms = new Date(ca).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }
+  return null;
+}
 
 /**
  * Hook for managing auth state and session restoration
@@ -47,11 +60,6 @@ export function useAuthState() {
       bio: String(nextUser?.bio || "").trim() || null,
     };
     if (ageInt != null && Number.isInteger(ageInt)) payload.age = ageInt;
-    if (hasAcceptedTermsValue(nextUser?.acceptedTermsAt)) {
-      const at = nextUser.acceptedTermsAt;
-      payload.accepted_terms_at =
-        typeof at === "number" && Number.isFinite(at) ? new Date(at).toISOString() : String(at);
-    }
 
     const doUpsert = () => supabase.from("profiles").upsert(payload, { onConflict: "id" });
 
@@ -79,24 +87,21 @@ export function useAuthState() {
     }
   }
 
-  /** Fetch accepted_terms_at, banned_at from profiles for a user id (for sync use on restore). */
+  /** Fetch banned_at from profiles for a user id (for sync use on restore). */
   async function fetchProfileFlags(userId) {
     try {
-      if (!supabase?.from || !userId) return { acceptedTermsAt: null, bannedAt: null };
+      if (!supabase?.from || !userId) return { bannedAt: null };
       const { data, error } = await supabase
         .from("profiles")
-        .select("accepted_terms_at, banned_at")
+        .select("banned_at")
         .eq("id", userId)
         .maybeSingle();
-      if (error) return { acceptedTermsAt: null, bannedAt: null };
-      if (!data) return { acceptedTermsAt: null, bannedAt: null };
-      return {
-        acceptedTermsAt: data.accepted_terms_at || null,
-        bannedAt: data.banned_at || null,
-      };
+      if (error) return { bannedAt: null };
+      if (!data) return { bannedAt: null };
+      return { bannedAt: data.banned_at || null };
     } catch (e) {
       if (import.meta.env.DEV) console.warn("fetchProfileFlags error:", e);
-      return { acceptedTermsAt: null, bannedAt: null };
+      return { bannedAt: null };
     }
   }
 
@@ -106,7 +111,7 @@ export function useAuthState() {
       if (!supabase?.from || !nextUser?.id) return nextUser;
       const { data, error } = await supabase
         .from("profiles")
-        .select("username, avatar, age, city, state, country, bio, accepted_terms_at, banned_at, created_at")
+        .select("username, avatar, age, city, state, country, bio, banned_at, created_at")
         .eq("id", nextUser.id)
         .maybeSingle();
       if (error || !data) return nextUser;
@@ -119,7 +124,6 @@ export function useAuthState() {
       if (data.country != null) o.country = String(data.country || "");
       if (data.bio != null) o.bio = String(data.bio || "");
       if (data.age != null && data.age !== "") o.age = data.age;
-      if (data.accepted_terms_at) o.acceptedTermsAt = data.accepted_terms_at;
       if (data.banned_at != null && o.bannedAt == null) o.bannedAt = data.banned_at;
       if (data.created_at && (o.createdAt == null || o.createdAt === "")) {
         const cms = new Date(data.created_at).getTime();
@@ -138,7 +142,7 @@ export function useAuthState() {
       if (!nextUser?.id) return;
       const { data, error } = await supabase
         .from("profiles")
-        .select("accepted_terms_at, banned_at")
+        .select("banned_at")
         .eq("id", nextUser.id)
         .maybeSingle();
       if (error) return;
@@ -147,7 +151,6 @@ export function useAuthState() {
         prev && String(prev.id) === String(nextUser.id)
           ? {
               ...prev,
-              acceptedTermsAt: (data.accepted_terms_at || prev.acceptedTermsAt) ?? null,
               bannedAt: (data.banned_at ?? prev.bannedAt) ?? null,
             }
           : prev
@@ -157,7 +160,7 @@ export function useAuthState() {
     }
   }
 
-  // Keep ref in sync so auth events don't overwrite acceptedTermsAt/bannedAt with null
+  // Keep ref in sync so auth events do not overwrite bannedAt
   useEffect(() => {
     userRef.current = user;
   }, [user]);
@@ -179,17 +182,6 @@ export function useAuthState() {
 
     function applyProfileFlags(nextUser) {
       const prev = userRef.current;
-      const pendingAccepted = consumePendingAcceptedTerms(nextUser.id);
-      /**
-       * KRİTİK: fetchProfileFlags ile gelen DB değeri korunmalı.
-       * Eski sıra pending ?? prev — prev stale null iken DB’deki accepted_terms_at siliniyordu.
-       * Doğru sıra: taze DB (nextUser) → pending (kısa yarış) → prev.
-       */
-      nextUser.acceptedTermsAt =
-        nextUser.acceptedTermsAt ??
-        pendingAccepted ??
-        (prev?.id === nextUser.id ? prev.acceptedTermsAt : null) ??
-        null;
       nextUser.bannedAt =
         nextUser.bannedAt ??
         (prev?.id === nextUser.id ? prev.bannedAt : null) ??
@@ -242,7 +234,6 @@ export function useAuthState() {
               !!(session.user.email_confirmed_at ?? session.user.confirmed_at) &&
               !session.user.new_email,
             newEmailPending: session.user.new_email ?? null,
-            acceptedTermsAt: flags?.acceptedTermsAt ?? null,
             bannedAt: flags?.bannedAt ?? null,
           };
           applyProfileFlags(nextUser);
@@ -282,15 +273,13 @@ export function useAuthState() {
                 emailVerified:
                   !!(s.user.email_confirmed_at ?? s.user.confirmed_at) && !s.user.new_email,
                 newEmailPending: s.user.new_email ?? null,
-                acceptedTermsAt: flags?.acceptedTermsAt ?? null,
-                bannedAt: flags?.bannedAt ?? null,
+                    bannedAt: flags?.bannedAt ?? null,
               };
               applyProfileFlags(nextUser);
               nextUser = await mergeProfileRowFromDb(nextUser);
               setUser((prev) => {
                 const next = { ...nextUser };
                 if (prev?.id === next.id) {
-                  next.acceptedTermsAt = next.acceptedTermsAt ?? prev.acceptedTermsAt ?? null;
                   next.bannedAt = next.bannedAt ?? prev.bannedAt ?? null;
                 }
                 return next;
@@ -310,11 +299,9 @@ export function useAuthState() {
                   email: s.user.email ?? null,
                   username: s.user.user_metadata?.username ?? null,
                   avatar: s.user.user_metadata?.avatar ?? "",
-                  acceptedTermsAt: null,
                   bannedAt: null,
                 };
                 if (prev?.id === next.id) {
-                  next.acceptedTermsAt = prev.acceptedTermsAt ?? null;
                   next.bannedAt = prev.bannedAt ?? null;
                 }
                 return next;

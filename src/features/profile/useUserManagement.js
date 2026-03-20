@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { normalizeUsername } from "../../utils/helpers";
-import { resolveTermsForProfileSave } from "../../utils/profileSaveTerms";
-import { termsDebugLog } from "../../utils/termsDebugLog";
 
 /**
  * Hook for user management operations (edit, save, avatar)
@@ -68,58 +66,6 @@ export function useUserManagement({
     }
 
     const me = typeof user !== "undefined" ? user : null;
-    /** DB tek doğruluk kaynağı; aynı save içinde setUser ile çakışmayı önlemek için taşınır */
-    let resolvedAcceptedTermsAt = me?.acceptedTermsAt ?? null;
-
-    let profile = null;
-    let profileErr = null;
-    if (me?.id && supabase?.from) {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("accepted_terms_at")
-        .eq("id", me.id)
-        .maybeSingle();
-      profile = data;
-      profileErr = error?.message ?? null;
-    }
-    termsDebugLog({
-      path: "profileSave:beforeResolve",
-      userId: me?.id,
-      userState: me?.acceptedTermsAt ?? null,
-      dbValue: profile?.accepted_terms_at ?? null,
-      selectError: profileErr,
-      blockedReason: !profile?.accepted_terms_at ? "missing_db_terms" : null,
-    });
-
-    const termsResolution = await resolveTermsForProfileSave({ me, supabase, setUser });
-    resolvedAcceptedTermsAt = termsResolution.resolvedAcceptedTermsAt ?? resolvedAcceptedTermsAt;
-
-    termsDebugLog({
-      path: "profileSave:afterResolve",
-      userId: me?.id,
-      userState: me?.acceptedTermsAt ?? null,
-      dbValue: profile?.accepted_terms_at ?? null,
-      ok: termsResolution.ok,
-      resolveReason: termsResolution.reason,
-      blockedReason: !termsResolution.ok ? termsResolution.reason : null,
-    });
-
-    if (!termsResolution.ok) {
-      if (import.meta.env.DEV) {
-        console.warn("[tg:profileSave:blocked]", {
-          userId: me?.id,
-          reason: termsResolution.reason,
-          queryError: termsResolution.queryError,
-        });
-      }
-      alert(
-        me
-          ? "Profil güncellemek için Kullanım Şartları'nı kabul etmelisin."
-          : "Oturum bulunamadı. Lütfen tekrar giriş yapın."
-      );
-      setSavingEditUser(false);
-      return;
-    }
 
     const isAdmin = admin?.adminMode ?? false;
     const can = isAdmin || (me && (u.id || u.user_id || u.uid) && me.id && (u.id || u.user_id || u.uid) === me.id);
@@ -245,7 +191,7 @@ export function useUserManagement({
       ];
     });
 
-    // kendi profiliyse user state'i de güncelle (acceptedTermsAt: DB çözümü + stale closure fix)
+    // kendi profiliyse user state'i de güncelle
     if (me && u.id === me.id) {
       setUser((p) => ({
         ...(p || {}),
@@ -261,7 +207,6 @@ export function useUserManagement({
         state: u.state ?? p?.state ?? "",
         country: u.country ?? p?.country ?? "",
         bio: u.bio ?? p?.bio ?? "",
-        acceptedTermsAt: resolvedAcceptedTermsAt ?? p?.acceptedTermsAt ?? null,
         bannedAt: p?.bannedAt ?? null,
       }));
     }
