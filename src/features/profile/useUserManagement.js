@@ -348,23 +348,43 @@ export function useUserManagement({
 
         let error = null;
         let updateUserTimedOut = false;
-        try {
-          const updateTimeoutMs = 60000;
-          const updateTimeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("timeout")), updateTimeoutMs)
+
+        async function updateUserWithTimeout(ms) {
+          const t = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), ms)
           );
-          const result = await Promise.race([
+          return await Promise.race([
             supabase.auth.updateUser({ data: jwtPayload }).then((r) => r),
-            updateTimeout,
+            t,
           ]);
+        }
+
+        try {
+          let result;
+          try {
+            result = await updateUserWithTimeout(60000);
+          } catch (e1) {
+            if (e1?.message === "timeout") {
+              console.warn("⚠️ updateUser 60s timeout, retry once (profiles already saved)");
+              try {
+                result = await updateUserWithTimeout(90000);
+              } catch (e2) {
+                if (e2?.message === "timeout") {
+                  updateUserTimedOut = true;
+                  console.warn("⚠️ updateUser timed out after retry — profil DB'de, oturum metadata gecikmiş olabilir");
+                  result = null;
+                } else {
+                  throw e2;
+                }
+              }
+            } else {
+              throw e1;
+            }
+          }
           if (result?.error) error = result.error;
         } catch (e) {
-          if (e?.message === "timeout") {
-            updateUserTimedOut = true;
-            console.warn("⚠️ updateUser timed out (profiles already saved)");
-          } else {
-            throw e;
-          }
+          console.error("❌ updateUser exception:", e);
+          throw e;
         }
 
         if (error) {
@@ -384,13 +404,15 @@ export function useUserManagement({
           return;
         }
 
-        console.log(updateUserTimedOut ? "⚠️ updateUser skipped (timeout)" : "✅ updateUser OK");
+        console.log(updateUserTimedOut ? "⚠️ updateUser metadata skipped (timeout, DB OK)" : "✅ updateUser OK");
 
-        alert(
-          updateUserTimedOut
-            ? "Profil veritabanına kaydedildi. Oturum güncellemesi zaman aşımına uğradıysa sayfayı yenileyin."
-            : "Profil güncellendi."
-        );
+        // Profil zaten profiles'ta; yerel state güncelleniyor. Zaman aşımında bile kullanıcıya tek mesaj.
+        alert("Profil güncellendi.");
+        if (updateUserTimedOut) {
+          try {
+            await supabase.auth.refreshSession();
+          } catch (_) {}
+        }
 
         // 🔁 Supabase başarılı → local state'i GARANTİ senkronla
         setUsers((prev) =>
