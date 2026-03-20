@@ -7,6 +7,7 @@ import { setPendingAcceptedTerms } from "./pendingProfileFlags";
 import { clearAllTgSupabasePreferences } from "../../utils/capacitorStorage";
 import { hasAcceptedTermsEffective } from "../../utils/termsEffective";
 import { hydrateTermsAcceptanceFromDb } from "../../utils/termsDbHydrate";
+import { termsDebugLog } from "../../utils/termsDebugLog";
 
 /**
  * Hook for authentication operations
@@ -125,13 +126,32 @@ export function useAuth({
       return false;
     }
     if (options.requireTerms) {
+      termsDebugLog({
+        path: "requireAuth:requireTerms:start",
+        userId: user?.id,
+        userState: user?.acceptedTermsAt ?? null,
+      });
       /** Stale state güvenilmez — her kapalı işlemde DB ile senkron (blok yalnızca DB boş + grandfather yok). */
       if (user?.id && supabase?.from) {
         const { ok, reason } = await hydrateTermsAcceptanceFromDb({ supabase, user, setUser });
+        termsDebugLog({
+          path: "requireAuth:requireTerms:afterHydrate",
+          userId: user?.id,
+          userState: user?.acceptedTermsAt ?? null,
+          ok,
+          reason,
+          willOpenGate: !ok,
+        });
         if (!ok) {
           if (import.meta.env.DEV) {
             console.warn("[tg:terms:requireAuth:blocked]", { userId: user?.id, reason });
           }
+          termsDebugLog({
+            path: "requireAuth:requireTerms:blocked_gate",
+            userId: user?.id,
+            userState: user?.acceptedTermsAt ?? null,
+            blockedReason: reason,
+          });
           if (setShowTermsGate) setShowTermsGate(true);
           if (setTermsChecked) setTermsChecked(false);
           try {
@@ -142,6 +162,12 @@ export function useAuth({
           return false;
         }
       } else if (!hasAcceptedTermsEffective(user)) {
+        termsDebugLog({
+          path: "requireAuth:requireTerms:blocked_no_supabase",
+          userId: user?.id,
+          userState: user?.acceptedTermsAt ?? null,
+          blockedReason: "no_supabase_or_id",
+        });
         if (setShowTermsGate) setShowTermsGate(true);
         if (setTermsChecked) setTermsChecked(false);
         try {

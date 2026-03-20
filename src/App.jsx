@@ -8,6 +8,7 @@ import { KEY, DEFAULT_ADMINS } from "./constants";
 import { lsSet } from "./utils/localStorage";
 import { now, fmt, normalizeUsername, openDirections, openCall, trackMetric, uuid } from "./utils/helpers";
 import { hasAcceptedTermsEffective } from "./utils/termsEffective";
+import { termsDebugLog } from "./utils/termsDebugLog";
 
 // Hooks
 import { useSystemTheme } from "./hooks/useSystemTheme";
@@ -229,6 +230,17 @@ useEffect(() => {
 useEffect(() => {
   if (showTermsGate && user && hasAcceptedTermsEffective(user)) setShowTermsGate(false);
 }, [user, showTermsGate]);
+
+useEffect(() => {
+  if (!showTermsGate) return;
+  termsDebugLog({
+    path: "termsGate:modalVisible",
+    userId: user?.id ?? null,
+    userState: user?.acceptedTermsAt ?? null,
+    hasEffectiveFrontend: user ? hasAcceptedTermsEffective(user) : null,
+    note: "Kullanım şartları modal açık",
+  });
+}, [showTermsGate, user]);
 
 useEffect(() => {
   if (import.meta.env.DEV) try { console.log("active", active); } catch (_ignored) { /* noop */ }

@@ -1,4 +1,5 @@
 import { hasAcceptedTermsEffective, hasAcceptedTermsValue } from "./termsEffective";
+import { termsDebugLog } from "./termsDebugLog";
 
 const DBG = "[tg:terms:hydrate]";
 
@@ -9,8 +10,19 @@ const DBG = "[tg:terms:hydrate]";
 export async function hydrateTermsAcceptanceFromDb({ supabase, user, setUser }) {
   const userId = user?.id;
   if (!userId || !supabase?.from) {
+    const ok = hasAcceptedTermsEffective(user);
+    termsDebugLog({
+      path: "hydrateTermsAcceptanceFromDb",
+      userId,
+      userState: user?.acceptedTermsAt ?? null,
+      dbValue: null,
+      queryError: null,
+      ok,
+      reason: "no_db_or_id",
+      blockedReason: ok ? null : "no_db_or_id",
+    });
     return {
-      ok: hasAcceptedTermsEffective(user),
+      ok,
       reason: "no_db_or_id",
       dbAcceptedTermsAt: null,
     };
@@ -23,19 +35,15 @@ export async function hydrateTermsAcceptanceFromDb({ supabase, user, setUser }) 
     .maybeSingle();
 
   const dbRaw = data?.accepted_terms_at ?? null;
-  try {
-    const debug =
-      import.meta.env.DEV ||
-      (typeof localStorage !== "undefined" && localStorage.getItem("tg_terms_debug") === "1");
-    if (debug) {
-      console.log("TERMS DEBUG:", {
-        userId,
-        userState: user?.acceptedTermsAt ?? null,
-        dbValue: dbRaw,
-        queryError: error?.message ?? null,
-      });
-    }
-  } catch (_) {}
+  termsDebugLog({
+    path: "hydrateTermsAcceptanceFromDb:afterQuery",
+    userId,
+    userState: user?.acceptedTermsAt ?? null,
+    dbValue: dbRaw,
+    queryError: error?.message ?? null,
+    hasProfileRow: !!data,
+    blockedReason: error ? `query_error:${error.message}` : null,
+  });
   if (import.meta.env.DEV) {
     console.log(DBG, {
       userId,
@@ -47,6 +55,16 @@ export async function hydrateTermsAcceptanceFromDb({ supabase, user, setUser }) 
 
   if (error) {
     const ok = hasAcceptedTermsEffective(user);
+    termsDebugLog({
+      path: "hydrateTermsAcceptanceFromDb:queryFailed",
+      userId,
+      userState: user?.acceptedTermsAt ?? null,
+      dbValue: dbRaw,
+      queryError: error.message,
+      ok,
+      reason: "query_error",
+      blockedReason: ok ? null : "query_error_no_effective_fallback",
+    });
     if (import.meta.env.DEV) {
       console.warn(DBG, "query failed; frontend effective only", error.message, { ok });
     }
@@ -67,6 +85,15 @@ export async function hydrateTermsAcceptanceFromDb({ supabase, user, setUser }) 
           }
         : prev
     );
+    termsDebugLog({
+      path: "hydrateTermsAcceptanceFromDb:allowed",
+      userId,
+      userState: user?.acceptedTermsAt ?? null,
+      dbValue: dbAt,
+      ok: true,
+      reason: "db_accepted_terms_at",
+      blockedReason: null,
+    });
     return { ok: true, reason: "db_accepted_terms_at", dbAcceptedTermsAt: dbAt };
   }
 
@@ -81,9 +108,28 @@ export async function hydrateTermsAcceptanceFromDb({ supabase, user, setUser }) 
         String(prev?.id) === String(userId) ? { ...prev, createdAt: createdMs } : prev
       );
     }
+    termsDebugLog({
+      path: "hydrateTermsAcceptanceFromDb:allowed",
+      userId,
+      userState: user?.acceptedTermsAt ?? null,
+      dbValue: dbRaw,
+      ok: true,
+      reason: "grandfather_or_effective",
+      blockedReason: null,
+    });
     return { ok: true, reason: "grandfather_or_effective", dbAcceptedTermsAt: null };
   }
 
+  termsDebugLog({
+    path: "hydrateTermsAcceptanceFromDb:blocked",
+    userId,
+    userState: user?.acceptedTermsAt ?? null,
+    dbValue: dbRaw,
+    profileCreatedAt: data?.created_at ?? null,
+    ok: false,
+    reason: "no_acceptance_in_db",
+    blockedReason: !dbRaw ? "missing_db_terms" : "no_grandfather",
+  });
   if (import.meta.env.DEV) {
     console.warn(DBG, "blocked", { userId, reason: "no_acceptance_in_db" });
   }
