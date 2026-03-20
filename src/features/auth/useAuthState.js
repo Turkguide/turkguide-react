@@ -93,6 +93,32 @@ export function useAuthState() {
     }
   }
 
+  /** Oturumdaki user_metadata ile public.profiles birleştir (büyük avatar sadece DB'de olabilir). */
+  async function mergeProfileRowFromDb(nextUser) {
+    try {
+      if (!supabase?.from || !nextUser?.id) return nextUser;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("username, avatar, age, city, state, country, bio")
+        .eq("id", nextUser.id)
+        .maybeSingle();
+      if (error || !data) return nextUser;
+      const o = { ...nextUser };
+      const u = String(data.username ?? "").trim();
+      if (u) o.username = u;
+      if (typeof data.avatar === "string" && data.avatar.length > 0) o.avatar = data.avatar;
+      if (data.city != null) o.city = String(data.city || "");
+      if (data.state != null) o.state = String(data.state || "");
+      if (data.country != null) o.country = String(data.country || "");
+      if (data.bio != null) o.bio = String(data.bio || "");
+      if (data.age != null && data.age !== "") o.age = data.age;
+      return o;
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn("mergeProfileRowFromDb:", e);
+      return nextUser;
+    }
+  }
+
   async function hydrateProfileFlags(nextUser) {
     try {
       if (!supabase?.from) return;
@@ -176,7 +202,7 @@ export function useAuthState() {
         if (session?.user) {
           const md = session.user.user_metadata || {};
           const flags = await fetchProfileFlags(session.user.id);
-          const nextUser = {
+          let nextUser = {
             id: session.user.id,
             email: session.user.email ?? null,
             username: md.username ?? null,
@@ -198,6 +224,7 @@ export function useAuthState() {
             bannedAt: flags?.bannedAt ?? null,
           };
           applyProfileFlags(nextUser);
+          nextUser = await mergeProfileRowFromDb(nextUser);
           setUser(nextUser);
           userWasSet = true;
           if (alive) setBooted(true);
@@ -216,7 +243,7 @@ export function useAuthState() {
             if (s?.user) {
               const md = s.user.user_metadata || {};
               const flags = await fetchProfileFlags(s.user.id);
-              const nextUser = {
+              let nextUser = {
                 id: s.user.id,
                 email: s.user.email ?? null,
                 username: md.username ?? null,
@@ -237,6 +264,7 @@ export function useAuthState() {
                 bannedAt: flags?.bannedAt ?? null,
               };
               applyProfileFlags(nextUser);
+              nextUser = await mergeProfileRowFromDb(nextUser);
               setUser((prev) => {
                 const next = { ...nextUser };
                 if (prev?.id === next.id) {

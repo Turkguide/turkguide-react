@@ -281,6 +281,9 @@ export function useUserManagement({
             .map((x) => ({ id: x?.id, username: x?.username })),
         });
 
+        /** JWT user_metadata çok şişince updateUser yavaşlıyor / zaman aşımı; büyük avatar sadece profiles'ta tutulur. */
+        const MAX_AVATAR_IN_JWT_CHARS = 10000;
+
         const payload = {
           username,
           // boş string ise null gönder
@@ -295,26 +298,70 @@ export function useUserManagement({
           bio: String(u.bio || "").trim() || null,
         };
 
-        console.log("🧪 updateUser payload:", {
+        const unameLower = normalizeUsername(username);
+        const emailValue = String(u?.email || user?.email || "").trim();
+        if (!emailValue) {
+          const msg = "Profil kaydedilemedi: e-posta eksik. Lütfen çıkış yapıp tekrar giriş yapın.";
+          setEditUserError(msg);
+          alert(msg);
+          setSavingEditUser(false);
+          return;
+        }
+
+        const profileRow = {
+          id: u?.id,
+          username: unameLower,
+          email: emailValue,
+          avatar: avatarStr ? avatarStr : null,
+          age: u?.age !== "" && u?.age != null ? Number(u.age) : null,
+          city: String(u?.city || "").trim() || null,
+          state: String(u?.state || "").trim() || null,
+          country: String(u?.country || "").trim() || null,
+          bio: String(u?.bio || "").trim() || null,
+        };
+
+        const { error: pErr0 } = await supabase.from("profiles").upsert(profileRow, { onConflict: "id" });
+        if (pErr0) {
+          console.error("❌ profiles upsert error:", pErr0);
+          const msg =
+            "Profil veritabanına yazılamadı: " + (pErr0.message || JSON.stringify(pErr0));
+          setEditUserError(msg);
+          alert(msg);
+          setSavingEditUser(false);
+          return;
+        }
+        console.log("✅ profiles upsert OK (before auth metadata)");
+
+        const jwtPayload = {
           ...payload,
-          avatar_len: avatarLen,
+          avatar:
+            avatarStr && avatarLen > 0 && avatarLen <= MAX_AVATAR_IN_JWT_CHARS ? avatarStr : null,
+        };
+
+        console.log("🧪 updateUser payload:", {
+          ...jwtPayload,
+          avatar_len_stored_in_jwt: jwtPayload.avatar ? String(jwtPayload.avatar).length : 0,
+          avatar_len_full: avatarLen,
           has_session: !!sessUser,
           session_email: sessUser.email,
         });
 
         let error = null;
+        let updateUserTimedOut = false;
         try {
+          const updateTimeoutMs = 60000;
           const updateTimeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("timeout")), 20000)
+            setTimeout(() => reject(new Error("timeout")), updateTimeoutMs)
           );
           const result = await Promise.race([
-            supabase.auth.updateUser({ data: payload }).then((r) => r),
+            supabase.auth.updateUser({ data: jwtPayload }).then((r) => r),
             updateTimeout,
           ]);
           if (result?.error) error = result.error;
         } catch (e) {
           if (e?.message === "timeout") {
-            error = { message: "Profil kaydetme zaman aşımına uğradı. Lütfen tekrar deneyin." };
+            updateUserTimedOut = true;
+            console.warn("⚠️ updateUser timed out (profiles already saved)");
           } else {
             throw e;
           }
@@ -337,42 +384,13 @@ export function useUserManagement({
           return;
         }
 
-        console.log("✅ updateUser OK");
+        console.log(updateUserTimedOut ? "⚠️ updateUser skipped (timeout)" : "✅ updateUser OK");
 
-        alert("Profil güncellendi.");
-
-        // ✅ ALSO write to public.profiles so everyone can read avatar/fields
-        try {
-          const unameLower = normalizeUsername(username);
-          const emailValue = String(u?.email || user?.email || "").trim();
-          if (!emailValue) {
-            console.warn("profiles upsert skipped: email missing");
-          } else {
-            const row = {
-              id: u?.id,
-              username: unameLower,
-              email: emailValue,
-              avatar: avatarStr ? avatarStr : null,
-              age: u?.age !== "" && u?.age != null ? Number(u.age) : null,
-              city: String(u?.city || "").trim() || null,
-              state: String(u?.state || "").trim() || null,
-              country: String(u?.country || "").trim() || null,
-              bio: String(u?.bio || "").trim() || null,
-            };
-
-            const { error: pErr } = await supabase
-              .from("profiles")
-              .upsert(row, { onConflict: "id" });
-
-            if (pErr) {
-              console.warn("⚠️ profiles upsert error:", pErr);
-            } else {
-              console.log("✅ profiles upsert OK");
-            }
-          }
-        } catch (e) {
-          console.warn("⚠️ profiles upsert crash:", e);
-        }
+        alert(
+          updateUserTimedOut
+            ? "Profil veritabanına kaydedildi. Oturum güncellemesi zaman aşımına uğradıysa sayfayı yenileyin."
+            : "Profil güncellendi."
+        );
 
         // 🔁 Supabase başarılı → local state'i GARANTİ senkronla
         setUsers((prev) =>
