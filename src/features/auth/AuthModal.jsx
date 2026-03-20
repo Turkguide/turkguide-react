@@ -5,6 +5,7 @@ import { Modal, Button, inputStyle } from "../../components/ui";
  * Auth Modal Component - Login and Register forms
  */
 export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegister, authEmail, setAuthEmail, authPassword, setAuthPassword, authUsername, setAuthUsername, loginNow, oauthLogin }) {
+  const [registerTermsAccepted, setRegisterTermsAccepted] = useState(false);
   const [showTermsViewer, setShowTermsViewer] = useState(false);
   const [termsViewerType, setTermsViewerType] = useState(/** @type {null | 'terms' | 'community'} */ null);
 
@@ -80,10 +81,22 @@ export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegi
           veya
         </div>
 
+        <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, marginBottom: 10, color: ui.muted }}>
+          <input
+            type="checkbox"
+            checked={registerTermsAccepted}
+            onChange={(e) => setRegisterTermsAccepted(e.target.checked)}
+          />
+          <span>
+            Apple ile devam etmeden önce Kullanım Şartları ve Topluluk Kuralları'nı kabul ediyorum.
+          </span>
+        </label>
+
         <div style={{ display: "grid", gap: 10 }}>
           <Button
             ui={ui}
-            onClick={() => oauthLogin("apple")}
+            onClick={() => oauthLogin("apple", { termsAccepted: registerTermsAccepted })}
+            disabled={!registerTermsAccepted}
             style={{
               width: "100%",
               background: "#000",
@@ -125,7 +138,12 @@ export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegi
           style={{ ...inputStyle(ui), marginTop: 10 }}
         />
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, marginTop: 12, color: ui.muted }}>
+        <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, marginTop: 12, color: ui.muted }}>
+          <input
+            type="checkbox"
+            checked={registerTermsAccepted}
+            onChange={(e) => setRegisterTermsAccepted(e.target.checked)}
+          />
           <span>
             <button
               type="button"
@@ -158,16 +176,16 @@ export function AuthModal({ ui, showAuth, showRegister, setShowAuth, setShowRegi
             >
               Topluluk Kuralları
             </button>
-            sayfalarını inceleyebilirsiniz.
+            ’nı okudum ve kabul ediyorum.
           </span>
-        </div>
+        </label>
 
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
           <Button
             ui={ui}
             variant="solidBlue"
-            onClick={() => loginNow("email", "register")}
-            disabled={!authUsername.trim() || !authEmail.trim() || !authPassword.trim()}
+            onClick={() => loginNow("email", "register", { termsAccepted: registerTermsAccepted })}
+            disabled={!authUsername.trim() || !authEmail.trim() || !authPassword.trim() || !registerTermsAccepted}
             style={{ width: "100%" }}
           >
             Kaydı Tamamla

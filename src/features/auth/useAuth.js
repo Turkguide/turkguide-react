@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { authService } from "./authService";
-import { KEY } from "../../constants";
+import { KEY, DEFAULT_ADMINS, DEFAULT_ADMIN_EMAILS } from "../../constants";
 import { supabase } from "../../supabaseClient";
 import { normalizeUsername } from "../../utils/helpers";
 import { clearAllTgSupabasePreferences } from "../../utils/capacitorStorage";
@@ -34,6 +34,13 @@ export function useAuth({
   const [authPassword, setAuthPassword] = useState("");
   const [authUsername, setAuthUsername] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const OAUTH_TERMS_KEY = "tg_oauth_terms_accepted_v1";
+
+  function isAdminIdentity(u) {
+    const email = String(u?.email || "").trim().toLowerCase();
+    const uname = normalizeUsername(String(u?.username || ""));
+    return DEFAULT_ADMIN_EMAILS.includes(email) || DEFAULT_ADMINS.includes(uname);
+  }
 
   /**
    * Hard reset - clears all UI state and storage
@@ -121,6 +128,23 @@ export function useAuth({
       alert("Hesabın askıya alındı. Destek için bize ulaş.");
       return false;
     }
+    if (user?.id && !isAdminIdentity(user) && supabase?.from) {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("accepted_terms_at")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data?.accepted_terms_at) {
+          alert("Devam etmek için Kullanım Şartları'nı kabul etmelisiniz.");
+          return false;
+        }
+      } catch (_) {
+        alert("Şartlar doğrulanamadı. Lütfen tekrar deneyin.");
+        return false;
+      }
+    }
     if (options.requireVerified && user?.emailVerified === false) {
       alert("Email adresini doğrulamalısın. Mailine gelen bağlantıya tıkla.");
       return false;
@@ -144,6 +168,10 @@ export function useAuth({
 
       // 2) REGISTER
       if (mode === "register") {
+        if (options.termsAccepted !== true) {
+          alert("Devam etmek için Kullanım Şartları ve Topluluk Kuralları'nı kabul etmelisiniz.");
+          return;
+        }
         if (!email || !pass || !username) {
           alert("Email, şifre ve kullanıcı adı zorunlu.");
           return;
@@ -206,6 +234,23 @@ export function useAuth({
           } catch (_) {}
           setShowAuth(true); // doğrulama için modal açık kalsın
         } else {
+          const acceptedTermsAt = new Date().toISOString();
+          const userId = data.user.id;
+          for (let attempt = 0; attempt < 4; attempt++) {
+            try {
+              const { error } = await supabase.from("profiles").upsert(
+                {
+                  id: userId,
+                  email,
+                  username: unameKey,
+                  accepted_terms_at: acceptedTermsAt,
+                },
+                { onConflict: "id" }
+              );
+              if (!error) break;
+            } catch (_) {}
+            await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+          }
           alert("Kayıt alındı ve giriş yapıldı.");
           setUser((prev) => {
             const next = {
@@ -224,6 +269,7 @@ export function useAuth({
               emailVerified:
                 !!(data.user.email_confirmed_at ?? data.user.confirmed_at) && !data.user.new_email,
               newEmailPending: data.user.new_email ?? null,
+              acceptedTermsAt,
             };
             if (prev?.id === data.user.id) {
               next.bannedAt = prev.bannedAt ?? null;
@@ -317,14 +363,24 @@ export function useAuth({
   /**
    * OAuth login
    */
-  async function oauthLogin(provider) {
+  async function oauthLogin(provider, options = {}) {
     if (!supabase?.auth) {
       alert("Bağlantı hazır değil. Sayfayı yenileyip tekrar deneyin.");
       return;
     }
+    if (provider === "apple" && options.termsAccepted !== true) {
+      alert("Apple ile devam etmek için önce Kullanım Şartları'nı kabul etmelisiniz.");
+      return;
+    }
     try {
+      if (provider === "apple") {
+        localStorage.setItem(OAUTH_TERMS_KEY, "1");
+      }
       await authService.signInWithOAuth(provider);
     } catch (e) {
+      if (provider === "apple") {
+        localStorage.removeItem(OAUTH_TERMS_KEY);
+      }
       if (import.meta.env.DEV) console.error("oauthLogin error:", e);
       alert(e?.message || "OAuth giriş hatası. Lütfen tekrar deneyin.");
     }

@@ -1,11 +1,57 @@
 import { useEffect } from "react";
 import { supabase } from "../../supabaseClient";
+import { DEFAULT_ADMINS, DEFAULT_ADMIN_EMAILS } from "../../constants";
+import { normalizeUsername } from "../../utils/helpers";
 
 /**
  * Hook for handling auth callbacks (OAuth, email verification)
  */
 export function useAuthCallback({ setUser, setShowAuth, setActive, setLandingSearch, setCategoryFilter }) {
   useEffect(() => {
+    const OAUTH_TERMS_KEY = "tg_oauth_terms_accepted_v1";
+
+    const isAdminIdentity = (u) => {
+      const email = String(u?.email || "").trim().toLowerCase();
+      const uname = normalizeUsername(String(u?.user_metadata?.username || ""));
+      return DEFAULT_ADMIN_EMAILS.includes(email) || DEFAULT_ADMINS.includes(uname);
+    };
+
+    async function persistOrValidateTerms(session) {
+      const uid = session?.user?.id;
+      if (!uid || !supabase?.from) return true;
+      if (isAdminIdentity(session.user)) return true;
+      const marker = localStorage.getItem(OAUTH_TERMS_KEY);
+      if (marker === "1") {
+        const acceptedAt = new Date().toISOString();
+        const email = String(session.user.email || "").trim() || `${uid}@apple.placeholder`;
+        const uname = normalizeUsername(
+          String(session.user.user_metadata?.username || "").trim() || `user_${String(uid).slice(0, 8)}`
+        );
+        const { error } = await supabase.from("profiles").upsert(
+          { id: uid, email, username: uname, accepted_terms_at: acceptedAt },
+          { onConflict: "id" }
+        );
+        localStorage.removeItem(OAUTH_TERMS_KEY);
+        if (error) {
+          alert("Kullanım şartı kaydı tamamlanamadı. Lütfen tekrar giriş yapın.");
+          await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+          return false;
+        }
+        return true;
+      }
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("accepted_terms_at")
+        .eq("id", uid)
+        .maybeSingle();
+      if (error || !data?.accepted_terms_at) {
+        alert("Kullanım Şartları kabul edilmeden Apple girişi tamamlanamaz.");
+        await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+        return false;
+      }
+      return true;
+    }
+
     const run = async () => {
       try {
         if (!supabase?.auth) return;
@@ -84,6 +130,12 @@ export function useAuthCallback({ setUser, setShowAuth, setActive, setLandingSea
           // hash'i temizle
           window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
 
+          const { data: sData } = await supabase.auth.getSession();
+          if (sData?.session) {
+            const ok = await persistOrValidateTerms(sData.session);
+            if (!ok) return;
+          }
+
         }
 
         // 2) ?code=... (PKCE / OAuth)
@@ -114,6 +166,8 @@ export function useAuthCallback({ setUser, setShowAuth, setActive, setLandingSea
           // ✅ Session'ı okuyup user state'i tetikle (listener bazen geç kalıyor)
           const session = data?.session || (await supabase.auth.getSession()).data.session;
           if (session?.user) {
+            const ok = await persistOrValidateTerms(session);
+            if (!ok) return;
             const md = session.user.user_metadata || {};
             setUser((prev) => ({
               ...(prev || {}),
