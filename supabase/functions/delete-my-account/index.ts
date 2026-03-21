@@ -113,6 +113,9 @@ function errResponse(status: number, body: Record<string, unknown>) {
 }
 
 Deno.serve(async (req) => {
+  const authHeader = req.headers.get("Authorization");
+  console.log("AUTH HEADER:", authHeader);
+
   const safeRespond = (status: number, payload: Record<string, unknown>) => {
     return new Response(JSON.stringify(payload), {
       status,
@@ -129,7 +132,6 @@ Deno.serve(async (req) => {
     return errResponse(405, { error: "Method not allowed" });
   }
 
-  const authHeader = req.headers.get("Authorization");
   const hasAuthHeader = !!authHeader;
   const hasBearerPrefix = authHeader?.startsWith("Bearer ");
   const tokenLength = authHeader?.replace("Bearer ", "").length ?? 0;
@@ -167,49 +169,46 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const projectRef = supabaseUrl ? new URL(supabaseUrl).hostname.replace(".supabase.co", "") : "";
 
   console.log(JSON.stringify({
     step: "config",
     hasUrl: !!supabaseUrl,
-    hasAnonKey: !!supabaseAnonKey,
     hasServiceKey: !!supabaseServiceKey,
     projectRef,
   }));
 
-  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+  if (!supabaseUrl || !supabaseServiceKey) {
     return errResponse(500, { error: "Server configuration error", step: "config" });
   }
 
-  // JWT'yi açıkça ver: global header ile getUser() bazı ortamlarda (OAuth/Apple) Invalid JWT üretebiliyor.
-  const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, // IMPORTANT: use service role here
+    {
+      global: {
+        headers: {
+          Authorization: authHeader || "",
+        },
+      },
+    }
+  );
 
-  const { data: userData, error: userError } = await supabaseAnon.auth.getUser(token);
-  console.log(JSON.stringify({
-    step: "getUser_result",
-    hasUser: !!userData?.user,
-    userId: userData?.user?.id ?? null,
-    userError: userError?.message ?? null,
-    userErrorName: userError?.name ?? null,
-  }));
+  const { data, error: _authError } = await supabase.auth.getUser();
+  const user = data?.user ?? null;
 
-  if (userError || !userData?.user?.id) {
-    const serverMessage = userError?.message ?? "Invalid or expired token";
-    return errResponse(401, {
-      error: serverMessage,
-      step: "auth",
-      detail: "getUser_failed",
-      authErrorName: userError?.name ?? null,
-      /** İstemci aynı JWT ile getUser(token) — süresi dolmuş veya proje anahtarı uyumsuz olabilir */
-      hint: "client_should_refresh_session_before_retry",
+  if (!user) {
+    console.log("NO USER");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  const userId = userData.user.id;
+  console.log("USER ID:", user.id);
+
+  const userId = user.id;
 
   const admin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
