@@ -86,47 +86,35 @@ export const authService = {
   async deleteAccount() {
     console.log("DELETE START");
 
-    const { data: currentSession } = await supabase.auth.getSession();
-    console.log("SESSION:", currentSession);
+    const { data } = await supabase.auth.getSession();
 
-    if (!currentSession?.session) {
-      throw new Error("No active session");
-    }
-
-    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-
-    if (refreshError) {
-      console.error("REFRESH ERROR:", refreshError);
-      throw refreshError;
-    }
-
-    const token = refreshed?.session?.access_token;
-
-    if (!token) {
-      throw new Error("No refreshed access token");
-    }
+    const token = data?.session?.access_token;
 
     console.log("TOKEN:", token);
 
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-my-account`;
-    console.log("URL:", url);
+    if (!token) {
+      throw new Error("No token");
+    }
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-my-account`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     const text = await res.text();
 
-    console.log("RESPONSE STATUS:", res.status);
-    console.log("RESPONSE TEXT:", text);
+    console.log("STATUS:", res.status);
+    console.log("TEXT:", text);
 
     if (!res.ok) {
-      throw new Error(text || "Delete failed");
+      throw new Error(text);
     }
 
     return JSON.parse(text);
