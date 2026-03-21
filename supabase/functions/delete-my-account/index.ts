@@ -1,5 +1,5 @@
 /**
- * Edge Function: delete-my-account
+ * Edge Function: 
  * Lets the authenticated user permanently delete their own account.
  * Verifies JWT, then cleans up all user-related data in order, then deletes auth user.
  * Returns detailed JSON error on first failing step.

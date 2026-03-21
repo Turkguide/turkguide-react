@@ -1,11 +1,11 @@
-# delete-my-account
+# 
 
 Edge Function for permanent user account deletion. Uses service role to clean all user data then remove the auth user.
 
 ## Deploy
 
 ```bash
-supabase functions deploy delete-my-account
+supabase functions deploy 
 ```
 
 Deploy to the **same** Supabase project the web app uses. The app must have `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` pointing to this project.
@@ -19,7 +19,7 @@ The function returns full CORS headers so browser requests from your production 
 
 ## Behavior
 
-1. Client calls `supabase.functions.invoke("delete-my-account", { method: "POST" })` with session (JWT sent automatically).
+1. Client calls `supabase.functions.invoke("", { method: "POST" })` with session (JWT sent automatically).
 2. Function verifies JWT and gets user id (and username from `profiles`).
 3. Deletes in order (avoids FK issues):
    - `reports` (reporter_id)

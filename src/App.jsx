@@ -47,6 +47,7 @@ import { SettingsModal } from "./features/settings";
 
 // Features - Auth
 import { useAuthState, useAuthCallback, useAuth, AuthModal } from "./features/auth";
+import auth from "./features/auth/authService";
 
 // Features - Business
 import { useBusiness, useBusinessEdit, BizApplyForm } from "./features/business";
@@ -143,6 +144,7 @@ function AppContent() {
   const [showAuth, setShowAuth] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
 
   // Landing search (UI)
   const [landingSearch, setLandingSearch] = useState("");
@@ -249,7 +251,7 @@ useEffect(() => {
   const setShowBizApplyRef = useRef(null);
 
   // Auth hook
-  const auth = useAuth({
+  const authActions = useAuth({
     user,
     setUser,
     setShowAuth,
@@ -289,7 +291,7 @@ useEffect(() => {
     dms,
     setDms,
     settings: settingsHook.settings,
-    requireAuth: auth.requireAuth,
+    requireAuth: authActions.requireAuth,
     blockedIds: blockedUsernames,
     blockedByIds: blockedByUsernames,
   });
@@ -301,7 +303,7 @@ useEffect(() => {
     appts,
     setAppts,
     biz,
-    requireAuth: auth.requireAuth,
+    requireAuth: authActions.requireAuth,
   });
 
 
@@ -387,7 +389,7 @@ useEffect(() => {
   }, [posts, blockedUsernames, blockedByUsernames]);
 
   // Auth functions from hook
-  const { requireAuth } = auth;
+  const { requireAuth } = authActions;
   const reportActions = useReportActions({
     user,
     requireAuth,
@@ -1069,7 +1071,7 @@ return (
         ui={ui}
         open={showDeleteAccountConfirm}
         title="Hesabı kalıcı olarak sil"
-        onClose={() => !auth.deletingAccount && setShowDeleteAccountConfirm(false)}
+        onClose={() => !deleteAccountBusy && setShowDeleteAccountConfirm(false)}
         width={480}
         zIndex={5600}
       >
@@ -1078,7 +1080,7 @@ return (
             Hesabınız ve ilişkili tüm verileriniz (profil, paylaşımlar, yorumlar, mesajlar, randevular)
             kalıcı olarak silinecektir. Bu işlem geri alınamaz.
           </div>
-          {auth.deletingAccount ? (
+          {deleteAccountBusy ? (
             <div style={{ color: ui.muted, fontSize: 13, fontWeight: 700 }}>
               Hesap siliniyor… Lütfen bekleyin (birkaç saniye sürebilir).
             </div>
@@ -1087,7 +1089,7 @@ return (
             <Button
               ui={ui}
               onClick={() => setShowDeleteAccountConfirm(false)}
-              disabled={auth.deletingAccount}
+              disabled={deleteAccountBusy}
             >
               İptal
             </Button>
@@ -1095,8 +1097,10 @@ return (
               ui={ui}
               variant="danger"
               onClick={async () => {
+                setDeleteAccountBusy(true);
                 try {
                   await auth.deleteAccount();
+                  await authActions.logout();
                 } catch (e) {
                   setShowDeleteAccountConfirm(false);
                   const msg = String(e?.message || e || "").toLowerCase();
@@ -1105,11 +1109,13 @@ return (
                   } else {
                     alert(e?.message || "Hesap silinirken hata oluştu.");
                   }
+                } finally {
+                  setDeleteAccountBusy(false);
                 }
               }}
-              disabled={auth.deletingAccount}
+              disabled={deleteAccountBusy}
             >
-              {auth.deletingAccount ? "Siliniyor…" : "Evet, hesabımı kalıcı olarak sil"}
+              {deleteAccountBusy ? "Siliniyor…" : "Evet, hesabımı kalıcı olarak sil"}
             </Button>
           </div>
         </div>
@@ -1125,7 +1131,7 @@ return (
         themePref={themePref}
         setThemePref={setThemePref}
         user={user}
-        logout={auth.logout}
+        logout={authActions.logout}
         onRequestDeleteAccount={() => {
           settingsHook.setShowSettings(false);
           // Ayarlar modalı kapanırken onayı aynı tıkta açmak bazı cihazlarda ikinci pencerenin görünmemesine yol açabiliyor
@@ -1140,14 +1146,14 @@ return (
         showRegister={showRegister}
         setShowAuth={setShowAuth}
         setShowRegister={setShowRegister}
-        authEmail={auth.authEmail}
-        setAuthEmail={auth.setAuthEmail}
-        authPassword={auth.authPassword}
-        setAuthPassword={auth.setAuthPassword}
-        authUsername={auth.authUsername}
-        setAuthUsername={auth.setAuthUsername}
-        loginNow={auth.loginNow}
-        oauthLogin={auth.oauthLogin}
+        authEmail={authActions.authEmail}
+        setAuthEmail={authActions.setAuthEmail}
+        authPassword={authActions.authPassword}
+        setAuthPassword={authActions.setAuthPassword}
+        authUsername={authActions.authUsername}
+        setAuthUsername={authActions.setAuthUsername}
+        loginNow={authActions.loginNow}
+        oauthLogin={authActions.oauthLogin}
       />
   </div>
   </div>

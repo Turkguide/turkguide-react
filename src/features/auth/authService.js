@@ -88,7 +88,7 @@ export const authService = {
     const DBG = "[tg:deleteAccount]";
     const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim().replace(/\/$/, "");
     const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
-    const fnName = "delete-my-account";
+    const fnName = "";
     const timeoutMs = 75000;
 
     if (!supabase?.auth?.getSession) {
@@ -285,3 +285,5 @@ export const authService = {
     return supabase.auth.onAuthStateChange(callback);
   },
 };
+
+export default authService;
