@@ -81,17 +81,14 @@ export const authService = {
   },
 
   /**
-   * Delete account via Edge Function (fetch + Authorization + apikey).
-   * Yalnızca access token süresi dolmak üzereyse refreshSession; gereksiz 12s bekleme yok.
+   * Delete account via Edge Function (supabase.functions.invoke only — same client as auth).
+   * Explicit Authorization header + token refresh preflight to avoid 401 / Load failed (e.g. Apple).
    */
   async deleteAccount() {
     const DBG = "[tg:deleteAccount]";
-    const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim().replace(/\/$/, "");
-    const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
-    const fnName = "";
     const timeoutMs = 75000;
 
-    if (!supabase?.auth?.getSession) {
+    if (!supabase?.auth?.getSession || !supabase?.functions?.invoke) {
       throw new Error("Hesap silme şu an kullanılamıyor.");
     }
 
@@ -104,16 +101,21 @@ export const authService = {
     let { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
     if (import.meta.env.DEV) {
       const s = sessionData?.session;
-      console.log(DBG, { userId: s?.user?.id, hasToken: !!s?.access_token, expires_at: s?.expires_at, sessionErr: sessionErr?.message });
+      console.log(DBG, {
+        userId: s?.user?.id,
+        hasToken: !!s?.access_token,
+        expires_at: s?.expires_at,
+        sessionErr: sessionErr?.message,
+      });
     }
     if (sessionErr || !sessionData?.session?.access_token) {
       throw new Error("Oturum bulunamadı. Lütfen giriş yapın.");
     }
 
-    const validateToken = async (token) => {
-      if (!token) return false;
+    const validateToken = async (tok) => {
+      if (!tok) return false;
       try {
-        const { data, error } = await supabase.auth.getUser(token);
+        const { data, error } = await supabase.auth.getUser(tok);
         return !error && !!data?.user?.id;
       } catch (_) {
         return false;
@@ -129,7 +131,12 @@ export const authService = {
       if (!needsRefresh && (await validateToken(current))) return current;
 
       if (import.meta.env.DEV) {
-        console.log(DBG, { action: "refreshSession_preflight", exp, nowSec, reason: needsRefresh ? "expiring" : "invalid_token" });
+        console.log(DBG, {
+          action: "refreshSession_preflight",
+          exp,
+          nowSec,
+          reason: needsRefresh ? "expiring" : "invalid_token",
+        });
       }
       await raceRefresh(20000);
       const { data: refreshed } = await supabase.auth.getSession();
@@ -142,91 +149,93 @@ export const authService = {
       return next;
     };
 
-    let token = await getValidatedToken();
+    await getValidatedToken();
 
-    if (!supabaseUrl || !anonKey) {
-      throw new Error("Hesap silme yapılandırması eksik (URL veya anon key).");
-    }
-
-    const url = `${supabaseUrl}/functions/v1/${fnName}`;
-
-    const doFetch = (accessToken, signal) =>
-      fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-          apikey: anonKey,
-        },
-        body: JSON.stringify({}),
-        signal,
-      });
-
-    const parseError = (res, body) => {
-      const base = body?.error ?? body?.message ?? "Hesap silinirken sunucu hatası.";
-      const parts = [base];
+    const parseInvokeFailure = (invokeError, responseData, httpStatus) => {
+      const body = responseData && typeof responseData === "object" ? responseData : {};
+      const base =
+        body?.error ??
+        body?.message ??
+        invokeError?.message ??
+        "Hesap silinirken sunucu hatası.";
+      const parts = [String(base)];
       if (body?.step) parts.push(`step=${body.step}`);
       if (body?.detail) parts.push(`detail=${body.detail}`);
       if (body?.code) parts.push(`code=${body.code}`);
       if (body?.authErrorName) parts.push(`authErrorName=${body.authErrorName}`);
       if (body?.hint) parts.push(`hint=${body.hint}`);
-      parts.push(`http=${res.status}`);
+      if (httpStatus != null) parts.push(`http=${httpStatus}`);
       return parts.join(" · ");
     };
 
-    const runOnce = async () => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      let res;
-      try {
-        res = await doFetch(token, controller.signal);
-      } catch (e) {
-        clearTimeout(timeoutId);
-        if (e?.name === "AbortError") {
-          throw new Error("İstek zaman aşımına uğradı (75s). Ağ yavaş olabilir; tekrar deneyin.");
-        }
-        throw new Error("Bağlantı hatası: " + (e?.message || "tekrar deneyin."));
-      }
-      clearTimeout(timeoutId);
-      const raw = await res.text().catch(() => "");
-      let body = {};
-      try {
-        if (raw?.trim().startsWith("{")) body = JSON.parse(raw);
-      } catch (_) {}
-
-      if (import.meta.env.DEV && !res.ok) {
-        console.warn(DBG, { status: res.status, body, rawPreview: raw?.slice?.(0, 400) });
-      }
-
-      return { res, body, raw };
+    const callDeleteFunction = async () => {
+      console.log("Calling function: delete-my-account");
+      return Promise.race([
+        supabase.functions.invoke("delete-my-account"),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("İstek zaman aşımına uğradı (75s). Ağ yavaş olabilir; tekrar deneyin.")),
+            timeoutMs
+          )
+        ),
+      ]);
     };
 
-    let { res, body } = await runOnce();
+    let { data, error } = await callDeleteFunction();
 
-    if (res.status === 401) {
+    let httpStatus =
+      error?.context?.response?.status ??
+      error?.status ??
+      (typeof error?.context?.status === "number" ? error.context.status : undefined);
+
+    if (import.meta.env.DEV && error) {
+      console.warn(DBG, { invokeError: error, data, httpStatus });
+    }
+
+    if (httpStatus === 401 || String(error?.message || "").toLowerCase().includes("jwt")) {
       if (import.meta.env.DEV) console.log(DBG, { action: "refresh_after_401" });
       try {
         await raceRefresh(20000);
         const { data: d3 } = await supabase.auth.getSession();
         const t3 = String(d3?.session?.access_token || "").trim();
         if (t3 && (await validateToken(t3))) {
-          token = t3;
-          const second = await runOnce();
-          res = second.res;
-          body = second.body;
+          const second = await callDeleteFunction();
+          data = second.data;
+          error = second.error;
+          httpStatus =
+            error?.context?.response?.status ??
+            error?.status ??
+            (typeof error?.context?.status === "number" ? error.context.status : undefined);
         }
       } catch (_) {}
     }
 
-    if (!res.ok) {
-      let msg = parseError(res, body);
-      if (res.status === 401 && !body?.detail) {
-        msg += " · Oturum yenilenemedi; bir kez daha deneyin.";
-      }
+    if (error) {
+      const errBody =
+        data && typeof data === "object" && (data.error || data.step)
+          ? data
+          : error?.context?.body
+            ? (() => {
+                try {
+                  return typeof error.context.body === "string" ? JSON.parse(error.context.body) : error.context.body;
+                } catch (_) {
+                  return {};
+                }
+              })()
+            : data;
+      const msg = parseInvokeFailure(error, errBody, httpStatus);
       const err = new Error(msg);
-      err.tgStep = body?.step;
-      err.tgDetail = body?.detail;
-      err.tgHttpStatus = res.status;
+      err.tgStep = errBody?.step;
+      err.tgDetail = errBody?.detail;
+      err.tgHttpStatus = httpStatus;
+      throw err;
+    }
+
+    if (data && typeof data === "object" && data.error) {
+      const msg = parseInvokeFailure(null, data, data?.status);
+      const err = new Error(msg);
+      err.tgStep = data?.step;
+      err.tgDetail = data?.detail;
       throw err;
     }
   },
