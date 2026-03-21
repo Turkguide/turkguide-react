@@ -169,9 +169,21 @@ export const authService = {
     };
 
     const callDeleteFunction = async () => {
-      console.log("Calling function: delete-my-account");
+      const sessionRes = await supabase.auth.getSession();
+      const access_token = sessionRes?.data?.session?.access_token;
+
+      if (!access_token) {
+        throw new Error("No access token found");
+      }
+
+      console.log("TOKEN:", access_token);
+
       return Promise.race([
-        supabase.functions.invoke("delete-my-account"),
+        supabase.functions.invoke("delete-my-account", {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        }),
         new Promise((_, reject) =>
           setTimeout(
             () => reject(new Error("İstek zaman aşımına uğradı (75s). Ağ yavaş olabilir; tekrar deneyin.")),
