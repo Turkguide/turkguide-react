@@ -81,45 +81,52 @@ export const authService = {
   },
 
   /**
-   * Delete account via Edge Function (debug logs + alerts).
+   * Delete account via Edge Function (refresh session, anon apikey header).
    */
   async deleteAccount() {
     console.log("DELETE START");
 
-    const { data } = await supabase.auth.getSession();
+    const { data: currentSession } = await supabase.auth.getSession();
+    console.log("SESSION:", currentSession);
 
-    console.log("SESSION:", data);
+    if (!currentSession?.session) {
+      throw new Error("No active session");
+    }
 
-    const token = data?.session?.access_token;
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+
+    if (refreshError) {
+      console.error("REFRESH ERROR:", refreshError);
+      throw refreshError;
+    }
+
+    const token = refreshed?.session?.access_token;
 
     if (!token) {
-      alert("TOKEN YOK - yeniden login ol");
-      throw new Error("No token");
+      throw new Error("No refreshed access token");
     }
 
     console.log("TOKEN:", token);
 
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-my-account`;
-
     console.log("URL:", url);
 
     const res = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
         "Content-Type": "application/json",
       },
     });
 
-    console.log("RESPONSE:", res);
-
     const text = await res.text();
 
+    console.log("RESPONSE STATUS:", res.status);
     console.log("RESPONSE TEXT:", text);
 
     if (!res.ok) {
-      alert(text);
-      throw new Error(text);
+      throw new Error(text || "Delete failed");
     }
 
     return JSON.parse(text);
