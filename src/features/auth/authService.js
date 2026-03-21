@@ -81,19 +81,23 @@ export const authService = {
   },
 
   /**
-   * Delete account via Edge Function (fetch to VITE_SUPABASE_URL/functions/v1/delete-my-account).
+   * Delete account via Edge Function (refresh session then fetch delete-my-account).
    */
   async deleteAccount() {
-    if (!supabase?.auth?.getSession) {
-      throw new Error("Hesap silme şu an kullanılamıyor.");
+    // force fresh session
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    if (!sessionData?.session) {
+      throw new Error("No active session");
     }
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // refresh token (CRITICAL)
+    const { data: refreshed } = await supabase.auth.refreshSession();
 
-    if (!session?.access_token) {
-      throw new Error("No session token");
+    const token = refreshed?.session?.access_token;
+
+    if (!token) {
+      throw new Error("Token refresh failed");
     }
 
     const res = await fetch(
@@ -101,18 +105,20 @@ export const authService = {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       }
     );
 
+    const text = await res.text();
+
     if (!res.ok) {
-      const text = await res.text();
+      console.error("DELETE ERROR:", text);
       throw new Error(text || "Delete failed");
     }
 
-    return await res.json();
+    return JSON.parse(text);
   },
 
   /**
