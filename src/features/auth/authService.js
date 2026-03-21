@@ -81,41 +81,45 @@ export const authService = {
   },
 
   /**
-   * Delete account via Edge Function (refresh session then fetch delete-my-account).
+   * Delete account via Edge Function (debug logs + alerts).
    */
   async deleteAccount() {
-    // force fresh session
-    const { data: sessionData } = await supabase.auth.getSession();
+    console.log("DELETE START");
 
-    if (!sessionData?.session) {
-      throw new Error("No active session");
-    }
+    const { data } = await supabase.auth.getSession();
 
-    // refresh token (CRITICAL)
-    const { data: refreshed } = await supabase.auth.refreshSession();
+    console.log("SESSION:", data);
 
-    const token = refreshed?.session?.access_token;
+    const token = data?.session?.access_token;
 
     if (!token) {
-      throw new Error("Token refresh failed");
+      alert("TOKEN YOK - yeniden login ol");
+      throw new Error("No token");
     }
 
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-my-account`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    console.log("TOKEN:", token);
+
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-my-account`;
+
+    console.log("URL:", url);
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    console.log("RESPONSE:", res);
 
     const text = await res.text();
 
+    console.log("RESPONSE TEXT:", text);
+
     if (!res.ok) {
-      console.error("DELETE ERROR:", text);
-      throw new Error(text || "Delete failed");
+      alert(text);
+      throw new Error(text);
     }
 
     return JSON.parse(text);
